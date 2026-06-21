@@ -6,7 +6,7 @@ import { Bell, Search } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: () => {
-    if (typeof window !== "undefined" && !localStorage.getItem("fotojenik_admin")) {
+    if (typeof window !== "undefined" && !localStorage.getItem("albumevi_admin")) {
       throw redirect({ to: "/admin-login" });
     }
   },
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   return (
-    <div className="fotojenik-dark">
+    <div className="albumevi-dark">
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background text-foreground">
           <AppSidebar />
@@ -45,7 +45,7 @@ function DashboardLayout() {
                   <div className="hidden sm:block">
                     <div className="text-xs font-medium leading-tight">Admin</div>
                     <div className="text-[10px] leading-tight text-muted-foreground">
-                      Fotojenik HQ
+                      Albumevi HQ
                     </div>
                   </div>
                 </div>

@@ -66,8 +66,8 @@ function ManageSchools() {
   // Listen for sidebar "Add New School" trigger
   useEffect(() => {
     const handler = () => setOpen(true);
-    window.addEventListener("fotojenik:add-school", handler);
-    return () => window.removeEventListener("fotojenik:add-school", handler);
+    window.addEventListener("albumevi:add-school", handler);
+    return () => window.removeEventListener("albumevi:add-school", handler);
   }, []);
 
   const m = useMutation({

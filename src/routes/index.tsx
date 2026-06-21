@@ -110,7 +110,7 @@ function Landing() {
               <Camera className="h-5 w-5" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white lowercase">
-              foto<span className="text-red-500">jenik</span>
+              album<span className="text-red-500">evi</span>
             </span>
           </div>
 
@@ -539,10 +539,10 @@ function Landing() {
           <div className="flex items-center gap-2 mb-4 md:mb-0">
             <Camera className="w-4 h-4 text-red-500" />
             <span className="font-bold text-white lowercase">
-              foto<span className="text-red-500">jenik</span>
+              album<span className="text-red-500">evi</span>
             </span>
           </div>
-          <p>© 2024 Fotojenik Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
+          <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <a href="#" className="hover:text-white transition-colors">
               Gizlilik

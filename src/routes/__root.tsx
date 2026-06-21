@@ -56,29 +56,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Fotojenik — School Photography & Logistics Platform" },
+      { title: "Albumevi — School Photography & Logistics Platform" },
       {
         name: "description",
         content:
-          "Fotojenik streamlines school photography — orders, inventory, finance, and delivery in one elegant platform.",
+          "Albumevi streamlines school photography — orders, inventory, finance, and delivery in one elegant platform.",
       },
-      { property: "og:title", content: "Fotojenik — School Photography & Logistics Platform" },
+      { property: "og:title", content: "Albumevi — School Photography & Logistics Platform" },
       {
         property: "og:description",
         content:
-          "Fotojenik School Hub is a school photography and logistics platform for administrators.",
+          "Albumevi School Hub is a school photography and logistics platform for administrators.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Fotojenik — School Photography & Logistics Platform" },
+      { name: "twitter:title", content: "Albumevi — School Photography & Logistics Platform" },
       {
         name: "description",
         content:
-          "Fotojenik School Hub is a school photography and logistics platform for administrators.",
+          "Albumevi School Hub is a school photography and logistics platform for administrators.",
       },
       {
         name: "twitter:description",
         content:
-          "Fotojenik School Hub is a school photography and logistics platform for administrators.",
+          "Albumevi School Hub is a school photography and logistics platform for administrators.",
       },
       {
         property: "og:image",
@@ -92,7 +92,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📸</text></svg>",
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

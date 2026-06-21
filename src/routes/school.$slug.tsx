@@ -114,7 +114,7 @@ function SchoolPortal() {
     return (
       <div
         dir={dir}
-        className="fotojenik-dark flex min-h-screen items-center justify-center bg-background"
+        className="albumevi-dark flex min-h-screen items-center justify-center bg-background"
       >
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
@@ -124,7 +124,7 @@ function SchoolPortal() {
     return (
       <div
         dir={dir}
-        className="fotojenik-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground"
+        className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground"
       >
         <h1 className="text-xl font-semibold">{t("school.notFound")}</h1>
         <p className="text-sm text-muted-foreground">{t("school.invalidLink")}</p>
@@ -158,7 +158,7 @@ function SchoolPortal() {
     });
 
   return (
-    <div dir={dir} className="fotojenik-dark min-h-screen bg-background text-foreground">
+    <div dir={dir} className="albumevi-dark min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -166,7 +166,7 @@ function SchoolPortal() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Camera className="h-4 w-4" />
             </div>
-            <span className="text-lg font-bold">Fotojenik</span>
+            <span className="text-lg font-bold">Albumevi</span>
             <span className="ml-3 hidden text-sm text-muted-foreground sm:inline">
               | {school.name}
             </span>

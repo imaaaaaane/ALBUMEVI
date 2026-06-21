@@ -129,8 +129,8 @@
   --sidebar-ring: oklch(0.62 0.22 22);
 }
 
-/* Fotojenik admin dashboard scoped dark theme — deep black + crimson accent */
-.fotojenik-dark {
+/* Albumevi admin dashboard scoped dark theme — deep black + crimson accent */
+.albumevi-dark {
   --background: oklch(0.09 0.003 270);
   --foreground: oklch(0.97 0.005 270);
   --card: oklch(0.135 0.004 270);

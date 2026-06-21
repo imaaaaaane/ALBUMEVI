@@ -90,7 +90,7 @@ const MONTHS = [
   "December",
 ];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const STORAGE_KEY = "fotojenik.calendar.shoots";
+const STORAGE_KEY = "albumevi.calendar.shoots";
 
 function CalendarView() {
   const today = new Date();

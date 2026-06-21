@@ -38,8 +38,8 @@ export function AppSidebar() {
 
   const signOut = () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("fotojenik_admin");
-      localStorage.removeItem("fotojenik_school");
+      localStorage.removeItem("albumevi_admin");
+      localStorage.removeItem("albumevi_school");
     }
     navigate({ to: "/" });
   };
@@ -49,7 +49,7 @@ export function AppSidebar() {
       await navigate({ to: "/dashboard/schools" });
     }
     if (typeof window !== "undefined") {
-      setTimeout(() => window.dispatchEvent(new CustomEvent("fotojenik:add-school")), 50);
+      setTimeout(() => window.dispatchEvent(new CustomEvent("albumevi:add-school")), 50);
     }
   };
 
@@ -61,7 +61,7 @@ export function AppSidebar() {
             <Camera className="h-4 w-4" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold tracking-tight">Fotojenik</span>
+            <span className="text-base font-bold tracking-tight">Albumevi</span>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Admin Console
             </span>
@@ -117,7 +117,7 @@ export function AppSidebar() {
             </div>
             <div className="min-w-0 flex-1 leading-tight">
               <div className="truncate text-xs font-medium">Admin</div>
-              <div className="truncate text-[10px] text-muted-foreground">admin@fotojenik.com</div>
+              <div className="truncate text-[10px] text-muted-foreground">admin@albumevi.com</div>
             </div>
           </div>
         </div>

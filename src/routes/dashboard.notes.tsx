@@ -20,7 +20,7 @@ export const Route = createFileRoute("/dashboard/notes")({
 
 type Note = { id: string; title: string; body: string; createdAt: number };
 
-const STORAGE_KEY = "fotojenik_notes";
+const STORAGE_KEY = "albumevi_notes";
 
 const SEED: Note[] = [
   {

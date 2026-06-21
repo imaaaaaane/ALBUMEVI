@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const ADMIN_EMAIL = "admin@fotojenik.com";
+const ADMIN_EMAIL = "admin@albumevi.com";
 const ADMIN_PASSWORD = "password123";
 
 export const loginAdmin = createServerFn({ method: "POST" })
