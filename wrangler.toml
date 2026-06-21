@@ -1,0 +1,5 @@
+name = "albumevi"
+pages_build_output_dir = ".output/public"
+
+[compatibility_flags]
+compatibility_date = "2026-06-21"
