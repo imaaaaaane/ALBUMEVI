@@ -18,8 +18,10 @@ import {
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+
+const MotionLink = motion(Link);
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -92,6 +94,7 @@ const heroImageVariants = {
 
 function Landing() {
   const { t, dir } = useI18n();
+  const [activeStep, setActiveStep] = useState(1);
 
   // Katana scroll refs
   const servicesContainerRef = useScrollProgress();
@@ -133,18 +136,22 @@ function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
+            <MotionLink
               to="/login"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className="px-4 py-2 text-sm font-medium border border-white/10 rounded-full hover:bg-white/5 transition-all text-white animate-pulse-slow"
             >
               {t("cta.schoolLogin")}
-            </Link>
-            <Link
+            </MotionLink>
+            <MotionLink
               to="/admin-login"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className="px-4 py-2 text-sm font-medium border border-white/10 rounded-full hover:bg-white/5 transition-all text-white"
             >
               {t("cta.adminLogin")}
-            </Link>
+            </MotionLink>
             <LanguageSwitcher />
           </div>
         </div>
@@ -152,7 +159,13 @@ function Landing() {
 
       {/* HERO SECTION */}
       <div className="relative pt-24 min-h-screen flex items-center justify-center">
-        <main className="mx-auto max-w-7xl px-6 py-20 w-full">
+        <motion.main
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="mx-auto max-w-7xl px-6 py-20 w-full"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left side text */}
             <motion.div
@@ -161,13 +174,6 @@ function Landing() {
               animate="visible"
               className="space-y-8"
             >
-              <motion.div
-                variants={heroItemVariants}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-500 text-xs font-bold tracking-wider"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                {t("hero.badge")}
-              </motion.div>
               <motion.h1
                 variants={heroItemVariants}
                 className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight"
@@ -251,7 +257,7 @@ function Landing() {
               </div>
             </motion.div>
           </div>
-        </main>
+        </motion.main>
       </div>
 
       {/* SERVICES GRID SECTION - Katana Animation */}
@@ -262,7 +268,13 @@ function Landing() {
       >
         <div className="katana-sticky">
           <div className="katana-mask flex items-center justify-center bg-[#0D0D0D]">
-            <div className="mx-auto max-w-7xl px-6 py-24 w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="mx-auto max-w-7xl px-6 py-24 w-full"
+            >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
                 <motion.div
                   initial={{ opacity: 0, x: -30 }}
@@ -327,7 +339,7 @@ function Landing() {
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -340,7 +352,13 @@ function Landing() {
       >
         <div className="katana-sticky">
           <div className="katana-mask flex items-center justify-center bg-[#0A0A0A]">
-            <div className="mx-auto max-w-7xl px-6 py-24 w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="mx-auto max-w-7xl px-6 py-24 w-full"
+            >
               <div className="text-center mb-16">
                 <p className="text-red-500 text-sm font-bold tracking-widest uppercase mb-3">
                   {t("process.badge")}
@@ -351,36 +369,60 @@ function Landing() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
                   { num: "01", title: t("process.step1.title"), desc: t("process.step1.desc") },
-                  {
-                    num: "02",
-                    title: t("process.step2.title"),
-                    desc: t("process.step2.desc"),
-                    active: true,
-                  },
+                  { num: "02", title: t("process.step2.title"), desc: t("process.step2.desc") },
                   { num: "03", title: t("process.step3.title"), desc: t("process.step3.desc") },
                   { num: "04", title: t("process.step4.title"), desc: t("process.step4.desc") },
-                ].map((step, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                    className={`p-8 rounded-3xl border transition-all ${step.active ? "border-red-500 bg-[#151515] scale-105" : "border-white/5 bg-[#111111]"}`}
-                  >
-                    <div className="text-5xl font-extrabold text-white/10 mb-6">{step.num}</div>
-                    <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
-                  </motion.div>
-                ))}
+                ].map((step, idx) => {
+                  const isActive = idx === activeStep;
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                      viewport={{ once: true, margin: "-100px" }}
+                      whileHover={{ y: -4, scale: isActive ? 1.07 : 1.02 }}
+                      transition={{
+                        duration: 0.4,
+                        ease: "easeOut",
+                        delay: idx * 0.05,
+                        scale: { type: "spring", stiffness: 300, damping: 20 },
+                        y: { type: "spring", stiffness: 300, damping: 20 },
+                      }}
+                      onClick={() => setActiveStep(idx)}
+                      className={`p-8 rounded-3xl border transition-colors cursor-pointer relative ${
+                        isActive
+                          ? "bg-[#151515] border-transparent z-10"
+                          : "border-white/5 bg-[#111111] hover:border-white/10"
+                      }`}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeStepBorder"
+                          className="absolute inset-0 rounded-3xl border-2 border-red-500 pointer-events-none"
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        />
+                      )}
+                      <div className="text-5xl font-extrabold text-white/10 mb-6">{step.num}</div>
+                      <h3 className="text-xl font-bold mb-3">{step.title}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
+                    </motion.div>
+                  );
+                })}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
 
       {/* WHY US SECTION (Standard Scroll) */}
-      <section id="hakkimizda" className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A]">
+      <motion.section
+        id="hakkimizda"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A]"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -432,16 +474,26 @@ function Landing() {
               ))}
             </div>
 
-            <button className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold transition-colors mt-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold transition-colors mt-4 cursor-pointer"
+            >
               {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
-            </button>
+            </motion.button>
           </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FOOTER & CONTACT (Standard Scroll) */}
       <footer id="iletisim" className="border-t border-white/5 bg-[#0D0D0D] pt-24 pb-8">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24"
+        >
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -488,12 +540,20 @@ function Landing() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
+              >
                 <Instagram className="w-4 h-4" />
-              </button>
-              <button className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
+              >
                 <Facebook className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </motion.div>
 
@@ -502,23 +562,17 @@ function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="bg-[#111111] border border-white/5 rounded-3xl p-4 relative min-h-[400px] flex items-end"
+            className="bg-[#111111] border border-white/5 rounded-3xl p-4 relative min-h-[400px] flex items-end overflow-hidden"
           >
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: "radial-gradient(circle at center, white 1px, transparent 1px)",
-                backgroundSize: "30px 30px",
-              }}
-            ></div>
+            <iframe
+              src="https://maps.google.com/maps?q=Tilmer%C3%A7%20Mh%20%C4%B0brahim%20Hakk%C4%B1%20Cd%20Batman%20Kaz%C4%B1m%20Karabekir%20Ortaokulu&t=&z=15&ie=UTF8&iwloc=&output=embed"
+              className="absolute inset-0 w-full h-full rounded-3xl border-0 opacity-80 hover:opacity-100 transition-opacity"
+              allowFullScreen
+              loading="lazy"
+              title="Albumevi Batman Studio Location"
+            />
 
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.5)]">
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
-            </div>
-
-            <div className="relative z-10 bg-[#151515] border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between">
+            <div className="relative z-10 bg-[#151515]/90 border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between backdrop-blur-sm">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
                   <MapPin className="w-5 h-5" />
@@ -528,12 +582,16 @@ function Landing() {
                   <p className="text-xs text-gray-400">{t("contact.map.subtitle")}</p>
                 </div>
               </div>
-              <button className="text-red-500 text-sm font-medium flex items-center gap-1 hover:text-red-400 transition-colors">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="text-red-500 text-sm font-medium flex items-center gap-1 hover:text-red-400 transition-colors cursor-pointer"
+              >
                 {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
