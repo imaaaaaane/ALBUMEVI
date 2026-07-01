@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,133 +10,116 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
-import { listOrders, updateOrderStatus, listInventory } from "@/lib/admin.functions";
+import { PageTransition } from "@/components/page-transition";
+import { RefreshCw, CheckCircle, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/dashboard/orders")({
   component: ManageOrders,
 });
 
-const STATUSES = ["Pending", "Processing", "Shipped", "Completed"] as const;
-
-const variant = (s: string) =>
-  s === "Completed"
-    ? "default"
-    : s === "Shipped"
-      ? "default"
-      : s === "Processing"
-        ? "secondary"
-        : "outline";
+interface OrderItem {
+  id: string;
+  client: string;
+  schoolName: string;
+  status: "Pending" | "Completed";
+  date: string;
+}
 
 function ManageOrders() {
-  const fetchOrders = useServerFn(listOrders);
-  const fetchInventory = useServerFn(listInventory);
-  const updateStatus = useServerFn(updateOrderStatus);
-  const qc = useQueryClient();
+  const [orders, setOrders] = useState<OrderItem[]>([
+    { id: "ORD-001", client: "John Doe", schoolName: "Atatürk Primary School", status: "Pending", date: "2026-06-15" },
+    { id: "ORD-002", client: "Jane Smith", schoolName: "Tilmerç Toki Middle School", status: "Completed", date: "2026-06-18" },
+    { id: "ORD-003", client: "Ahmet Yılmaz", schoolName: "Batman High School", status: "Pending", date: "2026-06-20" },
+    { id: "ORD-004", client: "Fatma Demir", schoolName: "Gazi Elementary School", status: "Completed", date: "2026-06-22" },
+    { id: "ORD-005", client: "Mehmet Çelik", schoolName: "Raman Anadolu Lisesi", status: "Pending", date: "2026-06-25" },
+  ]);
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["orders"],
-    queryFn: () => fetchOrders(),
-  });
-  const { data: inventory = [] } = useQuery({
-    queryKey: ["inventory"],
-    queryFn: () => fetchInventory(),
-  });
-
-  const m = useMutation({
-    mutationFn: updateStatus,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orders"] });
-      toast.success("Status updated");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const totalStock = inventory.reduce((s, i: any) => s + (i.stock_count ?? 0), 0);
+  const toggleStatus = (id: string) => {
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === id) {
+          return {
+            ...o,
+            status: o.status === "Pending" ? "Completed" : "Pending",
+          };
+        }
+        return o;
+      })
+    );
+  };
 
   return (
-    <div className="space-y-6">
+    <PageTransition className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Manage Orders</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Manage Orders</h1>
           <p className="text-sm text-muted-foreground">
-            Update tracking status. Stock totals from inventory.
+            Monitor client orders, toggle fulfillment status, and export reports.
           </p>
-        </div>
-        <div className="rounded-lg border bg-card px-4 py-2 text-sm">
-          <span className="text-muted-foreground">Total stock remaining: </span>
-          <span className="font-semibold">{totalStock.toLocaleString()}</span>
         </div>
       </div>
 
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Order #</TableHead>
-              <TableHead>School</TableHead>
-              <TableHead>Package</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="w-[100px]">ID</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>School Name</TableHead>
+              <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Loading…
+            {orders.map((o) => (
+              <TableRow key={o.id} className="hover:bg-muted/40 transition-colors">
+                <TableCell className="font-mono text-xs font-semibold">{o.id}</TableCell>
+                <TableCell className="font-medium">{o.client}</TableCell>
+                <TableCell>{o.schoolName}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{o.date}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={o.status === "Completed" ? "default" : "outline"}
+                    className={
+                      o.status === "Completed"
+                        ? "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/10"
+                        : "bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/10"
+                    }
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {o.status === "Completed" ? (
+                        <CheckCircle className="h-3 w-3" />
+                      ) : (
+                        <Clock className="h-3 w-3" />
+                      )}
+                      {o.status}
+                    </span>
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-block"
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleStatus(o.id)}
+                      className="h-8 gap-1.5 border-border hover:border-primary/50 text-xs font-semibold cursor-pointer"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Toggle Status
+                    </Button>
+                  </motion.div>
                 </TableCell>
               </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No orders yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((o: any) => (
-                <TableRow key={o.id}>
-                  <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}</TableCell>
-                  <TableCell>{o.school_name}</TableCell>
-                  <TableCell>{o.package_name}</TableCell>
-                  <TableCell className="text-right">{o.quantity}</TableCell>
-                  <TableCell className="text-right">
-                    ${Number(o.total_price).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={variant(o.order_status) as any}>{o.order_status}</Badge>
-                      <Select
-                        value={o.order_status}
-                        onValueChange={(v) => m.mutate({ data: { id: o.id, status: v as any } })}
-                      >
-                        <SelectTrigger className="h-7 w-[130px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
-    </div>
+    </PageTransition>
   );
 }

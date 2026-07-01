@@ -9,7 +9,9 @@ import {
   Plus,
   Globe,
   StickyNote,
+  ClipboardList,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +28,7 @@ import { Button } from "@/components/ui/button";
 
 const SIDEBAR_ITEMS = [
   { title: "Dashboard", url: "/dashboard/schools", icon: School },
+  { title: "Orders", url: "/dashboard/orders", icon: ClipboardList },
   { title: "Product Inventory", url: "/dashboard/inventory", icon: Package },
   { title: "Calendar", url: "/dashboard/calendar", icon: Calendar },
   { title: "Accounting", url: "/dashboard/finance", icon: Wallet },
@@ -68,13 +71,15 @@ export function AppSidebar() {
           </div>
         </div>
         <div className="px-2 pb-2">
-          <Button
-            onClick={triggerAddSchool}
-            className="h-9 w-full justify-center gap-2 bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add New School</span>
-          </Button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full">
+            <Button
+              onClick={triggerAddSchool}
+              className="h-9 w-full justify-center gap-2 bg-primary font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add New School</span>
+            </Button>
+          </motion.div>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -89,8 +94,14 @@ export function AppSidebar() {
                     isActive={path === item.url || path.startsWith(item.url)}
                   >
                     <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-2 w-full"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </motion.div>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -124,8 +135,14 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={signOut} className="flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              <span>Sign out</span>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 w-full"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </motion.div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
