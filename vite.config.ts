@@ -11,8 +11,29 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
 
   tanstackStart: {
-    base: "/",
+ base: "/",
     server: { entry: "server" },
   },
-  nitro: true,
+  nitro: {
+    preset: "cloudflare-pages",
+    output: {
+      dir: ".output",
+      publicDir: ".output",
+      serverDir: ".output/_worker.js",
+    },
+    hooks: {
+      async compiled(nitro: any) {
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const redirectsPath = path.join(nitro.options.output.dir, "_redirects");
+        try {
+          await fs.unlink(redirectsPath);
+          nitro.logger.info("Removed _redirects to prevent routing conflicts in SSR mode.");
+        } catch (e) {
+          // ignore
+        }
+      },
+    },
+  } as any,
 });
+
