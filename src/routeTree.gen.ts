@@ -302,9 +302,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-
-declare module '@tanstack/react-router' {
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
   interface Register {
+    ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
