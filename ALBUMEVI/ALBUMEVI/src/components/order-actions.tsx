@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Check, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { deleteOrder, updateOrderStatus } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   orderId: string;
@@ -24,8 +23,6 @@ interface Props {
 
 export function OrderActions({ orderId, status }: Props) {
   const qc = useQueryClient();
-  const completeFn = useServerFn(updateOrderStatus);
-  const deleteFn = useServerFn(deleteOrder);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const invalidate = () => {
@@ -34,7 +31,14 @@ export function OrderActions({ orderId, status }: Props) {
   };
 
   const completeMut = useMutation({
-    mutationFn: () => completeFn({ data: { id: orderId, status: "Completed" } }),
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("orders")
+        .update({ order_status: "Completed" })
+        .eq("id", orderId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    },
     onSuccess: () => {
       toast.success("Order marked as completed");
       invalidate();
@@ -43,7 +47,11 @@ export function OrderActions({ orderId, status }: Props) {
   });
 
   const deleteMut = useMutation({
-    mutationFn: () => deleteFn({ data: { id: orderId } }),
+    mutationFn: async () => {
+      const { error } = await supabase.from("orders").delete().eq("id", orderId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    },
     onSuccess: () => {
       toast.success("Order removed");
       setConfirmOpen(false);

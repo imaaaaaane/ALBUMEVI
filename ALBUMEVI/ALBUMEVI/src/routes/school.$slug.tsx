@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import {
   Camera,
   Check,
@@ -17,10 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { createSchoolOrder, getSchoolBySlug } from "@/lib/school.functions";
-import { listInventory } from "@/lib/admin.functions";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/school/$slug")({
   component: SchoolPortal,
@@ -49,19 +47,46 @@ const sizeFor = (price: number): SizeTag =>
 function SchoolPortal() {
   const { slug } = Route.useParams();
   const { t, dir } = useI18n();
-  const fetchSchool = useServerFn(getSchoolBySlug);
-  const fetchInventory = useServerFn(listInventory);
-  const placeOrder = useServerFn(createSchoolOrder);
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["school", slug],
-    queryFn: () => fetchSchool({ data: { slug } }),
+    queryFn: async () => {
+      const { data: school, error } = await supabase
+        .from("schools")
+        .select("id, name, city, unique_link_slug")
+        .eq("unique_link_slug", slug)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!school) throw new Error("School not found");
+
+      const [{ data: orders }, { data: finance }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, package_name, quantity, total_price, order_status, created_at")
+          .eq("school_id", school.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("finances")
+          .select("total_revenue, amount_paid, balance_due, invoice_url")
+          .eq("school_id", school.id)
+          .maybeSingle(),
+      ]);
+
+      return { school, orders: orders ?? [], finance: finance ?? null };
+    },
   });
 
   const { data: dbStock = [] } = useQuery({
     queryKey: ["catalog"],
-    queryFn: () => fetchInventory(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
 
   // qty by item id
@@ -85,17 +110,49 @@ function SchoolPortal() {
     mutationFn: async () => {
       const items = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
       let total = 0;
+
+      const { data: school, error: sErr } = await supabase
+        .from("schools")
+        .select("id")
+        .eq("unique_link_slug", slug)
+        .maybeSingle();
+      if (sErr || !school) throw new Error("School not found");
+
       for (const item of items) {
         const qty = selection[item.id];
-        await placeOrder({
-          data: {
-            slug,
-            package_name: item.name,
-            quantity: qty,
-            unit_price: item.price,
-          },
+        const itemTotal = qty * item.price;
+        const { error } = await supabase.from("orders").insert({
+          school_id: school.id,
+          package_name: item.name,
+          quantity: qty,
+          total_price: itemTotal,
+          order_status: "Pending",
         });
-        total += qty * item.price;
+        if (error) throw new Error(error.message);
+
+        // Update finance
+        const { data: fin } = await supabase
+          .from("finances")
+          .select("id, total_revenue, amount_paid")
+          .eq("school_id", school.id)
+          .maybeSingle();
+
+        if (fin) {
+          const newRevenue = Number(fin.total_revenue ?? 0) + itemTotal;
+          const paid = Number(fin.amount_paid ?? 0);
+          await supabase
+            .from("finances")
+            .update({ total_revenue: newRevenue, balance_due: newRevenue - paid })
+            .eq("id", fin.id);
+        } else {
+          await supabase.from("finances").insert({
+            school_id: school.id,
+            total_revenue: itemTotal,
+            amount_paid: 0,
+            balance_due: itemTotal,
+          });
+        }
+        total += itemTotal;
       }
       return { items: items.length, total };
     },

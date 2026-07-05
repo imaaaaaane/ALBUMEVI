@@ -1,13 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { loginAdmin } from "@/lib/auth.functions";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -18,12 +16,21 @@ export const Route = createFileRoute("/admin-login")({
 function AdminLogin() {
   const navigate = useNavigate();
   const { t, dir } = useI18n();
-  const login = useServerFn(loginAdmin);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const m = useMutation({
-    mutationFn: login,
+    mutationFn: async ({ data }: { data: { email: string; password: string } }) => {
+      const ADMIN_EMAIL = "admin@albumevi.com";
+      const ADMIN_PASSWORD = "password123";
+      if (
+        data.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() ||
+        data.password !== ADMIN_PASSWORD
+      ) {
+        throw new Error("Invalid Credentials");
+      }
+      return { ok: true, email: data.email };
+    },
     onSuccess: (res) => {
       if (typeof window !== "undefined") {
         localStorage.setItem("albumevi_admin", JSON.stringify(res));

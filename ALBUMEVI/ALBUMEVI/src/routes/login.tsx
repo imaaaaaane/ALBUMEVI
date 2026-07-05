@@ -1,13 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Camera, Loader2, ArrowLeft } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { loginSchool } from "@/lib/school.functions";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -18,12 +17,26 @@ export const Route = createFileRoute("/login")({
 function SchoolLogin() {
   const navigate = useNavigate();
   const { t, dir } = useI18n();
-  const login = useServerFn(loginSchool);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const m = useMutation({
-    mutationFn: login,
+    mutationFn: async ({ data }: { data: { username: string; password: string } }) => {
+      const { data: schoolId, error } = await supabase.rpc("verify_school_password", {
+        _username: data.username,
+        _password: data.password,
+      });
+      if (error) throw new Error(error.message);
+      if (!schoolId) throw new Error("Invalid username or password");
+
+      const { data: school, error: sErr } = await supabase
+        .from("schools")
+        .select("id, name, unique_link_slug")
+        .eq("id", schoolId as unknown as string)
+        .single();
+      if (sErr || !school) throw new Error("School not found");
+      return school;
+    },
     onSuccess: (school) => {
       if (typeof window !== "undefined") {
         localStorage.setItem("albumevi_school", JSON.stringify(school));

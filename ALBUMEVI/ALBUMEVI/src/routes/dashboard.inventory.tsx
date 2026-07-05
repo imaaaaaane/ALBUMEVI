@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Plus, Package, ImagePlus, Pencil, Upload, DollarSign, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { addInventory, listInventory } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -89,8 +88,6 @@ function StatCard({
 
 function Inventory() {
   const { t, lang } = useI18n();
-  const fetchInventory = useServerFn(listInventory);
-  const createInventory = useServerFn(addInventory);
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
@@ -98,12 +95,32 @@ function Inventory() {
 
   const { data: dbStock = [], isLoading } = useQuery({
     queryKey: ["inventory"],
-    queryFn: () => fetchInventory(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .order("created_at", { ascending: true });
+      
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
 
   const addMutation = useMutation({
-    mutationFn: (input: { item_name: string; unit_price: number; stock_count: number }) =>
-      createInventory({ data: input }),
+    mutationFn: async (input: { item_name: string; unit_price: number; stock_count: number }) => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .insert({
+          item_name: input.item_name,
+          unit_price: input.unit_price,
+          stock_count: input.stock_count,
+        })
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return data;
+    },
     onSuccess: () => {
       toast.success(lang === "TR" ? "Ürün eklendi" : "Product added");
       qc.invalidateQueries({ queryKey: ["inventory"] });

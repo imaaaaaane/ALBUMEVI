@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -33,33 +32,84 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { addSchool, listSchools, listOrders, getFinanceSummary } from "@/lib/admin.functions";
 import { OrderActions } from "@/components/order-actions";
 import { useI18n } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/dashboard/schools")({
   component: ManageSchools,
 });
 
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 40) || "school";
+
 function ManageSchools() {
   const { t, lang } = useI18n();
-  const fetchList = useServerFn(listSchools);
-  const fetchOrders = useServerFn(listOrders);
-  const fetchFinance = useServerFn(getFinanceSummary);
-  const createSchool = useServerFn(addSchool);
   const qc = useQueryClient();
 
   const { data: schools = [], isLoading } = useQuery({
     queryKey: ["schools"],
-    queryFn: () => fetchList(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schools")
+        .select("id, name, city, login_username, unique_link_slug, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
+
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
-    queryFn: () => fetchOrders(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, school_id, package_name, quantity, total_price, order_status, created_at, schools(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((o: any) => ({
+        ...o,
+        school_name: o.schools?.name ?? "—",
+      }));
+    },
   });
+
   const { data: finance } = useQuery({
     queryKey: ["finance"],
-    queryFn: () => fetchFinance(),
+    queryFn: async () => {
+      const [{ data: orders, error: oErr }, { data: finances, error: fErr }] = await Promise.all([
+        supabase.from("orders").select("total_price, order_status"),
+        supabase.from("finances").select("id, school_id, total_revenue, amount_paid, balance_due, invoice_url, schools(name)"),
+      ]);
+      if (oErr) throw new Error(oErr.message);
+      if (fErr) throw new Error(fErr.message);
+
+      const totalRevenue = (orders ?? []).reduce((s, o: any) => s + Number(o.total_price ?? 0), 0);
+      const totalPaid = (finances ?? []).reduce((s, f: any) => s + Number(f.amount_paid ?? 0), 0);
+      const balanceDue = totalRevenue - totalPaid;
+      const pendingOrders = (orders ?? []).filter((o: any) => o.order_status !== "Completed").length;
+
+      return {
+        totalRevenue,
+        totalPaid,
+        balanceDue,
+        pendingOrders,
+        invoices: (finances ?? []).map((f: any) => ({
+          id: f.id,
+          school_id: f.school_id,
+          school_name: f.schools?.name ?? "—",
+          total_revenue: Number(f.total_revenue ?? 0),
+          amount_paid: Number(f.amount_paid ?? 0),
+          balance_due: Number(f.balance_due ?? 0),
+          invoice_url: f.invoice_url,
+        })),
+      };
+    },
   });
 
   const [open, setOpen] = useState(false);
@@ -72,7 +122,31 @@ function ManageSchools() {
   }, []);
 
   const m = useMutation({
-    mutationFn: createSchool,
+    mutationFn: async ({ data }: { data: any }) => {
+      const base = slugify(data.name);
+      const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+
+      const { data: hashRes, error: hashErr } = await supabase.rpc("hash_password", {
+        plain: data.password,
+      });
+      if (hashErr) throw new Error(hashErr.message);
+
+      const { data: row, error } = await supabase
+        .from("schools")
+        .insert({
+          name: data.name,
+          city: data.city || null,
+          login_username: data.login_username,
+          password_hash: hashRes as unknown as string,
+          unique_link_slug: slug,
+        })
+        .select("id, name, city, login_username, unique_link_slug, created_at")
+        .single();
+      if (error) throw new Error(error.message);
+
+      await supabase.from("finances").insert({ school_id: row.id });
+      return row;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["finance"] });
