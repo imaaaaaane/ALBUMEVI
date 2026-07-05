@@ -33,14 +33,6 @@ function DashboardLayout() {
                 />
               </div>
               <div className="ml-auto flex items-center gap-3">
-                <button
-                  type="button"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
-                </button>
               </div>
             </header>
             <main className="flex-1 p-6">
