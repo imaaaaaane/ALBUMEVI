@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -33,37 +32,89 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { addSchool, listSchools, listOrders, getFinanceSummary } from "@/lib/admin.functions";
 import { OrderActions } from "@/components/order-actions";
+import { useI18n } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/dashboard/schools")({
   component: ManageSchools,
 });
 
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 40) || "school";
+
 function ManageSchools() {
-  const fetchList = useServerFn(listSchools);
-  const fetchOrders = useServerFn(listOrders);
-  const fetchFinance = useServerFn(getFinanceSummary);
-  const createSchool = useServerFn(addSchool);
+  const { t, lang } = useI18n();
   const qc = useQueryClient();
 
   const { data: schools = [], isLoading } = useQuery({
     queryKey: ["schools"],
-    queryFn: () => fetchList(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schools")
+        .select("id, name, city, login_username, unique_link_slug, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
+
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
-    queryFn: () => fetchOrders(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, school_id, package_name, quantity, total_price, order_status, created_at, schools(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((o: any) => ({
+        ...o,
+        school_name: o.schools?.name ?? "—",
+      }));
+    },
   });
+
   const { data: finance } = useQuery({
     queryKey: ["finance"],
-    queryFn: () => fetchFinance(),
+    queryFn: async () => {
+      const [{ data: orders, error: oErr }, { data: finances, error: fErr }] = await Promise.all([
+        supabase.from("orders").select("total_price, order_status"),
+        supabase.from("finances").select("id, school_id, total_revenue, amount_paid, balance_due, invoice_url, schools(name)"),
+      ]);
+      if (oErr) throw new Error(oErr.message);
+      if (fErr) throw new Error(fErr.message);
+
+      const totalRevenue = (orders ?? []).reduce((s, o: any) => s + Number(o.total_price ?? 0), 0);
+      const totalPaid = (finances ?? []).reduce((s, f: any) => s + Number(f.amount_paid ?? 0), 0);
+      const balanceDue = totalRevenue - totalPaid;
+      const pendingOrders = (orders ?? []).filter((o: any) => o.order_status !== "Completed").length;
+
+      return {
+        totalRevenue,
+        totalPaid,
+        balanceDue,
+        pendingOrders,
+        invoices: (finances ?? []).map((f: any) => ({
+          id: f.id,
+          school_id: f.school_id,
+          school_name: f.schools?.name ?? "—",
+          total_revenue: Number(f.total_revenue ?? 0),
+          amount_paid: Number(f.amount_paid ?? 0),
+          balance_due: Number(f.balance_due ?? 0),
+          invoice_url: f.invoice_url,
+        })),
+      };
+    },
   });
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", city: "", login_username: "", password: "" });
 
-  // Listen for sidebar "Add New School" trigger
   useEffect(() => {
     const handler = () => setOpen(true);
     window.addEventListener("albumevi:add-school", handler);
@@ -71,13 +122,37 @@ function ManageSchools() {
   }, []);
 
   const m = useMutation({
-    mutationFn: createSchool,
+    mutationFn: async ({ data }: { data: any }) => {
+      const base = slugify(data.name);
+      const slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+
+      const { data: hashRes, error: hashErr } = await supabase.rpc("hash_password", {
+        plain: data.password,
+      });
+      if (hashErr) throw new Error(hashErr.message);
+
+      const { data: row, error } = await supabase
+        .from("schools")
+        .insert({
+          name: data.name,
+          city: data.city || null,
+          login_username: data.login_username,
+          password_hash: hashRes as unknown as string,
+          unique_link_slug: slug,
+        })
+        .select("id, name, city, login_username, unique_link_slug, created_at")
+        .single();
+      if (error) throw new Error(error.message);
+
+      await supabase.from("finances").insert({ school_id: row.id });
+      return row;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["finance"] });
       setOpen(false);
       setForm({ name: "", city: "", login_username: "", password: "" });
-      toast.success("School added with unique link");
+      toast.success(lang === "TR" ? "Okul benzersiz bağlantıyla eklendi" : "School added with unique link");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -88,17 +163,22 @@ function ManageSchools() {
 
   const stats = [
     {
-      label: "Total Schools",
+      label: "Toplam Okul",
       value: schools.length,
       icon: SchoolIcon,
-      hint: "Registered partners",
+      hint: "Sistemdeki aktif okul sayısı",
     },
-    { label: "Active Orders", value: activeOrders, icon: Package, hint: "Not yet completed" },
     {
-      label: "Pending Invoices",
+      label: "Aktif Siparişler",
+      value: activeOrders,
+      icon: Package,
+      hint: "Devam eden siparişler",
+    },
+    {
+      label: "Bekleyen Faturalar",
       value: pendingInvoices,
       icon: FileWarning,
-      hint: "Schools with balance due",
+      hint: "Ödemesi yapılmamış faturalar",
     },
   ];
 
@@ -106,24 +186,24 @@ function ManageSchools() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Manage Schools</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Okul Yönetimi</h1>
           <p className="text-sm text-muted-foreground">
-            Registered schools and their unique ordering links.
+            Sistemdeki tüm okulları ve siparişlerini yönetin.
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" /> Add New School
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
+              <Plus className="mr-2 h-4 w-4" /> Yeni Okul Ekle
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add a school</DialogTitle>
+              <DialogTitle>Okul Ekle</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>School name</Label>
+                <Label>Okul Adı</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -131,15 +211,15 @@ function ManageSchools() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>City</Label>
+                <Label>Şehir</Label>
                 <Input
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  placeholder="Jakarta"
+                  placeholder="Batman"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Login username</Label>
+                <Label>Giriş Kullanıcı Adı</Label>
                 <Input
                   value={form.login_username}
                   onChange={(e) => setForm({ ...form, login_username: e.target.value })}
@@ -147,12 +227,12 @@ function ManageSchools() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Password</Label>
+                <Label>{t("schools.password")}</Label>
                 <Input
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="At least 6 characters"
+                  placeholder={t("schools.passwordHint")}
                 />
               </div>
             </div>
@@ -162,17 +242,17 @@ function ManageSchools() {
                 disabled={
                   m.isPending || !form.name || !form.login_username || form.password.length < 6
                 }
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
               >
                 {m.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Generate & Save
+                {t("schools.generateSave")}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* 3-column summary grid */}
+      {/* Stats Summary Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -190,36 +270,36 @@ function ManageSchools() {
         ))}
       </div>
 
-      {/* Recent orders / pending review */}
+      {/* Recent orders */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
-            <h2 className="font-semibold">Recent Orders</h2>
+            <h2 className="font-semibold">{t("schools.recentOrders")}</h2>
             <p className="text-xs text-muted-foreground">
-              New school selections appear here automatically.
+              {t("schools.recentOrdersHint")}
             </p>
           </div>
           <Badge className="border-transparent bg-primary/15 text-primary hover:bg-primary/20">
-            {orders.filter((o: any) => o.order_status === "Pending").length} Pending Review
+            {orders.filter((o: any) => o.order_status === "Pending").length} İnceleme Bekliyor
           </Badge>
         </div>
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground">School</TableHead>
-              <TableHead className="text-muted-foreground">Package</TableHead>
-              <TableHead className="text-right text-muted-foreground">Qty</TableHead>
-              <TableHead className="text-right text-muted-foreground">Total</TableHead>
-              <TableHead className="text-muted-foreground">Submitted</TableHead>
-              <TableHead className="text-muted-foreground">Status</TableHead>
-              <TableHead className="text-right text-muted-foreground">Actions</TableHead>
+              <TableHead className="text-muted-foreground">Okul</TableHead>
+              <TableHead className="text-muted-foreground">Paketler</TableHead>
+              <TableHead className="text-right text-muted-foreground">{t("orders.quantity")}</TableHead>
+              <TableHead className="text-right text-muted-foreground">Toplam</TableHead>
+              <TableHead className="text-muted-foreground">Gönderildi</TableHead>
+              <TableHead className="text-muted-foreground">Durum</TableHead>
+              <TableHead className="text-right text-muted-foreground">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No orders submitted yet.
+                  {t("schools.noOrders")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -246,7 +326,7 @@ function ManageSchools() {
                               : "border-transparent bg-amber-500/15 text-amber-400 hover:bg-amber-500/20"
                         }
                       >
-                        {isPending ? "Pending Review" : o.order_status}
+                        {isPending ? "İnceleme Bekliyor" : o.order_status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -261,35 +341,34 @@ function ManageSchools() {
       </div>
 
       {/* Schools table */}
-
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
-            <h2 className="font-semibold">All schools</h2>
-            <p className="text-xs text-muted-foreground">Click a link to copy it to clipboard.</p>
+            <h2 className="font-semibold">{t("schools.allSchools")}</h2>
+            <p className="text-xs text-muted-foreground">{t("schools.copyHint")}</p>
           </div>
         </div>
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground">School</TableHead>
-              <TableHead className="text-muted-foreground">City</TableHead>
-              <TableHead className="text-muted-foreground">Username</TableHead>
-              <TableHead className="text-muted-foreground">Unique Link</TableHead>
-              <TableHead className="text-muted-foreground">Status</TableHead>
+              <TableHead className="text-muted-foreground">Okul</TableHead>
+              <TableHead className="text-muted-foreground">Şehir</TableHead>
+              <TableHead className="text-muted-foreground">Kullanıcı Adı</TableHead>
+              <TableHead className="text-muted-foreground">{t("admin.generateLink")}</TableHead>
+              <TableHead className="text-muted-foreground">Durum</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  Loading…
+                  {t("admin.loading")}
                 </TableCell>
               </TableRow>
             ) : schools.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No schools yet. Add your first one.
+                  {t("schools.noSchools")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -306,9 +385,9 @@ function ManageSchools() {
                       <button
                         onClick={() => {
                           navigator.clipboard?.writeText(link);
-                          toast.success("Link copied");
+                          toast.success(lang === "TR" ? "Bağlantı kopyalandı" : "Link copied");
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-2 py-1 text-xs hover:border-primary/60 hover:text-primary"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-2 py-1 text-xs hover:border-primary/60 hover:text-primary cursor-pointer"
                       >
                         <Link2 className="h-3 w-3" />
                         /school/{s.unique_link_slug}
@@ -317,7 +396,7 @@ function ManageSchools() {
                     </TableCell>
                     <TableCell>
                       <Badge className="border-transparent bg-primary/15 text-primary hover:bg-primary/20">
-                        Active
+                        {t("admin.active")}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -335,15 +414,9 @@ function ManageSchools() {
             <Info className="h-4 w-4" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-semibold">How school links work</h3>
+            <h3 className="font-semibold">{t("schools.howItWorks")}</h3>
             <p className="text-sm text-muted-foreground">
-              Each school gets a unique ordering URL of the form
-              <span className="mx-1 rounded bg-background/60 px-1.5 py-0.5 font-mono text-xs text-foreground">
-                /school/&lt;slug&gt;
-              </span>
-              that you can share with their administrators. Schools sign in with their username &
-              password to browse packages, place orders, and download invoices. All data flows back
-              into the Orders and Finance dashboards in real time.
+              {t("schools.howItWorksDesc")}
             </p>
           </div>
         </div>

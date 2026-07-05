@@ -11,6 +11,7 @@ const OPTIONS: { code: Lang; label: string }[] = [
   { code: "EN", label: "English" },
   { code: "TR", label: "Türkçe" },
   { code: "AR", label: "العربية" },
+  { code: "KU", label: "Kurdî" },
 ];
 
 export function LanguageSwitcher() {

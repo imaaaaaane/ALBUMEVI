@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import {
   Camera,
   Check,
@@ -17,10 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { createSchoolOrder, getSchoolBySlug } from "@/lib/school.functions";
-import { listInventory } from "@/lib/admin.functions";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/school/$slug")({
   component: SchoolPortal,
@@ -49,19 +47,46 @@ const sizeFor = (price: number): SizeTag =>
 function SchoolPortal() {
   const { slug } = Route.useParams();
   const { t, dir } = useI18n();
-  const fetchSchool = useServerFn(getSchoolBySlug);
-  const fetchInventory = useServerFn(listInventory);
-  const placeOrder = useServerFn(createSchoolOrder);
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["school", slug],
-    queryFn: () => fetchSchool({ data: { slug } }),
+    queryFn: async () => {
+      const { data: school, error } = await supabase
+        .from("schools")
+        .select("id, name, city, unique_link_slug")
+        .eq("unique_link_slug", slug)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!school) throw new Error("School not found");
+
+      const [{ data: orders }, { data: finance }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, package_name, quantity, total_price, order_status, created_at")
+          .eq("school_id", school.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("finances")
+          .select("total_revenue, amount_paid, balance_due, invoice_url")
+          .eq("school_id", school.id)
+          .maybeSingle(),
+      ]);
+
+      return { school, orders: orders ?? [], finance: finance ?? null };
+    },
   });
 
   const { data: dbStock = [] } = useQuery({
     queryKey: ["catalog"],
-    queryFn: () => fetchInventory(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
 
   // qty by item id
@@ -85,17 +110,49 @@ function SchoolPortal() {
     mutationFn: async () => {
       const items = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
       let total = 0;
+
+      const { data: school, error: sErr } = await supabase
+        .from("schools")
+        .select("id")
+        .eq("unique_link_slug", slug)
+        .maybeSingle();
+      if (sErr || !school) throw new Error("School not found");
+
       for (const item of items) {
         const qty = selection[item.id];
-        await placeOrder({
-          data: {
-            slug,
-            package_name: item.name,
-            quantity: qty,
-            unit_price: item.price,
-          },
+        const itemTotal = qty * item.price;
+        const { error } = await supabase.from("orders").insert({
+          school_id: school.id,
+          package_name: item.name,
+          quantity: qty,
+          total_price: itemTotal,
+          order_status: "Pending",
         });
-        total += qty * item.price;
+        if (error) throw new Error(error.message);
+
+        // Update finance
+        const { data: fin } = await supabase
+          .from("finances")
+          .select("id, total_revenue, amount_paid")
+          .eq("school_id", school.id)
+          .maybeSingle();
+
+        if (fin) {
+          const newRevenue = Number(fin.total_revenue ?? 0) + itemTotal;
+          const paid = Number(fin.amount_paid ?? 0);
+          await supabase
+            .from("finances")
+            .update({ total_revenue: newRevenue, balance_due: newRevenue - paid })
+            .eq("id", fin.id);
+        } else {
+          await supabase.from("finances").insert({
+            school_id: school.id,
+            total_revenue: itemTotal,
+            amount_paid: 0,
+            balance_due: itemTotal,
+          });
+        }
+        total += itemTotal;
       }
       return { items: items.length, total };
     },
@@ -126,10 +183,10 @@ function SchoolPortal() {
         dir={dir}
         className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground"
       >
-        <h1 className="text-xl font-semibold">{t("school.notFound")}</h1>
-        <p className="text-sm text-muted-foreground">{t("school.invalidLink")}</p>
+        <h1 className="text-xl font-semibold">Okul bulunamadı</h1>
+        <p className="text-sm text-muted-foreground">Bu bağlantı geçersiz veya süresi dolmuş olabilir.</p>
         <Link to="/" className="text-primary underline">
-          {t("school.backHome")}
+          Ana sayfaya dön
         </Link>
       </div>
     );
@@ -180,7 +237,7 @@ function SchoolPortal() {
               className="relative border-border bg-card hover:bg-accent"
             >
               <ShoppingBag className="mr-2 h-4 w-4" />
-              {t("school.reviewSelection")}
+              Seçimi İncele
               {totalQty > 0 && (
                 <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                   {totalQty}
@@ -188,7 +245,7 @@ function SchoolPortal() {
               )}
             </Button>
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              {t("school.signOut")}
+              Çıkış yap
             </Link>
           </div>
         </div>
@@ -198,11 +255,11 @@ function SchoolPortal() {
         {/* Welcome */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t("school.welcome")}, {school.name}
+            Hoş geldiniz, {school.name}
           </h1>
           <p className="text-sm text-muted-foreground">
             {school.city ? `${school.city} — ` : ""}
-            {t("school.subtitle")}
+            Kataloğu inceleyin ve paketlerinizi seçin.
           </p>
         </div>
 
@@ -225,7 +282,7 @@ function SchoolPortal() {
                     <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card">
                       <Package className="h-5 w-5" />
                     </div>
-                    <span className="text-xs">{t("school.productPhoto")}</span>
+                    <span className="text-xs">Ürün fotoğrafı</span>
                   </div>
                   <Badge className="absolute left-3 top-3 border border-primary/30 bg-primary/15 text-[10px] uppercase tracking-wider text-primary hover:bg-primary/20">
                     {item.size}
@@ -261,7 +318,7 @@ function SchoolPortal() {
                         <Minus className="h-4 w-4" />
                       </Button>
                       <span className="text-sm font-semibold">
-                        {qty} {t("school.selected")}
+                        {qty} seçildi
                       </span>
                       <Button
                         size="icon"
@@ -277,7 +334,7 @@ function SchoolPortal() {
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => inc(item.id)}
                     >
-                      {t("school.choosePackage")}
+                      Paket Seç
                     </Button>
                   )}
                 </div>
@@ -289,11 +346,11 @@ function SchoolPortal() {
         {/* Order history */}
         <section className="rounded-xl border border-border bg-card">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="font-semibold">{t("school.orderHistory")}</h2>
+            <h2 className="font-semibold">Sipariş geçmişiniz</h2>
           </div>
           {orders.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-              {t("school.noOrders")}
+              Henüz sipariş yok. Yukarıdan paket seçip gönderin.
             </p>
           ) : (
             <ul className="divide-y divide-border">
@@ -327,10 +384,10 @@ function SchoolPortal() {
         {/* Invoice */}
         {pendingInvoice && (
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-semibold">{t("school.pendingInvoice")}</h2>
+            <h2 className="font-semibold">Bekleyen fatura</h2>
             <div className="mt-3 flex items-center justify-between rounded-md border border-border bg-background/60 p-4">
               <div>
-                <div className="text-sm text-muted-foreground">{t("school.balanceDue")}</div>
+                <div className="text-sm text-muted-foreground">Ödenecek bakiye</div>
                 <div className="text-xl font-bold">
                   ${Number(finance!.balance_due).toLocaleString()}
                 </div>
@@ -338,12 +395,12 @@ function SchoolPortal() {
               {finance?.invoice_url ? (
                 <Button asChild variant="outline" className="border-border bg-card">
                   <a href={finance.invoice_url} download>
-                    <FileDown className="mr-2 h-4 w-4" /> {t("school.downloadInvoice")}
+                    <FileDown className="mr-2 h-4 w-4" /> Faturayı indir
                   </a>
                 </Button>
               ) : (
                 <Button variant="outline" disabled className="border-border bg-card">
-                  <FileDown className="mr-2 h-4 w-4" /> {t("school.invoicePending")}
+                  <FileDown className="mr-2 h-4 w-4" /> Fatura bekleniyor
                 </Button>
               )}
             </div>
@@ -361,10 +418,10 @@ function SchoolPortal() {
               </span>
               <div>
                 <div className="font-semibold">
-                  {totalQty} {t("school.itemsSelected")}
+                  {totalQty} ürün seçildi
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {t("school.total")} ${totalPrice.toLocaleString()}
+                  Toplam ${totalPrice.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -372,7 +429,7 @@ function SchoolPortal() {
               onClick={() => setTray(true)}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {t("school.reviewSelection")}
+              Seçimi İncele
             </Button>
           </div>
         </div>
@@ -384,7 +441,7 @@ function SchoolPortal() {
           <div className="absolute inset-0" onClick={() => setTray(false)} aria-hidden />
           <aside className="relative ml-auto flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="text-base font-semibold">{t("school.reviewYourSelection")}</h2>
+              <h2 className="text-base font-semibold">Seçiminizi inceleyin</h2>
               <button
                 type="button"
                 onClick={() => setTray(false)}
@@ -398,7 +455,7 @@ function SchoolPortal() {
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {selectedItems.length === 0 ? (
                 <p className="py-12 text-center text-sm text-muted-foreground">
-                  {t("school.noItemsSelected")}
+                  Henüz ürün seçilmedi.
                 </p>
               ) : (
                 <ul className="space-y-3">
@@ -462,7 +519,7 @@ function SchoolPortal() {
                 onClick={() => submitMutation.mutate()}
               >
                 {submitMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t("school.submitSelection")}
+                Seçimi Gönder
               </Button>
             </div>
           </aside>
@@ -477,32 +534,32 @@ function SchoolPortal() {
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
                 <Check className="h-7 w-7" />
               </span>
-              <h2 className="text-xl font-bold">{t("school.selectionSubmitted")}</h2>
-              <p className="text-sm text-muted-foreground">{t("school.orderSent")}</p>
+              <h2 className="text-xl font-bold">Seçim gönderildi</h2>
+              <p className="text-sm text-muted-foreground">Siparişiniz Albumevi'ne inceleme için gönderildi.</p>
             </div>
             <div className="space-y-2 px-6 py-5 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("school.school")}</span>
+                <span className="text-muted-foreground">Okul</span>
                 <span className="font-semibold">{school.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("school.packages")}</span>
+                <span className="text-muted-foreground">Paketler</span>
                 <span className="font-semibold">{confirm.items}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("school.basePriceTotal")}</span>
+                <span className="text-muted-foreground">Temel fiyat toplamı</span>
                 <span className="font-semibold text-primary">
                   ${confirm.total.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("school.submitted")}</span>
+                <span className="text-muted-foreground">Gönderildi</span>
                 <span className="font-semibold">{confirm.when.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between pt-1">
-                <span className="text-muted-foreground">{t("school.status")}</span>
+                <span className="text-muted-foreground">Durum</span>
                 <Badge className="border-transparent bg-primary/20 text-primary hover:bg-primary/25">
-                  {t("school.pendingReview")}
+                  İnceleme Bekliyor
                 </Badge>
               </div>
             </div>
@@ -511,7 +568,7 @@ function SchoolPortal() {
                 onClick={() => setConfirm(null)}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                {t("school.done")}
+                Tamam
               </Button>
             </div>
           </div>

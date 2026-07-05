@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Plus, Package, ImagePlus, Pencil, Upload, DollarSign, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,9 +14,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { addInventory, listInventory } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/dashboard/inventory")({
   component: Inventory,
@@ -87,8 +87,7 @@ function StatCard({
 }
 
 function Inventory() {
-  const fetchInventory = useServerFn(listInventory);
-  const createInventory = useServerFn(addInventory);
+  const { t, lang } = useI18n();
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
@@ -96,19 +95,39 @@ function Inventory() {
 
   const { data: dbStock = [], isLoading } = useQuery({
     queryKey: ["inventory"],
-    queryFn: () => fetchInventory(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .order("created_at", { ascending: true });
+      
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
   });
 
   const addMutation = useMutation({
-    mutationFn: (input: { item_name: string; unit_price: number; stock_count: number }) =>
-      createInventory({ data: input }),
+    mutationFn: async (input: { item_name: string; unit_price: number; stock_count: number }) => {
+      const { data, error } = await supabase
+        .from("inventory")
+        .insert({
+          item_name: input.item_name,
+          unit_price: input.unit_price,
+          stock_count: input.stock_count,
+        })
+        .select("id, item_name, stock_count, unit_price, created_at")
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return data;
+    },
     onSuccess: () => {
-      toast.success("Product added");
+      toast.success(lang === "TR" ? "Ürün eklendi" : "Product added");
       qc.invalidateQueries({ queryKey: ["inventory"] });
       setOpen(false);
       setForm({ item_name: "", unit_price: "", stock_count: "" });
     },
-    onError: (e: Error) => toast.error(e.message || "Failed to add product"),
+    onError: (e: Error) => toast.error(e.message || (lang === "TR" ? "Ürün eklenemedi" : "Failed to add product")),
   });
 
   const products = dbStock.length
@@ -132,7 +151,7 @@ function Inventory() {
     const price = parseFloat(form.unit_price);
     const stock = parseInt(form.stock_count, 10);
     if (!form.item_name.trim() || Number.isNaN(price) || Number.isNaN(stock)) {
-      toast.error("Please fill in name, price, and stock");
+      toast.error(lang === "TR" ? "Lütfen isim, fiyat ve stok alanlarını doldurun" : "Please fill in name, price, and stock");
       return;
     }
     addMutation.mutate({ item_name: form.item_name.trim(), unit_price: price, stock_count: stock });
@@ -142,31 +161,31 @@ function Inventory() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Product Inventory</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Ürün Envanteri</h1>
           <p className="text-sm text-muted-foreground">
-            Photography packages available to schools.
+            Ürünlerinizi, stok durumlarını ve fiyatlarını yönetin.
           </p>
         </div>
         <Button
           onClick={() => setOpen(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
         >
-          <Plus className="mr-2 h-4 w-4" /> Add New Product
+          <Plus className="mr-2 h-4 w-4" /> Yeni Ürün Ekle
         </Button>
       </div>
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total Products" value={String(totalProducts)} icon={Package} />
-        <StatCard label="Average Price" value={`$${avgPrice}`} icon={DollarSign} />
-        <StatCard label="Pending Uploads" value={String(pendingUploads)} icon={Clock} />
+        <StatCard label="Toplam Ürün" value={String(totalProducts)} icon={Package} />
+        <StatCard label="Ortalama Fiyat" value={`$${avgPrice}`} icon={DollarSign} />
+        <StatCard label="Bekleyen Yüklemeler" value={String(pendingUploads)} icon={Clock} />
       </div>
 
       {/* Products grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading ? (
           <div className="col-span-full rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-            Loading products…
+            {lang === "TR" ? "Ürünler yükleniyor..." : "Loading products..."}
           </div>
         ) : (
           <>
@@ -176,16 +195,16 @@ function Inventory() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="group flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/60 p-6 text-center transition-colors hover:border-primary/60 hover:bg-card"
+              className="group flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/60 p-6 text-center transition-colors hover:border-primary/60 hover:bg-card cursor-pointer"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
                 <Package className="h-6 w-6" />
               </div>
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <Plus className="h-4 w-4 text-primary" /> Add New Product
+                <Plus className="h-4 w-4 text-primary" /> Yeni Ürün Ekle
               </div>
               <p className="max-w-[12rem] text-xs text-muted-foreground">
-                Create a new photography package
+                Envantere yeni bir ürün eklemek için detayları girin.
               </p>
             </button>
           </>
@@ -195,12 +214,12 @@ function Inventory() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-border bg-card">
           <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
-            <DialogDescription>Create a new photography package for schools.</DialogDescription>
+            <DialogTitle>Yeni Ürün Ekle</DialogTitle>
+            <DialogDescription>Envantere yeni bir ürün eklemek için detayları girin.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="item_name">Product Name</Label>
+              <Label htmlFor="item_name">Ürün Adı</Label>
               <Input
                 id="item_name"
                 placeholder="e.g. Premium Album"
@@ -210,7 +229,7 @@ function Inventory() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="unit_price">Base Price ($)</Label>
+                <Label htmlFor="unit_price">Birim Fiyat</Label>
                 <Input
                   id="unit_price"
                   type="number"
@@ -222,7 +241,7 @@ function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="stock_count">Stock Count</Label>
+                <Label htmlFor="stock_count">Stok Miktarı</Label>
                 <Input
                   id="stock_count"
                   type="number"
@@ -234,15 +253,15 @@ function Inventory() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">
+                İptal
               </Button>
               <Button
                 type="submit"
                 disabled={addMutation.isPending}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
               >
-                {addMutation.isPending ? "Adding…" : "Add Product"}
+                {addMutation.isPending ? (lang === "TR" ? "Ekleniyor..." : "Adding...") : "Yeni Ürün Ekle"}
               </Button>
             </DialogFooter>
           </form>
@@ -263,6 +282,7 @@ function ProductCard({
     size: SizeTag;
   };
 }) {
+  const { t, lang } = useI18n();
   const sizeClasses: Record<SizeTag, string> = {
     Small: "bg-primary/15 text-primary border-primary/30",
     Medium: "bg-primary/20 text-primary border-primary/40",
@@ -273,14 +293,14 @@ function ProductCard({
       {/* Image slot */}
       <button
         type="button"
-        onClick={() => toast.info("Image upload coming soon")}
-        className="relative flex h-40 items-center justify-center bg-background/80 transition-colors hover:bg-background"
+        onClick={() => toast.info(lang === "TR" ? "Resim yükleme yakında eklenecek" : "Image upload coming soon")}
+        className="relative flex h-40 items-center justify-center bg-background/80 transition-colors hover:bg-background cursor-pointer"
       >
         <div className="flex flex-col items-center gap-2 text-muted-foreground transition-colors group-hover:text-foreground">
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card">
             <ImagePlus className="h-5 w-5" />
           </div>
-          <span className="text-xs font-medium">Upload Image</span>
+          <span className="text-xs font-medium">Ürün Görseli Yükle</span>
         </div>
         <Badge
           className={cn(
@@ -288,7 +308,11 @@ function ProductCard({
             sizeClasses[product.size],
           )}
         >
-          {product.size}
+          {product.size === "Small"
+            ? (lang === "TR" ? "Küçük" : "Small")
+            : product.size === "Medium"
+              ? (lang === "TR" ? "Orta" : "Medium")
+              : (lang === "TR" ? "Büyük" : "Large")}
         </Badge>
       </button>
 
@@ -304,23 +328,23 @@ function ProductCard({
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-2xl font-bold text-primary">${product.unit_price.toFixed(2)}</span>
-          <span className="text-xs text-muted-foreground">{product.stock_count} in stock</span>
+          <span className="text-xs text-muted-foreground">{product.stock_count} seçildi</span>
         </div>
         <div className="mt-1 grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="border-border bg-transparent hover:bg-accent"
-            onClick={() => toast.info("Edit coming soon")}
+            className="border-border bg-transparent hover:bg-accent cursor-pointer"
+            onClick={() => toast.info(lang === "TR" ? "Düzenleme yakında eklenecek" : "Edit coming soon")}
           >
-            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Düzenle
           </Button>
           <Button
             size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => toast.info("Upload coming soon")}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            onClick={() => toast.info(lang === "TR" ? "Yükleme yakında eklenecek" : "Upload coming soon")}
           >
-            <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload
+            <Upload className="mr-1.5 h-3.5 w-3.5" /> Yükle
           </Button>
         </div>
       </div>

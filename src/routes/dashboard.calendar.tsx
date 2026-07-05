@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Camera, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,7 @@ const SEED: Shoot[] = [
     date: "2026-05-26",
     time: "10:00",
     school: "Tetouan High",
-    type: "Group Photo Session",
+    type: "Individual Portraits",
   },
   { id: "s4", date: "2026-06-02", time: "08:30", school: "Maple Leaf High", type: "Sports Team" },
   {
@@ -89,10 +90,42 @@ const MONTHS = [
   "November",
   "December",
 ];
+
+const MONTHS_TR = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+];
+
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+
 const STORAGE_KEY = "albumevi.calendar.shoots";
 
+const getShootTypeLabel = (type: string, lang: string) => {
+  if (lang !== "TR") return type;
+  const mappings: Record<string, string> = {
+    "Class Group Photo": "Sınıf Grup Fotoğrafı",
+    "Individual Portraits": "Bireysel Portreler",
+    "Sports Team": "Spor Takımı Çekimi",
+    "Graduation": "Mezuniyet Çekimi",
+    "Yearbook Session": "Yıllık Çekimi",
+    "Event Coverage": "Etkinlik Çekimi",
+  };
+  return mappings[type] ?? type;
+};
+
 function CalendarView() {
+  const { t, lang } = useI18n();
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [shoots, setShoots] = useState<Shoot[]>(SEED);
@@ -159,33 +192,33 @@ function CalendarView() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-sm text-muted-foreground">Scheduled school photo shoots.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Takvim Yönetimi</h1>
+          <p className="text-sm text-muted-foreground">Çekim seanslarını ve etkinlikleri planlayın.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Add Event
+              <Plus className="h-4 w-4" /> Yeni Çekim Ekle
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
             <DialogHeader>
-              <DialogTitle>Schedule a Shoot</DialogTitle>
-              <DialogDescription>Add a new photo session to the calendar.</DialogDescription>
+              <DialogTitle>Çekim Planla</DialogTitle>
+              <DialogDescription>Yeni bir çekim seansı ekleyin.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
-                <Label htmlFor="school">School Name</Label>
+                <Label htmlFor="school">Okul Adı</Label>
                 <Input
                   id="school"
-                  placeholder="e.g. Beverly Hills School"
+                  placeholder={lang === "TR" ? "Örn. Batman Anadolu Lisesi" : "e.g. Beverly Hills School"}
                   value={form.school}
                   onChange={(e) => setForm({ ...form, school: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="date">Tarih</Label>
                   <Input
                     id="date"
                     type="date"
@@ -194,7 +227,7 @@ function CalendarView() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="time">Time</Label>
+                  <Label htmlFor="time">Saat</Label>
                   <Input
                     id="time"
                     type="time"
@@ -204,7 +237,7 @@ function CalendarView() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>Shoot Type</Label>
+                <Label>Çekim Türü</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -212,7 +245,7 @@ function CalendarView() {
                   <SelectContent>
                     {SHOOT_TYPES.map((t) => (
                       <SelectItem key={t} value={t}>
-                        {t}
+                        {getShootTypeLabel(t, lang)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -221,10 +254,10 @@ function CalendarView() {
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>
-                Cancel
+                {lang === "TR" ? "Vazgeç" : "Cancel"}
               </Button>
               <Button onClick={handleAdd} disabled={!form.school.trim() || !form.date}>
-                Schedule Shoot
+                {lang === "TR" ? "Çekim Planla" : "Schedule Shoot"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -238,7 +271,7 @@ function CalendarView() {
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-primary" />
               <h2 className="font-semibold">
-                {MONTHS[month]} {year}
+                {lang === "TR" ? MONTHS_TR[month] : MONTHS[month]} {year}
               </h2>
             </div>
             <div className="flex items-center gap-1">
@@ -256,7 +289,7 @@ function CalendarView() {
                 size="sm"
                 onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}
               >
-                Today
+                Bugün
               </Button>
               <Button
                 variant="ghost"
@@ -271,7 +304,7 @@ function CalendarView() {
           </div>
 
           <div className="grid grid-cols-7 border-b border-border bg-background/40">
-            {DAYS.map((d) => (
+            {(lang === "TR" ? DAYS_TR : DAYS).map((d) => (
               <div
                 key={d}
                 className="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
@@ -305,7 +338,7 @@ function CalendarView() {
                           <div
                             key={s.id}
                             className="truncate rounded border border-primary/40 bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
-                            title={`${s.time} · ${s.school} — ${s.type}`}
+                            title={`${s.time} · ${s.school} — ${getShootTypeLabel(s.type, lang)}`}
                           >
                             <span className="font-medium">{s.time}</span> {s.school}
                           </div>
@@ -323,11 +356,11 @@ function CalendarView() {
         <aside className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <Camera className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold">Upcoming Shoots</h2>
+            <h2 className="font-semibold">Yaklaşan Çekimler</h2>
           </div>
           <ul className="space-y-3">
             {upcoming.length === 0 ? (
-              <li className="text-sm text-muted-foreground">No shoots scheduled.</li>
+              <li className="text-sm text-muted-foreground">Yaklaşan çekim bulunmuyor.</li>
             ) : (
               upcoming.map((s) => {
                 const dt = new Date(s.date);
@@ -338,14 +371,14 @@ function CalendarView() {
                   >
                     <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-primary/15 text-primary">
                       <div className="text-[10px] uppercase">
-                        {MONTHS[dt.getMonth()].slice(0, 3)}
+                        {lang === "TR" ? MONTHS_TR[dt.getMonth()].slice(0, 3) : MONTHS[dt.getMonth()].slice(0, 3)}
                       </div>
                       <div className="text-lg font-bold leading-none">{dt.getDate()}</div>
                     </div>
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{s.school}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {s.time} · {s.type}
+                        {s.time} · {getShootTypeLabel(s.type, lang)}
                       </div>
                     </div>
                   </li>
