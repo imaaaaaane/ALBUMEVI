@@ -36,6 +36,7 @@ import {
   Trash2,
   GraduationCap,
   Edit2,
+  Lock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -155,6 +156,9 @@ const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transacti
 const getSchoolRemaining = (f: School, rates?: Record<string, number>) => Math.max(0, getSchoolDebt(f, rates) - getSchoolPaid(f, rates));
 
 function AccountingDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passcode, setPasscode] = useState("");
+
   const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar">("overview");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -438,6 +442,54 @@ function AccountingDashboard() {
       color: colors[i % colors.length],
     };
   });
+
+  const handlePasscodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcode === "2026") {
+      setIsAuthenticated(true);
+    } else {
+      toast.error("Hatalı şifre!");
+      setPasscode("");
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-start pt-[20vh] justify-center min-h-screen">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#131316] border border-white/5 shadow-2xl rounded-3xl p-8 max-w-sm w-full mx-auto"
+        >
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-[#A67C52]/20 flex items-center justify-center mb-4">
+              <Lock className="w-8 h-8 text-[#A67C52]" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Muhasebe Girişi</h2>
+            <p className="text-white/50 text-sm mt-2 text-center">Lütfen erişim şifresini girin.</p>
+          </div>
+          
+          <form onSubmit={handlePasscodeSubmit}>
+            <div className="space-y-4">
+              <Input 
+                type="password" 
+                value={passcode} 
+                onChange={(e) => setPasscode(e.target.value)} 
+                autoFocus
+                className="bg-white/5 border-white/10 text-white text-center tracking-[1em] font-mono text-2xl h-14 rounded-xl focus-visible:ring-[#A67C52]" 
+              />
+              <Button 
+                type="submit" 
+                className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full"
+              >
+                Giriş Yap
+              </Button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <PageTransition className="pb-12">

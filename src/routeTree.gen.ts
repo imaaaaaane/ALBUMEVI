@@ -15,6 +15,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as SchoolSlugRouteImport } from './routes/school.$slug'
+import { Route as PortalSchoolIdRouteImport } from './routes/portal.$schoolId'
 import { Route as DashboardSchoolsRouteImport } from './routes/dashboard.schools'
 import { Route as DashboardOrdersRouteImport } from './routes/dashboard.orders'
 import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
@@ -50,6 +51,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
 const SchoolSlugRoute = SchoolSlugRouteImport.update({
   id: '/school/$slug',
   path: '/school/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalSchoolIdRoute = PortalSchoolIdRouteImport.update({
+  id: '/portal/$schoolId',
+  path: '/portal/$schoolId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardSchoolsRoute = DashboardSchoolsRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
+  '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
+  '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
+  '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/schools'
+    | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/schools'
+    | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard'
   id:
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/schools'
+    | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -174,6 +186,7 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PortalSchoolIdRoute: typeof PortalSchoolIdRoute
   SchoolSlugRoute: typeof SchoolSlugRoute
 }
 
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/school/$slug'
       fullPath: '/school/$slug'
       preLoaderRoute: typeof SchoolSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/$schoolId': {
+      id: '/portal/$schoolId'
+      path: '/portal/$schoolId'
+      fullPath: '/portal/$schoolId'
+      preLoaderRoute: typeof PortalSchoolIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/schools': {
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
+  PortalSchoolIdRoute: PortalSchoolIdRoute,
   SchoolSlugRoute: SchoolSlugRoute,
 }
 export const routeTree = rootRouteImport

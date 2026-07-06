@@ -37,7 +37,6 @@ const SIDEBAR_ITEMS = [
   { title: "Takvim", url: "/dashboard/calendar", icon: Calendar },
   { title: "Muhasebe", url: "/dashboard/finance", icon: Wallet },
   { title: "Notlar", url: "/dashboard/notes", icon: StickyNote },
-  { title: "Bağlantı Oluştur", url: "/dashboard/schools", icon: LinkIcon },
 ];
 
 export function AppSidebar() {
@@ -109,21 +108,9 @@ export function AppSidebar() {
 
       <SidebarFooter className="bg-[#120E0E] px-4 py-4 border-t border-white/5 space-y-4">
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setLang(lang === "EN" ? "TR" : "EN")}
-            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-[#9E9696] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="h-3.5 w-3.5" />
-              Dil
-            </span>
-            <span className="font-semibold text-white">{lang}</span>
-          </button>
-          
           <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#A67C52] text-sm font-bold text-white shadow-[0_0_10px_rgba(166,124,82,0.2)]">
-              A
+              S
             </div>
             <div className="min-w-0 flex-1 leading-tight">
               <div className="truncate text-sm font-bold text-white">SERHAT GÜNEŞ</div>
