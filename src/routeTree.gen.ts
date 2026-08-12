@@ -24,6 +24,7 @@ import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance
 import { Route as DashboardCalendarRouteImport } from './routes/dashboard.calendar'
 import { Route as DashboardPortfolioRouteImport } from './routes/dashboard.portfolio'
 import { Route as DashboardPhotographersRouteImport } from './routes/dashboard.photographers'
+import { Route as DashboardFinanceAlbumeviRouteImport } from './routes/dashboard.finance.albumevi'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -95,6 +96,11 @@ const DashboardPhotographersRoute = DashboardPhotographersRouteImport.update({
   path: '/photographers',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardFinanceAlbumeviRoute = DashboardFinanceAlbumeviRouteImport.update({
+  id: '/albumevi',
+  path: '/albumevi',
+  getParentRoute: () => DashboardFinanceRoute,
+} as any)
 const DashboardPortfolioRoute = DashboardPortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
@@ -108,6 +114,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard/calendar': typeof DashboardCalendarRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
+  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
+  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
+  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
@@ -158,6 +167,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard/calendar'
     | '/dashboard/finance'
+    | '/dashboard/finance/albumevi'
+    | '/dashboard/finance/albumevi'
+    | '/dashboard/finance/albumevi'
     | '/dashboard/inventory'
     | '/dashboard/notes'
     | '/dashboard/orders'
@@ -307,6 +319,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/finance'
       preLoaderRoute: typeof DashboardFinanceRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/finance/albumevi': {
+      id: '/dashboard/finance/albumevi'
+      path: '/albumevi'
+      fullPath: '/dashboard/finance/albumevi'
+      preLoaderRoute: typeof DashboardFinanceAlbumeviRouteImport
+      parentRoute: typeof DashboardFinanceRoute
     }
     '/dashboard/calendar': {
       id: '/dashboard/calendar'

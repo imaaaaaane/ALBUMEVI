@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +157,7 @@ const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transacti
 const getSchoolRemaining = (f: School, rates?: Record<string, number>) => Math.max(0, getSchoolDebt(f, rates) - getSchoolPaid(f, rates));
 
 function AccountingDashboard() {
+  const navigate = useNavigate();
   const { teamId } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
@@ -171,8 +172,6 @@ function AccountingDashboard() {
 
   const queryClient = useQueryClient();
 
-  const [isAlbumeviModalOpen, setAlbumeviModalOpen] = useState(false);
-  const [albumeviForm, setAlbumeviForm] = useState({ company_name: "", product_id: "", quantity: 1, unit_price: 0 });
 
   const { data: albumeviSales = [] } = useQuery({
     queryKey: ["albumevi_sales"],
@@ -199,26 +198,6 @@ function AccountingDashboard() {
 
   const totalAlbumeviRevenue = albumeviSales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0);
 
-  const albumeviMutation = useMutation({
-    mutationFn: async (payload: { company_name: string; product_name: string; quantity: number; total_price: number }) => {
-      await supabaseClient.auth.getSession();
-      const { data, error } = await supabaseClient
-        .from("albumevi_sales")
-        .insert([payload])
-        .select();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["albumevi_sales"] });
-      toast.success("Satış başarıyla eklendi.");
-      setAlbumeviModalOpen(false);
-      setAlbumeviForm({ company_name: "", product_id: "", quantity: 1, unit_price: 0 });
-    },
-    onError: (error) => {
-      toast.error("Satış eklenirken hata: " + error.message);
-    }
-  });
   const addExpenseMutation = useMutation({
     mutationFn: async (name: string) => {
       const { data, error } = await supabaseClient
@@ -608,7 +587,7 @@ function AccountingDashboard() {
               {categories.map((c) => {
                 const isActive = activeCategory === c.id;
                 const handleClick = () => {
-                  if (c.id === "albumevi-sales") setAlbumeviModalOpen(true);
+                  if (c.id === "albumevi-sales") navigate({ to: "/dashboard/finance/albumevi" as any });
                   else if (c.id === "cat-1") setView("firmalar");
                   else if (c.id === "cat-3") setView("maaslar");
                   else if (c.id === "cat-2") setView("ortak_giderler");
@@ -708,104 +687,6 @@ function AccountingDashboard() {
       </Dialog>
 
 
-      {/* Albumevi Sales Modal */}
-      <Dialog open={isAlbumeviModalOpen} onOpenChange={setAlbumeviModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
-          <DialogHeader>
-            <DialogTitle>Yeni Albümevi Satışı</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Firma/Fotoğrafçı Adı</Label>
-              <Input
-                value={albumeviForm.company_name}
-                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, company_name: e.target.value }))}
-                className="bg-white/5 border-white/10 text-white"
-                placeholder="Örn: X Fotoğrafçılık"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Ürün Seç</Label>
-              <Select
-                value={albumeviForm.product_id}
-                onValueChange={(v) => {
-                  const prod = products.find((p: any) => p.id === v);
-                  setAlbumeviForm(prev => ({ 
-                    ...prev, 
-                    product_id: v, 
-                    unit_price: prod ? prod.base_price : 0 
-                  }));
-                }}
-              >
-                <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Ürün seçin" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111111] text-white border-white/10">
-                  {products.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.base_price} ₺)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Miktar</Label>
-              <Input
-                type="number"
-                min="1"
-                value={albumeviForm.quantity}
-                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
-                className="bg-white/5 border-white/10 text-white"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Birim Fiyatı (₺)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={albumeviForm.unit_price}
-                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
-                className="bg-white/5 border-white/10 text-white"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Toplam Tutar (₺)</Label>
-              <div className="flex w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold opacity-70">
-                {(albumeviForm.quantity * albumeviForm.unit_price).toLocaleString('tr-TR')} ₺
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAlbumeviModalOpen(false)}
-              className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white"
-            >
-              İptal
-            </Button>
-            <Button
-              onClick={() => {
-                const prod = products.find((p: any) => p.id === albumeviForm.product_id);
-                if (albumeviForm.company_name && prod && albumeviForm.quantity > 0) {
-                  albumeviMutation.mutate({
-                    company_name: albumeviForm.company_name,
-                    product_name: prod.name,
-                    quantity: albumeviForm.quantity,
-                    total_price: albumeviForm.quantity * albumeviForm.unit_price,
-                  });
-                } else {
-                  toast.error("Lütfen tüm alanları doldurun.");
-                }
-              }}
-              disabled={albumeviMutation.isPending}
-              className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90"
-            >
-              {albumeviMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </PageTransition>
   );
 }
