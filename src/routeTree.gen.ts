@@ -24,7 +24,7 @@ import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance
 import { Route as DashboardCalendarRouteImport } from './routes/dashboard.calendar'
 import { Route as DashboardPortfolioRouteImport } from './routes/dashboard.portfolio'
 import { Route as DashboardPhotographersRouteImport } from './routes/dashboard.photographers'
-import { Route as DashboardFinanceAlbumeviRouteImport } from './routes/dashboard.finance.albumevi'
+import { Route as DashboardFinanceAlbumeviRouteImport } from './routes/dashboard.finance_.albumevi'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -97,9 +97,9 @@ const DashboardPhotographersRoute = DashboardPhotographersRouteImport.update({
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardFinanceAlbumeviRoute = DashboardFinanceAlbumeviRouteImport.update({
-  id: '/albumevi',
-  path: '/albumevi',
-  getParentRoute: () => DashboardFinanceRoute,
+  id: '/finance/albumevi',
+  path: '/finance/albumevi',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardPortfolioRoute = DashboardPortfolioRouteImport.update({
   id: '/portfolio',
@@ -320,12 +320,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardFinanceRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/finance/albumevi': {
-      id: '/dashboard/finance/albumevi'
-      path: '/albumevi'
+    '/dashboard/finance_/albumevi': {
+      id: '/dashboard/finance_/albumevi'
+      path: '/finance/albumevi'
       fullPath: '/dashboard/finance/albumevi'
       preLoaderRoute: typeof DashboardFinanceAlbumeviRouteImport
-      parentRoute: typeof DashboardFinanceRoute
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/calendar': {
       id: '/dashboard/calendar'
@@ -338,6 +338,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardFinanceAlbumeviRoute: typeof DashboardFinanceAlbumeviRoute
   DashboardCalendarRoute: typeof DashboardCalendarRoute
   DashboardFinanceRoute: typeof DashboardFinanceRoute
   DashboardInventoryRoute: typeof DashboardInventoryRoute
@@ -350,6 +351,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardFinanceAlbumeviRoute: DashboardFinanceAlbumeviRoute,
   DashboardCalendarRoute: DashboardCalendarRoute,
   DashboardFinanceRoute: DashboardFinanceRoute,
   DashboardInventoryRoute: DashboardInventoryRoute,
