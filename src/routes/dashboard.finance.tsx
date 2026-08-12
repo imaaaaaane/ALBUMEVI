@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -412,8 +413,20 @@ function AccountingDashboard() {
     }
   });
 
-  const baskiExpense = expensesData.find(e => e.name.toLowerCase() === "baskı" || e.name.toLowerCase() === "baski");
-  const totalPaidBaski = baskiExpense ? getExpensePaid(baskiExpense, exchangeRates) : 0;
+  const { data: printExpensesData = [] } = useQuery({
+    queryKey: ["print_expenses_overview", teamId],
+    enabled: !!teamId,
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("print_expenses")
+        .select("amount")
+        .eq("team_id", teamId);
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const totalPaidBaski = printExpensesData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   
   const commonExpensesList = expensesData.filter(e => e.name.toLowerCase() !== "baskı" && e.name.toLowerCase() !== "baski");
   const totalPaidExpenses = commonExpensesList.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
@@ -643,7 +656,7 @@ function AccountingDashboard() {
             {view === "maaslar" && <EmployeesListView employees={employeesData} onBack={() => setView("overview")} />}
             {view === "ortak_giderler" && <ExpensesListView expenses={expensesData} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
             {view === "okullar" && <OkullarListView schools={schoolsData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
-            {view === "baski" && <BaskiListView baskiExpense={baskiExpense} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
+            {view === "baski" && <BaskiListView exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
           </motion.div>
         )}
       </AnimatePresence>
@@ -2471,12 +2484,12 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 }
 
 interface BaskiListViewProps {
-  baskiExpense: Expense | undefined;
   exchangeRates?: Record<string, number>;
   onBack: () => void;
 }
 
-function BaskiListView({ baskiExpense, exchangeRates, onBack }: BaskiListViewProps) {
+function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
+  const { teamId } = useAuth();
   const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
   const [baskiSelectedProduct, setBaskiSelectedProduct] = useState("");
   const [baskiQuantity, setBaskiQuantity] = useState("1");
@@ -2497,17 +2510,16 @@ function BaskiListView({ baskiExpense, exchangeRates, onBack }: BaskiListViewPro
   });
 
   const { data: baskiTransactions = [] } = useQuery({
-    queryKey: ["baski_transactions", baskiExpense?.id],
-    enabled: !!baskiExpense?.id,
+    queryKey: ["print_expenses", teamId],
+    enabled: !!teamId,
     queryFn: async () => {
       const { data, error } = await supabaseClient
-        .from("expense_transactions")
+        .from("print_expenses")
         .select("*")
-        .eq("expense_id", baskiExpense!.id)
+        .eq("team_id", teamId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data.map((t) => {
-        // Expected format: "10x15 Fotoğraf (50 Adet) - A Okulu için"
         const match = String(t.description || "").match(/^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i);
         return {
           id: t.id,
@@ -2523,36 +2535,17 @@ function BaskiListView({ baskiExpense, exchangeRates, onBack }: BaskiListViewPro
 
   const addBaskiExpenseMutation = useMutation({
     mutationFn: async ({ amount, desc }: { amount: number; desc: string }) => {
-      let expenseId = baskiExpense?.id;
-      if (expenseId) {
-        const { error: updErr } = await supabaseClient
-          .from("common_expenses")
-          .update({ total_paid: (baskiExpense?.total_paid || 0) + amount })
-          .eq("id", expenseId);
-        if (updErr) throw updErr;
-      } else {
-        const { data: inserted, error: insErr } = await supabaseClient
-          .from("common_expenses")
-          .insert({ name: "Baskı", currency: "TRY", total_debt: 0, total_paid: amount })
-          .select()
-          .single();
-        if (insErr) throw insErr;
-        expenseId = inserted.id;
-      }
-      
       const { error: txErr } = await supabaseClient
-        .from("expense_transactions")
+        .from("print_expenses")
         .insert({
-          expense_id: expenseId,
-          transaction_type: 'payment',
           amount: amount,
-          description: desc
+          description: desc,
+          team_id: teamId
         });
       if (txErr) throw txErr;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses_ledger"] });
-      queryClient.invalidateQueries({ queryKey: ["baski_transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
       setBaskiQuantity("1");
