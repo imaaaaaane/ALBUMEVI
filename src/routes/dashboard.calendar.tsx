@@ -74,7 +74,8 @@ function CalendarView() {
       const { data, error } = await (supabase as any)
         .from("profiles")
         .select("id, full_name, email")
-        .eq("team_id", teamId);
+        .eq("team_id", teamId)
+        .eq("role", "photographer");
       if (error) throw error;
       return data;
     },
@@ -231,7 +232,7 @@ function CalendarView() {
                   <option value="" disabled>Fotoğrafçı (Ekip Üyesi) Seçiniz...</option>
                   {profiles.map((p: any) => (
                     <option key={p.id} value={p.id}>
-                      {p.full_name || p.email}
+                      {(p.full_name || p.email)?.toUpperCase()}
                     </option>
                   ))}
                 </select>
