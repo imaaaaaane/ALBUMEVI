@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Package, DollarSign, Clock, Trash2 } from "lucide-react";
+import { Plus, Package, DollarSign, Clock, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -47,9 +54,13 @@ function StatCard({
 }
 
 function Inventory() {
+  const { teamId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", base_price: "" });
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ id: "", name: "", base_price: "" });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -125,6 +136,7 @@ function Inventory() {
         .insert({
           name: input.name,
           base_price: input.base_price,
+          team_id: teamId,
         })
         .select()
         .single();
@@ -139,6 +151,28 @@ function Inventory() {
       setForm({ name: "", base_price: "" });
     },
     onError: (e: Error) => toast.error(e.message || "Ürün eklenemedi"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (input: { id: string; base_price: number }) => {
+      await supabase.auth.getSession();
+      
+      const { data, error } = await (supabase as any)
+        .from("products")
+        .update({ base_price: input.base_price })
+        .eq("id", input.id)
+        .select()
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Ürün fiyatı güncellendi");
+      qc.invalidateQueries({ queryKey: ["products"] });
+      setEditOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message || "Fiyat güncellenemedi"),
   });
 
   const deleteMutation = useMutation({
@@ -174,6 +208,16 @@ function Inventory() {
       return;
     }
     addMutation.mutate({ name: form.name.trim(), base_price: price });
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const price = parseFloat(editForm.base_price);
+    if (Number.isNaN(price)) {
+      toast.error("Lütfen geçerli bir fiyat girin");
+      return;
+    }
+    updateMutation.mutate({ id: editForm.id, base_price: price });
   };
 
   return (
@@ -215,7 +259,18 @@ function Inventory() {
                 key={p.id} 
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:border-[#A67C52]/50 hover:bg-white/10 relative"
               >
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-lg"
+                    onClick={() => {
+                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0" });
+                      setEditOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -230,7 +285,7 @@ function Inventory() {
                   </Button>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center p-8 bg-black/20 border-b border-white/5">
+                <div className="flex flex-col items-center justify-center p-8 bg-black/20 border-b border-white/5 mt-4">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-4">
                     <Package className="h-8 w-8" />
                   </div>
@@ -276,6 +331,7 @@ function Inventory() {
         )}
       </div>
 
+      {/* Add Product Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-white/10 bg-[#131316] text-white max-w-sm rounded-3xl">
           <DialogHeader>
@@ -324,6 +380,48 @@ function Inventory() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Product Modal */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="border-white/10 bg-[#131316] text-white max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Fiyatı Düzenle</DialogTitle>
+            <DialogDescription className="text-white/50">{editForm.name} için fiyat güncelleyin.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-5 mt-4">
+            <div className="space-y-2">
+              <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="250"
+                value={editForm.base_price}
+                onChange={(e) => setEditForm({ ...editForm, base_price: e.target.value })}
+                className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
+              />
+            </div>
+            <DialogFooter className="mt-8">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => setEditOpen(false)} 
+                className="text-white/50 hover:text-white hover:bg-white/5 h-12 px-6 rounded-xl"
+              >
+                İptal
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90 h-12 px-8 rounded-xl font-bold"
+              >
+                {updateMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

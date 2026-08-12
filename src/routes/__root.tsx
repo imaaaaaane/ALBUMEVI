@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth-context";
 
 import appCss from "../styles.css?url";
 
@@ -121,10 +122,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <Outlet />
-        <Toaster />
-      </I18nProvider>
+      <AuthProvider>
+        <I18nProvider>
+          <Outlet />
+          <Toaster />
+        </I18nProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

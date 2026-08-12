@@ -17,6 +17,7 @@ import { useI18n } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/dashboard/notes")({
   component: NotesView,
@@ -33,9 +34,11 @@ type Note = {
 
 function NotesView() {
   const { lang } = useI18n();
+  const { teamId } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", body: "" });
+  const [authorName, setAuthorName] = useState("");
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ["admin_notes"],
@@ -50,10 +53,10 @@ function NotesView() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async (note: { title: string; body: string }) => {
+    mutationFn: async (note: { title: string; body: string; authorName: string; team_id: string | null }) => {
       const { data, error } = await supabaseClient
         .from("notes")
-        .insert([{ title: note.title, body: note.body }])
+        .insert([{ title: note.title, body: note.body, author_name: note.authorName, team_id: note.team_id }])
         .select()
         .single();
       if (error) throw error;
@@ -64,6 +67,7 @@ function NotesView() {
       toast.success(lang === "TR" ? "Not başarıyla eklendi" : "Note added successfully");
       setOpen(false);
       setForm({ title: "", body: "" });
+      setAuthorName("");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -107,8 +111,12 @@ function NotesView() {
   });
 
   const handleAdd = () => {
+    if (!authorName) {
+      toast.error("Lütfen notu yazan kişiyi seçin.");
+      return;
+    }
     if (!form.title.trim()) return;
-    addMutation.mutate({ title: form.title.trim(), body: form.body.trim() });
+    addMutation.mutate({ title: form.title.trim(), body: form.body.trim(), authorName, team_id: teamId });
   };
 
   const fmtDate = (ts: string) => {
@@ -166,6 +174,18 @@ function NotesView() {
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white">
           <DialogHeader><DialogTitle>Yeni Not Oluştur</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
+            <select
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              className="bg-[#12100E] border border-white/10 text-white rounded-xl px-4 py-3 w-full outline-none focus:border-[#D4B8A8] focus:ring-1 focus:ring-[#D4B8A8] appearance-none"
+              required
+            >
+              <option value="" disabled>Notu Yazan (Seçiniz...)</option>
+              <option value="AMINE HIMMICH">AMINE HIMMICH</option>
+              <option value="MUSTAFA ASLAN">MUSTAFA ASLAN</option>
+              <option value="DELIL TENHA">DELIL TENHA</option>
+              <option value="ZINAR TENHA">ZINAR TENHA</option>
+            </select>
             <Input placeholder="Başlık" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]" />
             <Textarea placeholder="Not içeriği..." value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] min-h-[120px]" />
           </div>

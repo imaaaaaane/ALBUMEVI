@@ -26,6 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +40,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -251,6 +258,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
 
 function ManageSchools() {
   const { t, lang } = useI18n();
+  const { teamId } = useAuth();
   const qc = useQueryClient();
 
   const { data: schools = [], isLoading } = useQuery({
@@ -422,6 +430,12 @@ function ManageSchools() {
 
   const m = useMutation({
     mutationFn: async ({ data }: { data: any }) => {
+      // Ensure the session is fresh before inserting to avoid RLS anonymous insert issues
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        throw new Error("Oturum bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yapın.");
+      }
+
       const { data: row, error } = await supabase
         .from("schools")
         .insert({
@@ -429,6 +443,7 @@ function ManageSchools() {
           city: data.city || null,
           login_username: data.login_username,
           login_password: data.password,
+          team_id: teamId,
         } as any)
         .select("id, name, city, login_username, created_at")
         .single();
@@ -436,14 +451,14 @@ function ManageSchools() {
 
       const newSchoolId = row.id;
 
-      await supabase.from("finances").insert({ school_id: newSchoolId });
+      await supabase.from("finances").insert({ school_id: newSchoolId, team_id: teamId } as any);
 
       const schoolProducts = [];
       if (data.package1_id && data.package1_price) {
-        schoolProducts.push({ school_id: newSchoolId, product_id: data.package1_id, custom_price: Number(data.package1_price) });
+        schoolProducts.push({ school_id: newSchoolId, product_id: data.package1_id, custom_price: Number(data.package1_price), team_id: teamId });
       }
       if (data.package2_id && data.package2_price) {
-        schoolProducts.push({ school_id: newSchoolId, product_id: data.package2_id, custom_price: Number(data.package2_price) });
+        schoolProducts.push({ school_id: newSchoolId, product_id: data.package2_id, custom_price: Number(data.package2_price), team_id: teamId });
       }
 
       if (schoolProducts.length > 0) {
@@ -563,6 +578,8 @@ function ManageSchools() {
     },
   ];
 
+  const modalInputClasses = "bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] focus-visible:border-[#A67C52] transition-all placeholder:text-white/30";
+
   return (
     <div className="space-y-6 text-white selection:bg-[#A67C52] selection:text-white pb-10">
       <div className="flex items-end justify-between gap-4">
@@ -589,7 +606,7 @@ function ManageSchools() {
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Greenfield Elementary"
-                  className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                  className={modalInputClasses}
                 />
               </div>
               <div className="space-y-2">
@@ -598,14 +615,21 @@ function ManageSchools() {
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
                   placeholder="Batman"
-                  className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                  className={modalInputClasses}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-white/70">Paket 1 Adı</Label>
-                  <Select value={form.package1_id} onValueChange={(v) => setForm({ ...form, package1_id: v })}>
-                    <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl">
+                  <Select value={form.package1_id} onValueChange={(v) => {
+                    const product = products.find((p: any) => p.id === v);
+                    setForm({ 
+                      ...form, 
+                      package1_id: v, 
+                      package1_price: product ? String(product.base_price) : form.package1_price 
+                    });
+                  }}>
+                    <SelectTrigger className={modalInputClasses}>
                       <SelectValue placeholder="Paket Seçin" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#131316] border-white/10 text-white">
@@ -622,15 +646,22 @@ function ManageSchools() {
                     value={form.package1_price}
                     onChange={(e) => setForm({ ...form, package1_price: e.target.value })}
                     placeholder="150"
-                    className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                    className={modalInputClasses}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-white/70">Paket 2 Adı</Label>
-                  <Select value={form.package2_id} onValueChange={(v) => setForm({ ...form, package2_id: v })}>
-                    <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl">
+                  <Select value={form.package2_id} onValueChange={(v) => {
+                    const product = products.find((p: any) => p.id === v);
+                    setForm({ 
+                      ...form, 
+                      package2_id: v, 
+                      package2_price: product ? String(product.base_price) : form.package2_price 
+                    });
+                  }}>
+                    <SelectTrigger className={modalInputClasses}>
                       <SelectValue placeholder="Paket Seçin" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#131316] border-white/10 text-white">
@@ -647,7 +678,7 @@ function ManageSchools() {
                     value={form.package2_price}
                     onChange={(e) => setForm({ ...form, package2_price: e.target.value })}
                     placeholder="250"
-                    className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                    className={modalInputClasses}
                   />
                 </div>
               </div>
@@ -658,7 +689,7 @@ function ManageSchools() {
                     value={form.login_username}
                     onChange={(e) => setForm({ ...form, login_username: e.target.value })}
                     placeholder="greenfield"
-                    className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                    className={modalInputClasses}
                   />
                 </div>
                 <div className="space-y-2">
@@ -668,7 +699,7 @@ function ManageSchools() {
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     placeholder="Öğretmen girişi için şifre"
-                    className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
+                    className={modalInputClasses}
                   />
                 </div>
               </div>
@@ -927,7 +958,7 @@ function ManageSchools() {
         </Table>
       </motion.div>
 
-      {/* Info / how-it-works footer card */}
+      {/* Info / how-it-works footer card 
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -948,6 +979,7 @@ function ManageSchools() {
           </div>
         </div>
       </motion.div>
+      */}
     </div>
   );
 }

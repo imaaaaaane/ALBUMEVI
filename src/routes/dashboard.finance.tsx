@@ -159,14 +159,64 @@ function AccountingDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
 
-  const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar">("overview");
+  const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski">("overview");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const [isAddCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
+
+
   const queryClient = useQueryClient();
 
+  const [isAlbumeviModalOpen, setAlbumeviModalOpen] = useState(false);
+  const [albumeviForm, setAlbumeviForm] = useState({ company_name: "", product_id: "", quantity: 1, unit_price: 0 });
+
+  const { data: albumeviSales = [] } = useQuery({
+    queryKey: ["albumevi_sales"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("albumevi_sales")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["products_for_sales"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("id, name, base_price");
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const totalAlbumeviRevenue = albumeviSales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0);
+
+  const albumeviMutation = useMutation({
+    mutationFn: async (payload: { company_name: string; product_name: string; quantity: number; total_price: number }) => {
+      await supabaseClient.auth.getSession();
+      const { data, error } = await supabaseClient
+        .from("albumevi_sales")
+        .insert([payload])
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["albumevi_sales"] });
+      toast.success("Satış başarıyla eklendi.");
+      setAlbumeviModalOpen(false);
+      setAlbumeviForm({ company_name: "", product_id: "", quantity: 1, unit_price: 0 });
+    },
+    onError: (error) => {
+      toast.error("Satış eklenirken hata: " + error.message);
+    }
+  });
   const addExpenseMutation = useMutation({
     mutationFn: async (name: string) => {
       const { data, error } = await supabaseClient
@@ -362,8 +412,12 @@ function AccountingDashboard() {
     }
   });
 
-  const totalPaidExpenses = expensesData.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
-  const totalRemainingExpenses = expensesData.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
+  const baskiExpense = expensesData.find(e => e.name.toLowerCase() === "baskı" || e.name.toLowerCase() === "baski");
+  const totalPaidBaski = baskiExpense ? getExpensePaid(baskiExpense, exchangeRates) : 0;
+  
+  const commonExpensesList = expensesData.filter(e => e.name.toLowerCase() !== "baskı" && e.name.toLowerCase() !== "baski");
+  const totalPaidExpenses = commonExpensesList.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
+  const totalRemainingExpenses = commonExpensesList.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
 
   const totalPaidSchools = schoolsData.reduce((sum, f) => sum + getSchoolPaid(f, exchangeRates), 0);
   const totalRemainingSchools = schoolsData.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
@@ -371,13 +425,25 @@ function AccountingDashboard() {
   // Categories list dynamically calculated from database aggregates
   const categories: CategoryItem[] = [
     { id: "cat-1", title: "FİRMALAR", amount: totalPaidFirms, change: "+8%", isPositive: true },
+    { id: "albumevi-sales", title: "ALBÜMEVİ", amount: totalAlbumeviRevenue, change: "+12%", isPositive: true },
     { id: "cat-2", title: "ORTAK GİDERLER", amount: totalPaidExpenses, change: "-3%", isPositive: false },
+    { id: "cat-4", title: "BASKI", amount: totalPaidBaski, change: "+5%", isPositive: false },
     { id: "cat-3", title: "MAAŞLAR", amount: totalPaidEmployees, change: "-2%", isPositive: false },
     { id: "cat-5", title: "OKULLAR", amount: totalPaidSchools, change: "+15%", isPositive: true },
   ];
 
-  // Dynamic Recent Transactions combining all database tables
   const combinedTx: TransactionItem[] = [];
+
+  albumeviSales.forEach((sale: any) => {
+    combinedTx.push({
+      id: sale.id,
+      desc: `${sale.company_name} - ${sale.product_name} (${sale.quantity}x)`,
+      date: new Date(sale.created_at).toISOString().split("T")[0],
+      amount: Number(sale.total_price),
+      category: "albumevi-sales",
+      createdAt: sale.created_at,
+    });
+  });
 
   firmsData.forEach((f) => {
     f.transactions.forEach((tx) => {
@@ -431,9 +497,9 @@ function AccountingDashboard() {
     : sortedCombinedTx.slice(0, 5);
 
   // Dynamic Budget Breakdown based strictly on real-time database totals (Firms, Common Expenses, Employees, Schools)
-  const dbCategories = categories.filter((c) => c.id === "cat-1" || c.id === "cat-2" || c.id === "cat-3" || c.id === "cat-5");
+  const dbCategories = categories.filter((c) => ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id));
   const breakdownItems: BreakdownItem[] = dbCategories.map((c, i) => {
-    const colors = ["#A67C52", "#C01C1C", "#9E9696", "#E57373"];
+    const colors = ["#A67C52", "#C01C1C", "#9E9696", "#E57373", "#D0A36D", "#6D4C41", "#8D6E63"];
     const totalAmount = dbCategories.reduce((sum, item) => sum + item.amount, 0);
     const percentage = totalAmount ? Math.round((c.amount / totalAmount) * 100) : 0;
     return {
@@ -525,10 +591,12 @@ function AccountingDashboard() {
               {categories.map((c) => {
                 const isActive = activeCategory === c.id;
                 const handleClick = () => {
-                  if (c.id === "cat-1") setView("firmalar");
+                  if (c.id === "albumevi-sales") setAlbumeviModalOpen(true);
+                  else if (c.id === "cat-1") setView("firmalar");
                   else if (c.id === "cat-3") setView("maaslar");
                   else if (c.id === "cat-2") setView("ortak_giderler");
                   else if (c.id === "cat-5") setView("okullar");
+                  else if (c.id === "cat-4") setView("baski");
                   else setActiveCategory(isActive ? null : c.id);
                 };
 
@@ -539,8 +607,8 @@ function AccountingDashboard() {
                     amount={c.amount}
                     change={c.change}
                     isPositive={c.isPositive}
-                    isActive={isActive || c.id === "cat-1" || c.id === "cat-2" || c.id === "cat-3" || c.id === "cat-5"}
-                    isPortal={c.id === "cat-1" || c.id === "cat-2" || c.id === "cat-3" || c.id === "cat-5"}
+                    isActive={isActive || ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id)}
+                    isPortal={["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id)}
                     onClick={handleClick}
                   />
                 );
@@ -575,6 +643,7 @@ function AccountingDashboard() {
             {view === "maaslar" && <EmployeesListView employees={employeesData} onBack={() => setView("overview")} />}
             {view === "ortak_giderler" && <ExpensesListView expenses={expensesData} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
             {view === "okullar" && <OkullarListView schools={schoolsData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
+            {view === "baski" && <BaskiListView baskiExpense={baskiExpense} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
           </motion.div>
         )}
       </AnimatePresence>
@@ -616,6 +685,106 @@ function AccountingDashboard() {
               className="bg-white text-black hover:bg-white/90"
             >
               {addExpenseMutation.isPending ? "Ekleniyor..." : "Ekle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+      {/* Albumevi Sales Modal */}
+      <Dialog open={isAlbumeviModalOpen} onOpenChange={setAlbumeviModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
+          <DialogHeader>
+            <DialogTitle>Yeni Albümevi Satışı</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Firma/Fotoğrafçı Adı</Label>
+              <Input
+                value={albumeviForm.company_name}
+                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, company_name: e.target.value }))}
+                className="bg-white/5 border-white/10 text-white"
+                placeholder="Örn: X Fotoğrafçılık"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Ürün Seç</Label>
+              <Select
+                value={albumeviForm.product_id}
+                onValueChange={(v) => {
+                  const prod = products.find((p: any) => p.id === v);
+                  setAlbumeviForm(prev => ({ 
+                    ...prev, 
+                    product_id: v, 
+                    unit_price: prod ? prod.base_price : 0 
+                  }));
+                }}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Ürün seçin" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111111] text-white border-white/10">
+                  {products.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} ({p.base_price} ₺)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Miktar</Label>
+              <Input
+                type="number"
+                min="1"
+                value={albumeviForm.quantity}
+                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Birim Fiyatı (₺)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={albumeviForm.unit_price}
+                onChange={(e) => setAlbumeviForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Toplam Tutar (₺)</Label>
+              <div className="flex w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold opacity-70">
+                {(albumeviForm.quantity * albumeviForm.unit_price).toLocaleString('tr-TR')} ₺
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAlbumeviModalOpen(false)}
+              className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white"
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={() => {
+                const prod = products.find((p: any) => p.id === albumeviForm.product_id);
+                if (albumeviForm.company_name && prod && albumeviForm.quantity > 0) {
+                  albumeviMutation.mutate({
+                    company_name: albumeviForm.company_name,
+                    product_name: prod.name,
+                    quantity: albumeviForm.quantity,
+                    total_price: albumeviForm.quantity * albumeviForm.unit_price,
+                  });
+                } else {
+                  toast.error("Lütfen tüm alanları doldurun.");
+                }
+              }}
+              disabled={albumeviMutation.isPending}
+              className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90"
+            >
+              {albumeviMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1917,6 +2086,11 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
   const addSchoolMutation = useMutation({
     mutationFn: async (input: { name: string; currency: string; taken: number; rest: number }) => {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        throw new Error("Oturum bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yapın.");
+      }
+
       const { data: school, error: sErr } = await supabaseClient
         .from("schools")
         .insert({ name: input.name, currency: input.currency })
@@ -2290,6 +2464,249 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               <Button type="submit" disabled={addTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Ekle</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+interface BaskiListViewProps {
+  baskiExpense: Expense | undefined;
+  exchangeRates?: Record<string, number>;
+  onBack: () => void;
+}
+
+function BaskiListView({ baskiExpense, exchangeRates, onBack }: BaskiListViewProps) {
+  const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
+  const [baskiSelectedProduct, setBaskiSelectedProduct] = useState("");
+  const [baskiQuantity, setBaskiQuantity] = useState("1");
+  const [baskiAciklama, setBaskiAciklama] = useState("");
+
+  const queryClient = useQueryClient();
+
+  const { data: productsForBaski = [] } = useQuery({
+    queryKey: ["products_for_baski"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("products")
+        .select("id, name, base_price")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const { data: baskiTransactions = [] } = useQuery({
+    queryKey: ["baski_transactions", baskiExpense?.id],
+    enabled: !!baskiExpense?.id,
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("expense_transactions")
+        .select("*")
+        .eq("expense_id", baskiExpense!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data.map((t) => {
+        // Expected format: "10x15 Fotoğraf (50 Adet) - A Okulu için"
+        const match = String(t.description || "").match(/^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i);
+        return {
+          id: t.id,
+          date: new Date(t.created_at).toISOString().split("T")[0],
+          product: match ? match[1].trim() : "-",
+          quantity: match ? parseInt(match[2], 10) : "-",
+          desc: match ? (match[3] ? match[3].trim() : "-") : (t.description || "-"),
+          amount: t.amount
+        };
+      });
+    }
+  });
+
+  const addBaskiExpenseMutation = useMutation({
+    mutationFn: async ({ amount, desc }: { amount: number; desc: string }) => {
+      let expenseId = baskiExpense?.id;
+      if (expenseId) {
+        const { error: updErr } = await supabaseClient
+          .from("common_expenses")
+          .update({ total_paid: (baskiExpense?.total_paid || 0) + amount })
+          .eq("id", expenseId);
+        if (updErr) throw updErr;
+      } else {
+        const { data: inserted, error: insErr } = await supabaseClient
+          .from("common_expenses")
+          .insert({ name: "Baskı", currency: "TRY", total_debt: 0, total_paid: amount })
+          .select()
+          .single();
+        if (insErr) throw insErr;
+        expenseId = inserted.id;
+      }
+      
+      const { error: txErr } = await supabaseClient
+        .from("expense_transactions")
+        .insert({
+          expense_id: expenseId,
+          transaction_type: 'payment',
+          amount: amount,
+          description: desc
+        });
+      if (txErr) throw txErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses_ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_transactions"] });
+      toast.success("Baskı gideri başarıyla kaydedildi.");
+      setBaskiModalOpen(false);
+      setBaskiQuantity("1");
+      setBaskiSelectedProduct("");
+      setBaskiAciklama("");
+    },
+    onError: (error) => {
+      toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
+    }
+  });
+
+  const genelToplam = baskiTransactions.reduce((sum: number, item: any) => sum + item.amount, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-white/10 text-white">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-extrabold text-white">Baskı Detayları</h2>
+          <p className="text-sm text-[#9E9696] font-medium mt-1">Baskı giderleri ve işlem geçmişi</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl">
+          <div className="flex justify-between items-center mb-6">
+            <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
+            <Button size="sm" onClick={() => setBaskiModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+              <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
+            </Button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-[#9E9696]">
+              <thead className="text-xs uppercase text-[#9E9696] bg-white/5 rounded-t-xl">
+                <tr>
+                  <th className="px-4 py-3 font-semibold rounded-tl-xl">Tarih</th>
+                  <th className="px-4 py-3 font-semibold">Açıklama</th>
+                  <th className="px-4 py-3 font-semibold">Ürün/Ölçü</th>
+                  <th className="px-4 py-3 font-semibold text-center">Adet</th>
+                  <th className="px-4 py-3 font-semibold text-right rounded-tr-xl">Tutar (₺)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {baskiTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4">
+                      Henüz işlem bulunmuyor.
+                    </td>
+                  </tr>
+                ) : (
+                  baskiTransactions.map((tx: any) => (
+                    <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">{tx.date}</td>
+                      <td className="px-4 py-3 font-medium text-white">{tx.desc}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{tx.product}</td>
+                      <td className="px-4 py-3 text-center font-mono">{tx.quantity}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-[#A67C52]">
+                        {tx.amount.toLocaleString()} ₺
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {baskiTransactions.length > 0 && (
+                <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-green-500">
+                      Genel Toplam:
+                    </td>
+                    <td className="px-4 py-4 text-right text-lg font-bold text-green-500 rounded-br-xl">
+                      {genelToplam.toLocaleString()} ₺
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={isBaskiModalOpen} onOpenChange={setBaskiModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
+          <DialogHeader>
+            <DialogTitle>Baskı Gideri Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Ürün (Baskı Boyutu)</Label>
+              <Select value={baskiSelectedProduct} onValueChange={setBaskiSelectedProduct}>
+                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Ürün seçin..." />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111111] border-white/10 text-white">
+                  {productsForBaski
+                    .filter((p: any) => /^\d+x\d+$/i.test(p.name.trim()))
+                    .map((p: any) => (
+                    <SelectItem key={p.id} value={p.id} className="hover:bg-white/10 focus:bg-white/10 focus:text-white">
+                      {p.name} ({p.base_price} ₺)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Adet</Label>
+              <Input
+                type="number"
+                min="1"
+                value={baskiQuantity}
+                onChange={(e) => setBaskiQuantity(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Açıklama</Label>
+              <Input
+                type="text"
+                placeholder="Hangi okul veya müşteri için?"
+                value={baskiAciklama}
+                onChange={(e) => setBaskiAciklama(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            {baskiSelectedProduct && (
+              <div className="p-3 bg-[#D0A36D]/10 border border-[#D0A36D]/20 rounded-md mt-2 flex justify-between items-center">
+                <span className="text-sm text-gray-300">Toplam Gider:</span>
+                <span className="font-bold text-[#D0A36D] text-lg">
+                  {(
+                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || 0) * 
+                    (parseInt(baskiQuantity) || 0)
+                  ).toLocaleString("tr-TR")} ₺
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              disabled={!baskiSelectedProduct || addBaskiExpenseMutation.isPending || parseInt(baskiQuantity) < 1 || !baskiAciklama.trim()}
+              onClick={() => {
+                const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
+                if (p) {
+                  const total = p.base_price * (parseInt(baskiQuantity) || 0);
+                  const desc = `${p.name} (${parseInt(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
+                  addBaskiExpenseMutation.mutate({ amount: total, desc });
+                }
+              }} 
+              className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
+            >
+              {addBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

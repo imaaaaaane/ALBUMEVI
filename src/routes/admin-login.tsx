@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin-login")({
   component: AdminLogin,
@@ -21,24 +22,48 @@ function AdminLogin() {
 
   const m = useMutation({
     mutationFn: async ({ data }: { data: { email: string; password: string } }) => {
-      const ADMIN_EMAIL = "admin@albumevi.com";
-      const ADMIN_PASSWORD = "password123";
-      if (
-        data.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase() ||
-        data.password !== ADMIN_PASSWORD
-      ) {
-        throw new Error("Invalid Credentials");
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      if (error) {
+        throw error;
       }
-      return { ok: true, email: data.email };
+
+      // Check role in profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles" as any)
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error("Profile fetch failed:", profileError);
+        await supabase.auth.signOut();
+        throw new Error("Profil bulunamadı veya rol hatası.");
+      }
+
+      const role = (profile as any).role;
+      // Allow both admin and photographer
+      if (role !== "admin" && role !== "photographer") {
+        await supabase.auth.signOut();
+        throw new Error("Yetkisiz Giriş: Sadece yönetici ve fotoğrafçılar giriş yapabilir.");
+      }
+
+      return { authData, role };
     },
     onSuccess: (res) => {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("albumevi_admin", JSON.stringify(res));
+      // Supabase handles the session persistence automatically
+      if (res.role === "photographer") {
+        // Right now both go to dashboard, can be updated later if needed
+        navigate({ to: "/dashboard" });
+      } else {
+        navigate({ to: "/dashboard" });
       }
-      navigate({ to: "/dashboard" });
     },
-    onError: () => {
-      toast.error("Invalid Credentials", {
+    onError: (err: any) => {
+      console.error("Login failed:", err);
+      toast.error(err.message === "Invalid login credentials" ? "Invalid Credentials" : err.message || "Giriş yapılamadı.", {
         style: {
           background: "#1a0505",
           color: "#E53E3E",

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Lock, ArrowRight, ArrowLeft, CheckCircle2, FileSpreadsheet, LogOut, ChevronRight, FileWarning } from "lucide-react";
+import { User, Lock, ArrowRight, ArrowLeft, CheckCircle2, FileSpreadsheet, LogOut, ChevronRight, FileWarning, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +47,27 @@ interface SchoolDetails {
 
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  
+  const [showGuide, setShowGuide] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hasSeenGuide = localStorage.getItem(`portal_has_seen_guide_${schoolId}`);
+      return !hasSeenGuide;
+    }
+    return true;
+  });
+
+  const [step, setStep] = useState<2 | 3 | 4 | 5>(() => {
+    if (typeof window !== "undefined") {
+      const savedStep = sessionStorage.getItem(`portal_step_${schoolId}`);
+      if (savedStep && parseInt(savedStep) > 1) return parseInt(savedStep) as any;
+    }
+    return 2;
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem(`portal_step_${schoolId}`, step.toString());
+  }, [step, schoolId]);
+
   const [schoolDetails, setSchoolDetails] = useState<SchoolDetails | null>(null);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
 
@@ -57,17 +77,63 @@ function SchoolPortal() {
 
   // Selection State
   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
-  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+    if (typeof window !== "undefined") {
+      const savedSelections = sessionStorage.getItem(`portal_selections_${schoolId}`);
+      if (savedSelections) return JSON.parse(savedSelections);
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem(`portal_selections_${schoolId}`, JSON.stringify(selections));
+  }, [selections, schoolId]);
+
+  useEffect(() => {
+    if (classes.length > 0 && typeof window !== "undefined") {
+      const savedClassId = sessionStorage.getItem(`portal_class_${schoolId}`);
+      if (savedClassId) {
+        const found = classes.find(c => c.id === savedClassId);
+        if (found) setSelectedClass(found);
+      }
+    }
+  }, [classes, schoolId]);
+
+  useEffect(() => {
+    if (selectedClass) {
+      sessionStorage.setItem(`portal_class_${schoolId}`, selectedClass.id);
+    } else {
+      sessionStorage.removeItem(`portal_class_${schoolId}`);
+    }
+  }, [selectedClass, schoolId]);
 
   const [isExpired, setIsExpired] = useState(false);
   const [isCheckingExpiration, setIsCheckingExpiration] = useState(true);
+  const [schoolName, setSchoolName] = useState("");
+  const [displayedText, setDisplayedText] = useState("");
+
+  useEffect(() => {
+    if (step === 3 && schoolName) {
+      const textToType = `Hoş Geldiniz ${schoolName}`;
+      let i = 0;
+      setDisplayedText("");
+      const intervalId = setInterval(() => {
+        setDisplayedText(textToType.slice(0, i + 1));
+        i++;
+        if (i >= textToType.length) {
+          clearInterval(intervalId);
+        }
+      }, 120);
+      return () => clearInterval(intervalId);
+    }
+  }, [step, schoolName]);
 
   useEffect(() => {
     const checkExpiration = async () => {
       try {
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("is_active")
+          .select("is_active, name")
           .eq("id", schoolId)
           .single();
           
@@ -75,6 +141,8 @@ function SchoolPortal() {
           setIsExpired(true);
           return;
         }
+
+        setSchoolName(school.name);
 
         if (!school.is_active) {
           const { data: { session } } = await supabase.auth.getSession();
@@ -122,7 +190,7 @@ function SchoolPortal() {
         if (error) throw error;
         
         let hasSelections = false;
-        const initialSelections: Record<string, string> = {};
+        const initialSelections: Record<string, string[]> = {};
         
         if (dbClasses) {
           const mappedClasses = dbClasses.map((c: any) => ({
@@ -132,7 +200,13 @@ function SchoolPortal() {
             students: (c.students || []).map((s: any) => {
               if (s.selection) {
                 hasSelections = true;
-                initialSelections[s.id] = s.selection;
+                let parsedSelection: string[] = [];
+                try {
+                  parsedSelection = JSON.parse(s.selection);
+                } catch {
+                  parsedSelection = s.selection.split(',').filter(Boolean);
+                }
+                initialSelections[s.id] = parsedSelection;
               }
               return {
                 id: s.id,
@@ -143,10 +217,7 @@ function SchoolPortal() {
             })
           }));
           setClasses(mappedClasses);
-          setSelections(initialSelections);
-          if (hasSelections) {
-            setStep(2); // Skip Step 1
-          }
+          setSelections(prev => ({ ...initialSelections, ...prev }));
         }
       } catch (error: any) {
         toast.error("Sınıflar yüklenirken hata oluştu.");
@@ -177,10 +248,20 @@ function SchoolPortal() {
   };
 
   const handleStudentSelectionChange = (studentId: string, selection: string) => {
-    setSelections(prev => ({
-      ...prev,
-      [studentId]: selection
-    }));
+    setSelections(prev => {
+      const current = prev[studentId] || [];
+      if (current.includes(selection)) {
+        const updated = current.filter(id => id !== selection);
+        if (updated.length === 0) {
+           const copy = {...prev};
+           delete copy[studentId];
+           return copy;
+        }
+        return { ...prev, [studentId]: updated };
+      } else {
+        return { ...prev, [studentId]: [...current, selection] };
+      }
+    });
   };
 
   const saveClassSelections = async () => {
@@ -189,11 +270,11 @@ function SchoolPortal() {
     // Update Supabase
     try {
        const updates = selectedClass.students
-         .filter(s => selections[s.id])
          .map(async s => {
+            const selectionArr = selections[s.id] || [];
             const { error } = await (supabase as any)
               .from("students")
-              .update({ selection: selections[s.id] })
+              .update({ selection: selectionArr.join(',') })
               .eq("id", s.id);
             if (error) throw error;
          });
@@ -217,9 +298,9 @@ function SchoolPortal() {
       let p1 = 0;
       let p2 = 0;
       c.students.forEach(s => {
-        const selection = selections[s.id];
-        if (selection === "paket1") p1++;
-        if (selection === "paket2") p2++;
+        const studentSelections = selections[s.id] || [];
+        if (studentSelections.includes("paket1")) p1++;
+        if (studentSelections.includes("paket2")) p2++;
       });
       totalP1 += p1;
       totalP2 += p2;
@@ -331,8 +412,7 @@ function SchoolPortal() {
   };
 
   const goBack = () => {
-    if (step === 2) setStep(1);
-    else if (step === 3) setStep(2);
+    if (step === 3) setStep(2);
     else if (step === 4) setStep(3);
     else if (step === 5) setStep(3);
   };
@@ -352,25 +432,24 @@ function SchoolPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#131316] text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
-      <AnimatePresence mode="wait">
-        
-        {/* STEP 1: Guide */}
-        {step === 1 && (
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
+      {/* Guide Modal Overlay */}
+      <AnimatePresence>
+        {showGuide && (
           <motion.div
-            key="step1"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="flex items-center justify-center min-h-screen p-4"
+            key="guide-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md border border-white/10"
           >
-            <div className="max-w-lg w-full bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+            <div className="max-w-lg w-full bg-black/40 backdrop-blur-lg border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#A67C52]/20 blur-[100px] rounded-full" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#A67C52]/20 blur-[100px] rounded-full" />
               
               <div className="relative z-10 text-center">
                 <div className="mx-auto w-16 h-16 bg-[#A67C52]/20 rounded-full flex items-center justify-center mb-6">
-                  <InfoIcon className="w-8 h-8 text-[#A67C52]" />
+                  <Info className="w-8 h-8 text-[#A67C52]" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4 tracking-tight">Hoş Geldiniz</h1>
                 <p className="text-white/60 mb-8 leading-relaxed">
@@ -393,7 +472,10 @@ function SchoolPortal() {
                 </div>
 
                 <Button 
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    setShowGuide(false);
+                    localStorage.setItem(`portal_has_seen_guide_${schoolId}`, "true");
+                  }}
                   className="w-full h-12 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl text-lg"
                 >
                   Anladım, Devam Et <ArrowRight className="w-5 h-5 ml-2" />
@@ -402,7 +484,9 @@ function SchoolPortal() {
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
 
+      <AnimatePresence mode="wait">
         {/* STEP 2: Login */}
         {step === 2 && (
           <motion.div
@@ -412,7 +496,7 @@ function SchoolPortal() {
             exit={{ opacity: 0, y: -20 }}
             className="flex items-center justify-center min-h-screen p-4"
           >
-            <div className="max-w-sm w-full bg-white/5 border border-white/10 rounded-3xl p-8 shadow-2xl relative">
+            <div className="max-w-sm w-full bg-black/40 backdrop-blur-lg border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative">
               <div className="flex flex-col items-center mb-8">
                 <div className="w-16 h-16 rounded-2xl bg-[#A67C52]/20 flex items-center justify-center mb-4">
                   <Lock className="w-8 h-8 text-[#A67C52]" />
@@ -450,10 +534,10 @@ function SchoolPortal() {
                   <Button 
                     type="button" 
                     variant="ghost"
-                    onClick={() => setStep(1)}
+                    onClick={() => setShowGuide(true)}
                     className="w-full text-white/50 hover:text-white mt-2"
                   >
-                    Geri Dön
+                    Kılavuzu Göster
                   </Button>
                 </div>
               </form>
@@ -471,39 +555,48 @@ function SchoolPortal() {
             className="max-w-6xl mx-auto px-4 pt-8"
           >
             {/* Header */}
-            <div className="flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-2xl mb-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#A67C52] rounded-lg flex items-center justify-center font-bold text-white shadow-lg">
-                  A
-                </div>
-                <div>
-                  <h2 className="font-bold tracking-tight">ALBÜMEVİ</h2>
-                  <p className="text-xs text-white/50">Fotoğrafçılık Portalı</p>
+            <div className="flex flex-col md:relative md:flex-row items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-2xl mb-8 gap-4 md:gap-0">
+              <div className="flex w-full md:w-auto justify-between items-center">
+                <img src="/logo.jpg" alt="ALBÜMEVİ" className="h-10 rounded-md object-contain" />
+                <div className="flex items-center gap-2 md:hidden">
+                  <Button variant="ghost" size="sm" onClick={() => setShowGuide(true)} className="text-white/50 hover:text-white">
+                    <Info className="w-4 h-4 mr-1" />
+                    Kılavuz
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="text-white/50 hover:text-white">
+                    <LogOut className="w-5 h-5" />
+                  </Button>
                 </div>
               </div>
-              <h1 className="text-xl font-bold hidden md:block">Hoş Geldiniz</h1>
-              <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="text-white/50 hover:text-white">
-                <LogOut className="w-5 h-5" />
-              </Button>
+              <h1 className="text-base md:text-xl font-bold font-serif tracking-widest italic text-white md:absolute md:left-1/2 md:-translate-x-1/2 text-center whitespace-nowrap overflow-hidden text-ellipsis w-full md:w-auto">
+                {displayedText}
+              </h1>
+              <div className="hidden md:flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowGuide(true)} className="text-white/50 hover:text-white">
+                  <Info className="w-4 h-4 mr-2" />
+                  Kılavuz
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="text-white/50 hover:text-white">
+                  <LogOut className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
 
             {/* Packages */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-              <div className="bg-[#A67C52]/10 border border-[#A67C52]/20 p-6 rounded-2xl flex justify-between items-center relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-32 h-32 bg-[#A67C52]/10 blur-[50px]" />
+              <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden gap-2 md:gap-0">
                 <div>
-                  <p className="text-[#A67C52] font-semibold text-sm mb-1">PAKET 1</p>
-                  <h3 className="text-2xl font-bold">{schoolDetails?.package1_name}</h3>
+                  <p className="text-white/50 font-semibold text-sm mb-1">PAKET 1</p>
+                  <h3 className="text-xl md:text-2xl font-bold">{schoolDetails?.package1_name}</h3>
                 </div>
-                <div className="text-3xl font-bold">{schoolDetails?.package1_price} ₺</div>
+                <div className="text-2xl md:text-3xl font-bold">{schoolDetails?.package1_price} ₺</div>
               </div>
-              <div className="bg-white/5 border border-white/10 p-6 rounded-2xl flex justify-between items-center relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 blur-[50px]" />
+              <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden gap-2 md:gap-0">
                 <div>
                   <p className="text-white/50 font-semibold text-sm mb-1">PAKET 2</p>
-                  <h3 className="text-2xl font-bold">{schoolDetails?.package2_name}</h3>
+                  <h3 className="text-xl md:text-2xl font-bold">{schoolDetails?.package2_name}</h3>
                 </div>
-                <div className="text-3xl font-bold">{schoolDetails?.package2_price} ₺</div>
+                <div className="text-2xl md:text-3xl font-bold">{schoolDetails?.package2_price} ₺</div>
               </div>
             </div>
 
@@ -514,7 +607,7 @@ function SchoolPortal() {
                 Sınıf bulunamadı. Lütfen yönetici ile iletişime geçin.
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {classes.map(c => (
                   <button
                     key={c.id}
@@ -522,7 +615,7 @@ function SchoolPortal() {
                       setSelectedClass(c);
                       setStep(4);
                     }}
-                    className="group bg-white/5 hover:bg-[#A67C52]/10 border border-white/10 hover:border-[#A67C52]/30 p-6 rounded-2xl text-left transition-all duration-300 relative overflow-hidden cursor-pointer"
+                    className="group bg-black/40 backdrop-blur-md hover:bg-[#A67C52]/10 border border-white/10 hover:border-[#A67C52]/30 p-4 md:p-6 rounded-2xl text-left transition-all duration-300 relative overflow-hidden cursor-pointer min-h-[44px]"
                   >
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
                       <ChevronRight className="w-6 h-6 text-[#A67C52]" />
@@ -564,8 +657,8 @@ function SchoolPortal() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-24">
               {selectedClass.students.map(s => (
-                <div key={s.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 shadow-lg flex flex-col">
-                  <div className="flex flex-col items-center mb-5 border-b border-white/5 pb-4">
+                <div key={s.id} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg flex flex-col">
+                  <div className="flex flex-col items-center mb-5 border-b border-white/10 pb-4">
                     <h4 className="font-bold text-lg mb-3">{s.name}</h4>
                     <div className="w-full aspect-[3/4] bg-white/5 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
                       {s.image_url ? (
@@ -577,32 +670,32 @@ function SchoolPortal() {
                   </div>
                   
                   <div className="space-y-3">
-                    <label className={`flex items-center p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id] === 'paket1' ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
+                    <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket1') ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
                       <input 
-                        type="radio" 
-                        name={`package_${s.id}`} 
+                        type="checkbox" 
+                        name={`package_${s.id}_paket1`} 
                         value="paket1"
                         className="hidden" 
-                        checked={selections[s.id] === 'paket1'}
+                        checked={selections[s.id]?.includes('paket1') || false}
                         onChange={() => handleStudentSelectionChange(s.id, 'paket1')}
                       />
-                      <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${selections[s.id] === 'paket1' ? 'border-[#A67C52]' : 'border-white/30'}`}>
-                        {selections[s.id] === 'paket1' && <div className="w-2 h-2 rounded-full bg-[#A67C52]" />}
+                      <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center ${selections[s.id]?.includes('paket1') ? 'bg-[#A67C52] border-[#A67C52]' : 'border-white/30'}`}>
+                        {selections[s.id]?.includes('paket1') && <CheckCircle2 className="w-4 h-4 text-white" />}
                       </div>
                       <span className="font-medium text-sm flex-1">{schoolDetails?.package1_name || 'Paket 1'}</span>
                     </label>
 
-                    <label className={`flex items-center p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id] === 'paket2' ? 'bg-white/10 border-white text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
+                    <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket2') ? 'bg-white/10 border-white text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
                       <input 
-                        type="radio" 
-                        name={`package_${s.id}`} 
+                        type="checkbox" 
+                        name={`package_${s.id}_paket2`} 
                         value="paket2"
                         className="hidden" 
-                        checked={selections[s.id] === 'paket2'}
+                        checked={selections[s.id]?.includes('paket2') || false}
                         onChange={() => handleStudentSelectionChange(s.id, 'paket2')}
                       />
-                      <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${selections[s.id] === 'paket2' ? 'border-white' : 'border-white/30'}`}>
-                        {selections[s.id] === 'paket2' && <div className="w-2 h-2 rounded-full bg-white" />}
+                      <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center ${selections[s.id]?.includes('paket2') ? 'bg-white border-white' : 'border-white/30'}`}>
+                        {selections[s.id]?.includes('paket2') && <CheckCircle2 className="w-4 h-4 text-black" />}
                       </div>
                       <span className="font-medium text-sm flex-1">{schoolDetails?.package2_name || 'Paket 2'}</span>
                     </label>
@@ -612,7 +705,7 @@ function SchoolPortal() {
             </div>
 
             {/* Sticky Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-[#131316]/80 backdrop-blur-xl border-t border-white/10 p-4 z-50">
+            <div className="fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-xl border-t border-white/10 p-4 z-50">
               <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
                 <div className="text-white/60 text-sm hidden sm:block">
                   Seçilmeyen öğrenciler <strong className="text-white">boş</strong> kabul edilecektir.
@@ -649,8 +742,8 @@ function SchoolPortal() {
               </div>
             </div>
 
-            <div className="bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden text-white mb-8">
-              <div className="bg-[#A67C52]/10 border-b border-[#A67C52]/30 text-white p-4 flex items-center justify-between">
+            <div className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-xl shadow-xl overflow-hidden text-white mb-8">
+              <div className="bg-black/20 border-b border-white/10 text-white p-4 flex items-center justify-between">
                  <div className="flex items-center gap-2">
                    <FileSpreadsheet className="w-5 h-5 text-[#A67C52]" />
                    <span className="font-semibold text-sm">Okul_Siparis_Ozeti.xlsx</span>
@@ -689,7 +782,7 @@ function SchoolPortal() {
                   </TableRow>
                 </TableBody>
               </Table>
-              <div className="bg-[#131316] p-6 flex justify-end">
+              <div className="bg-black/20 p-6 flex justify-end">
                  <div className="text-right">
                    <div className="text-sm text-white/50 mb-1">Hesaplanan Toplam Tutar</div>
                    <div className="text-4xl font-black text-[#A67C52]">{getSummary().totalTRY.toLocaleString()} ₺</div>

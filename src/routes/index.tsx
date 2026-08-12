@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Camera,
   Users,
+  Calendar,
+  ChevronDown,
   Clock,
   Award,
   GraduationCap,
@@ -15,11 +17,93 @@ import {
   Instagram,
   Facebook,
   ChevronRight,
+  ArrowRight,
+  X,
+  Star,
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+const PHOTOGRAPHERS = [
+  {
+    name: "Ahmet Yılmaz",
+    role: "Fotoğrafçı",
+    phone: "+90 555 123 4567",
+    img: "https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?q=80&w=600&auto=format&fit=crop",
+  },
+  {
+    name: "Elif Demir",
+    role: "Fotoğrafçı",
+    phone: "+90 555 987 6543",
+    img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
+  },
+  {
+    name: "Can Kaya",
+    role: "Fotoğrafçı",
+    phone: "+90 555 456 7890",
+    img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop",
+  },
+  {
+    name: "Ayşe Yılmaz",
+    role: "Fotoğrafçı",
+    phone: "+90 555 222 3344",
+    img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop",
+  },
+];
+
+const GALLERY_ITEMS = [
+  { id: 1, src: "/portfolyo/portfolya1.jpg", alt: "Albumevi Portfolyo 1" },
+  { id: 2, src: "/portfolyo/portfolya2.jpg", alt: "Albumevi Portfolyo 2" },
+  { id: 3, src: "/portfolyo/portfolya3.jpg", alt: "Albumevi Portfolyo 3" },
+  { id: 4, src: "/portfolyo/portfolya4.jpg", alt: "Albumevi Portfolyo 4" },
+  { id: 5, src: "/portfolyo/portfolya5.jpg", alt: "Albumevi Portfolyo 5" }
+];
+
+const PROCESS_STEPS = [
+  {
+    icon: Calendar,
+    title: "Planlama",
+    desc: "Okul yönetimiyle görüşüp, öğrencilere sunulacak ürün paketlerini ve çekim gününü netleştiriyoruz.",
+  },
+  {
+    icon: Camera,
+    title: "Çekim Günü",
+    desc: "Profesyonel ekipmanlarımızla, çocukları yormadan eğlenceli bir çekim gerçekleştiriyoruz.",
+  },
+  {
+    icon: Users,
+    title: "Sipariş ve Öğrenci Seçimi",
+    desc: "Öğretmenlerimiz, sistemimiz üzerinden hangi öğrencilerin ürün/paket alacağını seçerek sipariş listelerini oluşturur.",
+  },
+  {
+    icon: Package,
+    title: "Teslimat",
+    desc: "Yüksek kaliteli ürünler özenle hazırlanıyor ve zamanında okula teslim ediliyor.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "Mezuniyet cübbe ve keplerini siz mi temin ediyorsunuz?",
+    a: "Evet, tüm mezuniyet kıyafetleri ve konsept aksesuarları ekibimiz tarafından okunuza getirilir."
+  },
+  {
+    q: "Çekimler okulu aksatır mı?",
+    a: "Kesinlikle hayır. Programı ders saatlerine en uygun şekilde yapıyor ve hızlı, organize bir çekim sağlıyoruz."
+  },
+  {
+    q: "Veliler fotoğraf seçimi yapıyor mu?",
+    a: "Hayır, süreç okulu yormamak adına çok pratik ilerler. Fotoğraf seçimi karmaşası yaşanmaz; öğretmenlerimiz sistem üzerinden sadece ürün alacak öğrencileri belirler ve sipariş listesini onaylar."
+  },
+  {
+    q: "Ürünler ne kadar sürede teslim ediliyor?",
+    a: "Çekimler ve siparişler tamamlandıktan sonra, premium ürünlerimiz 2-3 hafta içerisinde özenle hazırlanıp okula teslim edilir."
+  }
+];
 
 const MotionLink = motion(Link);
 
@@ -95,6 +179,32 @@ const heroImageVariants = {
 function Landing() {
   const { t, dir } = useI18n();
   const [activeStep, setActiveStep] = useState(1);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  const { data: dynamicPhotographers = [] } = useQuery({
+    queryKey: ["public_photographers"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("photographers")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: dynamicPortfolio = [] } = useQuery({
+    queryKey: ["public_portfolio_images"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("portfolio_images")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Katana scroll refs
   const servicesContainerRef = useScrollProgress();
@@ -109,43 +219,41 @@ function Landing() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0A0A0A]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src="/logo.jpg" alt="Albumevi Logo" className="h-10 w-auto object-contain" />
+            <img src="/logo.jpg" alt="Albumevi Logo" className="h-8 md:h-12 w-auto object-contain" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-300 font-medium">
             <a href="#hizmetler" className="hover:text-white transition-colors">
-              Hizmetler
+              {t("nav.services")}
             </a>
             <a href="#surec" className="hover:text-white transition-colors">
-              Süreç
+              {t("nav.process")}
+            </a>
+            <a href="#cekimciler" className="hover:text-white transition-colors">
+              Çekimciler
             </a>
             <a href="#galeri" className="hover:text-white transition-colors">
-              Galeri
+              {t("nav.gallery")}
+            </a>
+            <a href="#sss" className="hover:text-white transition-colors">
+              SSS
             </a>
             <a href="#hakkimizda" className="hover:text-white transition-colors">
-              Hakkımızda
+              {t("nav.about")}
             </a>
             <a href="#iletisim" className="hover:text-white transition-colors">
-              İletişim
+              {t("nav.contact")}
             </a>
           </div>
 
           <div className="flex items-center gap-3">
-            <MotionLink
-              to="/login"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 text-sm font-medium border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white animate-pulse-slow"
-            >
-              Okul Girişi
-            </MotionLink>
             <MotionLink
               to="/admin-login"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="px-4 py-2 text-sm font-medium border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white"
             >
-              Yönetici Girişi
+              {t("cta.adminLogin")}
             </MotionLink>
             <LanguageSwitcher />
           </div>
@@ -153,7 +261,10 @@ function Landing() {
       </header>
 
       {/* HERO SECTION */}
-      <div className="relative pt-24 min-h-screen flex items-center justify-center">
+      <div className="relative pt-24 min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Ambient Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#D0A36D]/10 blur-[120px] rounded-full pointer-events-none" />
+        
         <motion.main
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -173,35 +284,47 @@ function Landing() {
                 variants={heroItemVariants}
                 className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight"
               >
-                Okul Yıllarının En <br />
-                <span className="text-[#D0A36D]">Saf Halini Sanata Dönüştürüyoruz</span>
+                {t("hero.title1")} <br />
+                <span className="text-[#D0A36D]">{t("hero.title2")}</span>
               </motion.h1>
               <motion.p
                 variants={heroItemVariants}
                 className="text-lg text-gray-400 max-w-lg leading-relaxed"
               >
-                Profesyonel okul fotoğrafçılığında Türkiye'nin güvendiği marka. Neşe dolu anıları yakalamak ve çocukların yüzünde gülümseme bırakmak için varız.
+                {t("hero.subtitle")}
               </motion.p>
 
               <motion.div
                 variants={heroItemVariants}
-                className="flex items-center gap-4 pt-4 border-t border-white/5 w-max pr-8"
+                className="flex items-center gap-3 pt-4 border-t border-white/5 w-max pr-8"
               >
-                <div className="flex -space-x-3">
-                  <div className="w-10 h-10 rounded-full border-2 border-[#0A0A0A] bg-gray-800" />
-                  <div className="w-10 h-10 rounded-full border-2 border-[#0A0A0A] bg-gray-700" />
-                  <div className="w-10 h-10 rounded-full border-2 border-[#0A0A0A] bg-gray-600" />
+                <div className="flex gap-1 text-yellow-500">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
                 </div>
-                <div>
-                  <div className="flex text-[#D0A36D] text-sm">★★★★★</div>
-                  <p className="text-xs text-gray-400">200+ okul memnuniyetle hizmet aldı</p>
-                </div>
+                <p className="text-sm text-gray-400">
+                  500+ okul memnuniyetle hizmet aldı
+                </p>
+              </motion.div>
+
+              <motion.div
+                variants={heroItemVariants}
+                className="pt-6"
+              >
+                <a
+                  href="#galeri"
+                  className="inline-flex items-center gap-2 bg-[#D0A36D] hover:bg-[#E2B67C] text-black px-8 py-3 rounded-full font-semibold transition-all hover:scale-105"
+                >
+                  Portfolyoyu İncele <ArrowRight className="w-5 h-5" />
+                </a>
               </motion.div>
             </motion.div>
 
             {/* Right side Images Layout */}
             <motion.div
-              id="galeri"
               variants={heroImageVariants}
               initial="hidden"
               animate="visible"
@@ -220,7 +343,7 @@ function Landing() {
                     <div>
                       <div className="flex text-[#D0A36D] text-sm">★★★★★</div>
                       <p className="text-xl font-bold mt-1">4.9</p>
-                      <p className="text-xs text-gray-400">Ortalama puan</p>
+                      <p className="text-xs text-gray-400">{t("hero.ratingAvg")}</p>
                     </div>
                   </div>
                   <div className="rounded-2xl bg-gray-900 border border-white/5 h-[200px] w-full overflow-hidden">
@@ -240,16 +363,6 @@ function Landing() {
                 </div>
               </div>
 
-              {/* Floating Badge */}
-              <div className="absolute -bottom-6 left-10 bg-[#151515] border border-white/10 p-4 rounded-2xl flex items-center gap-4 shadow-2xl">
-                <div className="w-12 h-12 bg-[#D0A36D]/10 rounded-xl flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-[#D0A36D]" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Bu ay</p>
-                  <p className="text-lg font-bold">38 okul çekimi</p>
-                </div>
-              </div>
             </motion.div>
           </div>
         </motion.main>
@@ -279,12 +392,12 @@ function Landing() {
                   className="lg:col-span-5 space-y-6"
                 >
                   <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase">
-                    Hizmetlerimiz
+                    {t("services.badge")}
                   </p>
                   <h2 className="text-4xl md:text-5xl font-bold leading-tight">
-                    Eksiksiz Fotoğrafçılık Deneyimi
+                    {t("services.title")}
                   </h2>
-                  <p className="text-gray-400 leading-relaxed">Okul fotoğrafçılığını yeniden tanımlıyoruz. Çekimden teslimata tüm süreç, uzman ekibimizin titiz denetimiyle yönetilir.</p>
+                  <p className="text-gray-400 leading-relaxed">{t("services.subtitle")}</p>
                   <div className="rounded-3xl mt-8 w-full h-[400px] overflow-hidden border border-white/5">
                     <img
                       src="/pic6.jpg"
@@ -298,23 +411,23 @@ function Landing() {
                   {[
                     {
                       icon: <Camera />,
-                      title: "Profesyonel Okul Portreleri",
-                      desc: "Her çocuğun özgün kişiliğini yansıtan, stüdyo kalitesinde portreler. Doğal ışık ve özenle seçilmiş arka planlarla unutulmaz anlar yaratıyoruz.",
+                      title: t("services.card1.title"),
+                      desc: t("services.card1.desc"),
                     },
                     {
                       icon: <Users />,
-                      title: "Sınıf İçi Toplu Çekimler",
-                      desc: "Grup fotoğrafçılığı doğrudan sınıfın içinde gerçekleştirilir. Çocuklar alıştıkları ortamda, sınıf arkadaşlarıyla birlikte doğal ve samimi kareler verir.",
+                      title: t("services.card2.title"),
+                      desc: t("services.card2.desc"),
                     },
                     {
                       icon: <Clock />,
-                      title: "Zahmetsiz Lojistik",
-                      desc: "Randevu koordinasyonundan fotoğraf dağıtımına kadar tüm süreci biz yönetiyoruz. Okul idarenize sıfır ek yük, maksimum verimlilik.",
+                      title: t("services.card3.title"),
+                      desc: t("services.card3.desc"),
                     },
                     {
                       icon: <Award />,
-                      title: "Özel Albümler ve Fiziksel Ürünler",
-                      desc: "Premium ciltli albümler, çerçeveli baskılar ve kişiselleştirilmiş fotoğraf ürünleri tasarlıyor, üretime alıyor ve ailelere teslim ediyoruz.",
+                      title: t("services.card4.title"),
+                      desc: t("services.card4.desc"),
                     },
                   ].map((service, idx) => (
                     <motion.div
@@ -339,75 +452,202 @@ function Landing() {
         </div>
       </div>
 
-      {/* PROCESS SECTION - Katana Animation */}
-      <div
-        id="surec"
-        ref={processContainerRef}
-        className="katana-container katana-container-process"
-      >
-        <div className="katana-sticky">
-          <div className="katana-mask flex items-center justify-center bg-[#0A0A0A]">
+
+      {/* PHOTOGRAPHERS SECTION */}
+      <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A]">
+        <div className="text-center mb-16">
+          <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">
+            Ekibimiz
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold">Çekimcilerimiz</h2>
+          <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
+            Anılarınızı ölümsüzleştiren yetenekli profesyonel fotoğrafçılarımız.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {(dynamicPhotographers.length > 0 ? dynamicPhotographers : PHOTOGRAPHERS).map((photographer: any, idx: number) => (
             <motion.div
+              key={idx}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mx-auto max-w-7xl px-6 py-24 w-full"
+              transition={{ delay: idx * 0.1, duration: 0.5 }}
+              className="bg-[#111111] rounded-3xl overflow-hidden border border-white/5 hover:border-[#D0A36D]/30 transition-all group"
             >
-              <div className="text-center mb-16">
-                <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">
-                  Süreç
-                </p>
-                <h2 className="text-4xl font-bold">Dört Adımda Mükemmel Portreler</h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[
-                  { num: "01", title: "Keşif Görüşmesi", desc: "Okulunuzun ihtiyaçlarını ve beklentilerini dinliyoruz. Tarih, lokasyon ve paket tercihlerini birlikte belirliyoruz." },
-                  { num: "02", title: "Profesyonel Çekim Günü", desc: "Deneyimli ekibimiz okulunuza gelir, çocukların rahat hissetmesini sağlar ve her portreden en iyi kareyi yakalar." },
-                  { num: "03", title: "Özenli Rötuş & Düzenleme", desc: "Her fotoğraf, renk dengesi ve ışık optimizasyonu için titizlikle işlenir. Doğallıktan ödün vermeden mükemmellik." },
-                  { num: "04", title: "Fiziksel Teslimat", desc: "Baskı süreçleri tamamlanan albümler ve ürün paketleri okul üzerinden ailelere dağıtılır. Her paket özenle hazırlanır." },
-                ].map((step, idx) => {
-                  const isActive = idx === activeStep;
-                  return (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                      viewport={{ once: true, margin: "-100px" }}
-                      whileHover={{ y: -4, scale: isActive ? 1.07 : 1.02 }}
-                      transition={{
-                        duration: 0.4,
-                        ease: "easeOut",
-                        delay: idx * 0.05,
-                        scale: { type: "spring", stiffness: 300, damping: 20 },
-                        y: { type: "spring", stiffness: 300, damping: 20 },
-                      }}
-                      onClick={() => setActiveStep(idx)}
-                      className={`p-8 rounded-3xl border transition-colors cursor-pointer relative ${
-                        isActive
-                          ? "bg-[#151515] border-transparent z-10"
-                          : "border-white/5 bg-[#111111] hover:border-white/10"
-                      }`}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeStepBorder"
-                          className="absolute inset-0 rounded-3xl border-2 border-[#D0A36D] pointer-events-none"
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        />
-                      )}
-                      <div className="text-5xl font-extrabold text-white/10 mb-6">{step.num}</div>
-                      <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-                      <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
-                    </motion.div>
-                  );
-                })}
+              <div className="aspect-[4/5] relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111111] to-transparent z-10" />
+                <img
+                  src={photographer.img}
+                  alt={photographer.name}
+                  className="object-cover w-full h-full opacity-80 group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute bottom-6 left-6 right-6 z-20">
+                  <h3 className="text-2xl font-bold text-white mb-1">{photographer.name}</h3>
+                  <p className="text-[#D0A36D] text-sm font-medium mb-4">{photographer.role}</p>
+                  <a
+                    href={`https://wa.me/${photographer.phone.replace(/[^0-9]/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-[#D0A36D] text-white py-3 rounded-xl backdrop-blur-md transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span className="font-medium text-sm">{photographer.phone}</span>
+                  </a>
+                </div>
               </div>
             </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* GALLERY SECTION */}
+      <section id="galeri" className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A]">
+        <div className="text-center mb-12">
+          <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">
+            Portfolyo
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold">Unutulmaz Anılar</h2>
+          <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
+            Objektifimizden yansıyan en özel anlar. Çocukların doğal gülümsemeleri ve profesyonel stüdyo kalitemiz.
+          </p>
+        </div>
+
+        {/* Image Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[250px]">
+          {(dynamicPortfolio.length > 0 ? dynamicPortfolio : GALLERY_ITEMS).map((item: any, i: number) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5 }}
+              className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 aspect-[4/5]"
+            >
+              <img
+                src={item.image_url || item.src}
+                alt={item.alt || "Portfolyo Görseli"}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* PROCESS SECTION */}
+      <section id="surec" className="px-6 py-24 max-w-7xl mx-auto relative">
+        <div className="text-center mb-24 relative z-10">
+          <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">
+            Süreç
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold">Nasıl Çalışıyoruz</h2>
+        </div>
+
+        <div className="relative max-w-5xl mx-auto">
+          {/* THE SPINE */}
+          <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px md:-translate-x-1/2 bg-gradient-to-b from-transparent via-[#D0A36D]/50 to-transparent shadow-[0_0_15px_rgba(208,163,109,0.5)] z-0" />
+
+          <div className="relative z-10">
+            {PROCESS_STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isEven = idx % 2 === 0;
+
+              return (
+                <div key={idx} className={`relative flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} ${idx > 0 ? 'mt-8 md:-mt-24' : ''}`}>
+                  
+                  {/* The Timeline Dot */}
+                  <div className="absolute left-6 md:left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-[#0A0A0A] border-2 border-[#D0A36D] flex items-center justify-center shadow-[0_0_20px_rgba(208,163,109,0.4)] z-20 top-8 md:top-1/2 md:-translate-y-1/2">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#D0A36D]" />
+                  </div>
+
+                  {/* The Card */}
+                  <motion.div
+                    initial={{ opacity: 0, x: isEven ? -30 : 30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
+                    className={`w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden border border-white/5 hover:border-[#D0A36D]/40 transition-all duration-500 bg-black/60 backdrop-blur-md`}
+                  >
+                    {/* Giant Number */}
+                    <div className={`absolute -top-4 ${isEven ? '-right-4' : '-left-4'} text-9xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 select-none`}>
+                      {idx + 1}
+                    </div>
+
+                    {/* Content */}
+                    <div className="relative z-20 p-8 sm:p-12 pl-12 md:pl-12">
+                      <div className="w-14 h-14 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D0A36D] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-500">
+                        <Icon className="w-7 h-7" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D0A36D] transition-colors duration-300">{step.title}</h3>
+                      <p className="text-gray-400 leading-relaxed text-sm sm:text-base">
+                        {step.desc}
+                      </p>
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section id="sss" className="px-6 py-20 max-w-3xl mx-auto relative">
+        {/* Dynamic Background Blob */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#8B5A2B] rounded-full blur-[150px] opacity-[0.05] animate-[pulse_6s_ease-in-out_infinite] pointer-events-none z-0" />
+        
+        <div className="relative z-10">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-serif tracking-widest font-light">Sıkça Sorulan Sorular</h2>
+          </div>
+          <div className="space-y-4">
+            {FAQS.map((faq, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                className={`border-b border-white/10 overflow-hidden transition-colors duration-300 ${activeFaq === idx ? "bg-white/[0.02]" : "bg-transparent hover:bg-white/[0.01]"}`}
+              >
+                <button
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="w-full flex items-center justify-between py-6 px-4 text-left focus:outline-none bg-transparent group"
+                >
+                  <span className={`font-medium transition-all duration-300 group-hover:translate-x-2 group-hover:text-[#8B5A2B] ${activeFaq === idx ? "text-[#8B5A2B] translate-x-2" : "text-white"}`}>
+                    {faq.q}
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 transition-transform duration-300 ease-in-out group-hover:text-[#8B5A2B] ${activeFaq === idx ? "rotate-180 text-[#8B5A2B]" : "text-gray-400"}`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {activeFaq === idx && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ 
+                        height: "auto", 
+                        opacity: 1, 
+                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.3, delay: 0.1 } } 
+                      }}
+                      exit={{ 
+                        height: 0, 
+                        opacity: 0, 
+                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } } 
+                      }}
+                    >
+                      <div className="px-4 pb-6 text-gray-400 text-sm leading-relaxed mt-2 bg-transparent">
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* WHY US SECTION (Standard Scroll) */}
       <motion.section
@@ -448,19 +688,19 @@ function Landing() {
             className="space-y-8"
           >
             <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase">
-              Neden Albumevi?
+              {t("whyus.badge")}
             </p>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight">Güvene Dayalı Uzun Vadeli Ortaklık</h2>
-            <p className="text-gray-400 leading-relaxed">12 yıllık deneyimimiz ve 500'den fazla okulda edindiğimiz bilgi birikimi ile her yıl geri dönen okul yöneticilerinin tercihi olmaya devam ediyoruz. Çocukları merkeze alan yaklaşımımız bizi farklı kılıyor.</p>
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight">{t("whyus.title")}</h2>
+            <p className="text-gray-400 leading-relaxed">{t("whyus.desc")}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                "Özel Destek",
-                "Yüksek Kaliteli Ekipman",
-                "Hızlı Teslimat Süresi",
-                "Profesyonel Rötuş",
-                "Özel Albüm Tasarımları",
-                "Güvenilir Hizmet",
+                t("whyus.feature1"),
+                t("whyus.feature2"),
+                t("whyus.feature3"),
+                t("whyus.feature4"),
+                t("whyus.feature5"),
+                t("whyus.feature6"),
               ].map((feature, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-[#D0A36D]" />
@@ -472,9 +712,10 @@ function Landing() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setIsContactModalOpen(true)}
               className="flex items-center gap-2 bg-[#D0A36D] hover:bg-[#B88B56] text-white px-6 py-3 rounded-full font-bold transition-colors mt-4 cursor-pointer"
             >
-              Bizimle İletişime Geç <ChevronRight className="w-4 h-4" />
+              {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
             </motion.button>
           </motion.div>
         </div>
@@ -497,10 +738,10 @@ function Landing() {
             className="space-y-8"
           >
             <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase">
-              İletişim
+              {t("contact.badge")}
             </p>
-            <h2 className="text-4xl font-bold">Okulunuza Özel Teklif Alın</h2>
-            <p className="text-gray-400">Okulunuzun ihtiyaçlarına özel fiyatlandırma ve paket önerileri için bugün bize ulaşın. 24 saat içinde geri dönüş garanti ediyoruz.</p>
+            <h2 className="text-4xl font-bold">{t("contact.title")}</h2>
+            <p className="text-gray-400">{t("contact.desc")}</p>
 
             <div className="space-y-6 pt-4">
               <div className="flex items-center gap-4">
@@ -508,7 +749,7 @@ function Landing() {
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">TELEFON</p>
+                  <p className="text-xs text-gray-400">{t("contact.phone")}</p>
                   <p className="font-bold">05362100021</p>
                 </div>
               </div>
@@ -517,7 +758,7 @@ function Landing() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">E-POSTA</p>
+                  <p className="text-xs text-gray-400">{t("contact.email")}</p>
                   <p className="font-bold">okulcekimleri@gmail.com</p>
                 </div>
               </div>
@@ -526,7 +767,7 @@ function Landing() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">ADRES</p>
+                  <p className="text-xs text-gray-400">{t("contact.address")}</p>
                   <p className="font-bold">
                     TİLMERÇ MH İBRAHİM HAKKI CD TOKİ KAZIM KARABEKİR ORTAOKUL KARŞISI / BATMAN
                   </p>
@@ -541,13 +782,6 @@ function Landing() {
                 className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <Instagram className="w-4 h-4" />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer"
-              >
-                <Facebook className="w-4 h-4" />
               </motion.button>
             </div>
           </motion.div>
@@ -573,8 +807,8 @@ function Landing() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm">Albumevi Batman Stüdyosu</p>
-                  <p className="text-xs text-gray-400">Tilmerç Mh. İbrahim Hakkı Cd.</p>
+                  <p className="font-bold text-sm">{t("contact.map.title")}</p>
+                  <p className="text-xs text-gray-400">{t("contact.map.subtitle")}</p>
                 </div>
               </div>
               <motion.button
@@ -582,7 +816,7 @@ function Landing() {
                 whileTap={{ scale: 0.95 }}
                 className="text-[#D0A36D] text-sm font-medium flex items-center gap-1 hover:text-[#E2B67C] transition-colors cursor-pointer"
               >
-                Yol Tarifi <ChevronRight className="w-4 h-4" />
+                {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
               </motion.button>
             </div>
           </motion.div>
@@ -590,10 +824,7 @@ function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <Camera className="w-4 h-4 text-[#D0A36D]" />
-            <span className="font-bold text-white lowercase">
-              album<span className="text-[#D0A36D]">evi</span>
-            </span>
+            <img src="/logo.jpg" alt="Albumevi Logo" className="h-6 md:h-8 w-auto object-contain" />
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
@@ -609,6 +840,95 @@ function Landing() {
           </div>
         </div>
       </footer>
+      <AnimatePresence>
+        {isContactModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setIsContactModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0D0D0D] border border-[#D0A36D]/30 rounded-3xl w-full max-w-2xl overflow-hidden relative shadow-2xl"
+            >
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-[#D0A36D]">İletişim Bilgileri</h3>
+                <button
+                  onClick={() => setIsContactModalOpen(false)}
+                  className="text-gray-400 hover:text-white transition-colors p-1"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-8">
+                {/* CEO Section */}
+                <div className="bg-[#151515] rounded-2xl p-5 border border-[#D0A36D]/20 flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-full bg-[#111] border-2 border-[#D0A36D] overflow-hidden shrink-0">
+                    <img 
+                      src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop" 
+                      alt="Serhat Güneş" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-bold text-white">Serhat Güneş</h4>
+                    <p className="text-[#D0A36D] text-sm font-medium mb-2">Kurucu / CEO</p>
+                    <a
+                      href="https://wa.me/905551234567"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg text-sm font-medium"
+                    >
+                      <Phone className="w-4 h-4 text-[#D0A36D]" />
+                      +90 555 123 4567
+                    </a>
+                  </div>
+                </div>
+
+                {/* Photographers Section */}
+                <div>
+                  <h4 className="text-sm font-bold tracking-widest uppercase text-gray-400 mb-4 border-b border-white/5 pb-2">
+                    Çekimciler Ekibimiz
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {PHOTOGRAPHERS.map((photographer, idx) => (
+                      <div key={idx} className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
+                          <img 
+                            src={photographer.img} 
+                            alt={photographer.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-white">{photographer.name}</p>
+                          <a
+                            href={`https://wa.me/${photographer.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D0A36D] transition-colors mt-1"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {photographer.phone}
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

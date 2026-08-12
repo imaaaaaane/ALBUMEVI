@@ -17,7 +17,7 @@ const translations: Record<Lang, Dict> = {
     "hero.title2": "The Purest Form of School Memories",
     "hero.subtitle":
       "The trusted brand in professional school photography. We capture joy-filled memories and leave a smile on every child's face.",
-    "hero.ratingText": "200+ schools served with satisfaction",
+    "hero.ratingText": "500+ schools served with satisfaction",
     "hero.ratingAvg": "Average rating",
     "hero.monthlyStats": "38 school sessions",
     "hero.monthlyStatsSub": "This month",
@@ -153,7 +153,7 @@ const translations: Record<Lang, Dict> = {
     "hero.title2": "Saf Halini Sanata Dönüştürüyoruz",
     "hero.subtitle":
       "Profesyonel okul fotoğrafçılığında Türkiye'nin güvendiği marka. Neşe dolu anıları yakalamak ve çocukların yüzünde gülümseme bırakmak için varız.",
-    "hero.ratingText": "200+ okul memnuniyetle hizmet aldı",
+    "hero.ratingText": "500+ okul memnuniyetle hizmet aldı",
     "hero.ratingAvg": "Ortalama puan",
     "hero.monthlyStats": "38 okul çekimi",
     "hero.monthlyStatsSub": "Bu ay",
@@ -289,7 +289,7 @@ const translations: Record<Lang, Dict> = {
     "hero.title2": "إلى فن خالص",
     "hero.subtitle":
       "العلامة التجارية الموثوقة في تصوير المدارس الاحترافي. نحن نلتقط ذكريات مليئة بالفرح ونرسم ابتسامة على وجه كل طفل.",
-    "hero.ratingText": "أكثر من 200 مدرسة تم تقديم الخدمة لها برضا تام",
+    "hero.ratingText": "أكثر من 500 مدرسة تم تقديم الخدمة لها برضا تام",
     "hero.ratingAvg": "متوسط التقييم",
     "hero.monthlyStats": "38 جلسة تصوير",
     "hero.monthlyStatsSub": "هذا الشهر",
@@ -406,7 +406,7 @@ const translations: Record<Lang, Dict> = {
     "hero.title1": "Pênasekirina Nû ya",
     "hero.title2": "Forma Herî Paqij a Bîranînên Dibistanê",
     "hero.subtitle": "Markaya pêbawer a di wênekêşiya dibistanê ya profesyonel de. Em bîranînên tije şadî tomar dikin û li ser rûyê her zarokekî kenekî dihêlin.",
-    "hero.ratingText": "Zêdetirî 200 dibistan bi dilxweşî xizmet wergirtin",
+    "hero.ratingText": "Zêdetirî 500 dibistan bi dilxweşî xizmet wergirtin",
     "hero.ratingAvg": "Puanê navînî",
     "hero.monthlyStats": "38 kişandina wêneyan a dibistanê",
     "hero.monthlyStatsSub": "Vê mehê",

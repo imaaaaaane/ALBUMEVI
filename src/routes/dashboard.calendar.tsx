@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Camera, Plus } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Camera, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -12,15 +12,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/dashboard/calendar")({
   component: CalendarView,
@@ -28,124 +33,82 @@ export const Route = createFileRoute("/dashboard/calendar")({
 
 type Shoot = {
   id: string;
-  date: string; // YYYY-MM-DD
-  time: string;
-  school: string;
-  type: string;
+  shoot_date: string;
+  shoot_time: string;
+  school_name: string;
+  photographer_name: string;
+  event_color?: string;
 };
 
-const SHOOT_TYPES = [
-  "Class Group Photo",
-  "Individual Portraits",
-  "Sports Team",
-  "Graduation",
-  "Yearbook Session",
-  "Event Coverage",
-];
-
-const SEED: Shoot[] = [
-  {
-    id: "s1",
-    date: "2026-05-22",
-    time: "09:00",
-    school: "Beverly Hills School",
-    type: "Class Group Photo",
-  },
-  {
-    id: "s2",
-    date: "2026-05-22",
-    time: "13:30",
-    school: "Greenfield Elementary",
-    type: "Individual Portraits",
-  },
-  {
-    id: "s3",
-    date: "2026-05-26",
-    time: "10:00",
-    school: "Tetouan High",
-    type: "Individual Portraits",
-  },
-  { id: "s4", date: "2026-06-02", time: "08:30", school: "Maple Leaf High", type: "Sports Team" },
-  {
-    id: "s5",
-    date: "2026-06-09",
-    time: "11:00",
-    school: "Riverside Prep",
-    type: "Yearbook Session",
-  },
-  { id: "s6", date: "2026-06-15", time: "14:00", school: "Oakridge Middle", type: "Graduation" },
+const PALETTE = [
+  "#D4B8A8", // Nude Beige
+  "#C5A8A9", // Dusty Rose
+  "#B5A39D", // Warm Taupe
+  "#98847E", // Soft Mocha
+  "#C29F90", // Muted Clay
 ];
 
 const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
 ];
-
 const MONTHS_TR = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
 ];
-
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 
-const STORAGE_KEY = "albumevi.calendar.shoots";
-
-const getShootTypeLabel = (type: string, lang: string) => {
-  if (lang !== "TR") return type;
-  const mappings: Record<string, string> = {
-    "Class Group Photo": "Sınıf Grup Fotoğrafı",
-    "Individual Portraits": "Bireysel Portreler",
-    "Sports Team": "Spor Takımı Çekimi",
-    "Graduation": "Mezuniyet Çekimi",
-    "Yearbook Session": "Yıllık Çekimi",
-    "Event Coverage": "Etkinlik Çekimi",
-  };
-  return mappings[type] ?? type;
-};
-
 function CalendarView() {
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
+  const { teamId } = useAuth();
+  const qc = useQueryClient();
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [shoots, setShoots] = useState<Shoot[]>(SEED);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ school: "", date: "", time: "09:00", type: SHOOT_TYPES[0] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState({ school_name: "", photographer_name: "", photographer_id: "", date: "", time: "09:00", event_color: PALETTE[0] });
 
-  // Hydrate from localStorage
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setShoots(JSON.parse(raw));
-    } catch {}
-  }, []);
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles", teamId],
+    queryFn: async () => {
+      if (!teamId) return [];
+      const { data, error } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("team_id", teamId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!teamId,
+  });
 
-  // Persist
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shoots));
-    } catch {}
-  }, [shoots]);
+  const { data: shoots = [] } = useQuery({
+    queryKey: ["photo_shoots"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("photo_shoots" as any)
+        .select("*")
+        .order("shoot_date", { ascending: true })
+        .order("shoot_time", { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return (data as any[]) || [];
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("photo_shoots" as any)
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Çekim silindi.");
+      qc.invalidateQueries({ queryKey: ["photo_shoots"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Çekim silinemedi.")
+  });
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -159,7 +122,8 @@ function CalendarView() {
 
   const shootsByDay = new Map<number, Shoot[]>();
   for (const s of shoots) {
-    const dt = new Date(s.date);
+    if (!s.shoot_date) continue;
+    const dt = new Date(s.shoot_date);
     if (dt.getFullYear() === year && dt.getMonth() === month) {
       const day = dt.getDate();
       shootsByDay.set(day, [...(shootsByDay.get(day) ?? []), s]);
@@ -167,25 +131,58 @@ function CalendarView() {
   }
 
   const upcoming = [...shoots]
-    .filter((s) => new Date(s.date) >= new Date(today.toDateString()))
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .filter((s) => {
+      if (!s.shoot_date) return false;
+      const d = new Date(s.shoot_date);
+      const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      return d.getTime() >= t.getTime();
+    })
     .slice(0, 6);
 
-  const handleAdd = () => {
-    if (!form.school.trim() || !form.date) return;
-    const shoot: Shoot = {
-      id: crypto.randomUUID(),
-      school: form.school.trim(),
-      date: form.date,
-      time: form.time || "09:00",
-      type: form.type,
-    };
-    setShoots((prev) => [...prev, shoot]);
-    // Jump cursor to the new event's month
-    const dt = new Date(form.date);
-    setCursor(new Date(dt.getFullYear(), dt.getMonth(), 1));
-    setForm({ school: "", date: "", time: "09:00", type: SHOOT_TYPES[0] });
-    setOpen(false);
+  const handleAdd = async () => {
+    if (!form.school_name.trim() || !form.date) return;
+    
+    setIsSubmitting(true);
+    try {
+      const newShoot = {
+        school_name: form.school_name.trim(),
+        photographer_name: form.photographer_name.trim(),
+        photographer_id: form.photographer_id || null,
+        shoot_date: form.date,
+        shoot_time: form.time || "09:00",
+        event_color: form.event_color,
+        team_id: teamId,
+      };
+
+      const { error } = await (supabase as any)
+        .from("photo_shoots")
+        .insert(newShoot);
+        
+      if (error) {
+        console.error("Insert Error:", error);
+        throw error;
+      }
+      
+      toast.success("Çekim başarıyla eklendi");
+      qc.invalidateQueries({ queryKey: ["photo_shoots"] });
+      
+      const dt = new Date(form.date);
+      setCursor(new Date(dt.getFullYear(), dt.getMonth(), 1));
+      
+      setForm({ school_name: "", photographer_name: "", photographer_id: "", date: "", time: "09:00", event_color: PALETTE[0] });
+      setOpen(false);
+    } catch (e: any) {
+      console.error("Catch Block Error:", e);
+      toast.error(`Kayıt hatası: ${e.message || "Bilinmeyen bir hata oluştu"}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteEvent = (id: string) => {
+    if (window.confirm("Bu çekimi silmek istediğinize emin misiniz?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   return (
@@ -197,7 +194,7 @@ function CalendarView() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 bg-[#A67C52] text-white hover:bg-[#A67C52]/90 shadow-sm shadow-[#A67C52]/20">
               <Plus className="h-4 w-4" /> Yeni Çekim Ekle
             </Button>
           </DialogTrigger>
@@ -212,19 +209,68 @@ function CalendarView() {
                 <Input
                   id="school"
                   placeholder={lang === "TR" ? "Örn. Batman Anadolu Lisesi" : "e.g. Beverly Hills School"}
-                  value={form.school}
-                  onChange={(e) => setForm({ ...form, school: e.target.value })}
+                  value={form.school_name}
+                  onChange={(e) => setForm({ ...form, school_name: e.target.value })}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="photographer">Fotoğrafçı Adı</Label>
+                <select
+                  id="photographer"
+                  value={form.photographer_id}
+                  onChange={(e) => {
+                    const selected = profiles.find((p: any) => p.id === e.target.value);
+                    if (selected) {
+                      setForm({ ...form, photographer_name: selected.full_name || selected.email, photographer_id: selected.id });
+                    } else {
+                      setForm({ ...form, photographer_name: "", photographer_id: "" });
+                    }
+                  }}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="" disabled>Fotoğrafçı (Ekip Üyesi) Seçiniz...</option>
+                  {profiles.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.full_name || p.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="date">Tarih</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  />
+                <div className="grid gap-2 flex-col">
+                  <Label>Tarih</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={`w-full justify-start text-left font-normal bg-background/50 border-border hover:bg-background/80 hover:text-foreground ${!form.date ? "text-muted-foreground" : ""}`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+                        {form.date ? (
+                          format(new Date(form.date), "dd MMMM yyyy", { locale: tr })
+                        ) : (
+                          <span>Tarih seçin</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={form.date ? new Date(form.date) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            const yyyy = date.getFullYear();
+                            const mm = String(date.getMonth() + 1).padStart(2, "0");
+                            const dd = String(date.getDate()).padStart(2, "0");
+                            setForm({ ...form, date: `${yyyy}-${mm}-${dd}` });
+                          }
+                        }}
+                        initialFocus
+                        locale={tr}
+                        className="bg-card text-foreground rounded-md [&_[data-selected-single=true]]:bg-[#A67C52] [&_[data-selected-single=true]]:text-white [&_[data-selected-single=true]]:hover:bg-[#A67C52]/90"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="time">Saat</Label>
@@ -236,28 +282,33 @@ function CalendarView() {
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Çekim Türü</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SHOOT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {getShootTypeLabel(t, lang)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-2 mt-2">
+                <Label>Etkinlik Rengi</Label>
+                <div className="flex items-center gap-3">
+                  {PALETTE.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={() => setForm({ ...form, event_color: hex })}
+                      className={`h-7 w-7 rounded-full border-2 transition-all ${
+                        form.event_color === hex
+                          ? "border-white scale-110 shadow-sm"
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      title={`Renk: ${hex}`}
+                      aria-label={`Renk seç: ${hex}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 {lang === "TR" ? "Vazgeç" : "Cancel"}
               </Button>
-              <Button onClick={handleAdd} disabled={!form.school.trim() || !form.date}>
-                {lang === "TR" ? "Çekim Planla" : "Schedule Shoot"}
+              <Button className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90" onClick={handleAdd} disabled={!form.school_name.trim() || !form.date || isSubmitting}>
+                {isSubmitting ? "Ekleniyor..." : (lang === "TR" ? "Çekim Planla" : "Schedule Shoot")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -269,7 +320,7 @@ function CalendarView() {
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-primary" />
+              <CalendarIcon className="h-4 w-4 text-[#A67C52]" />
               <h2 className="font-semibold">
                 {lang === "TR" ? MONTHS_TR[month] : MONTHS[month]} {year}
               </h2>
@@ -329,7 +380,7 @@ function CalendarView() {
                   {day && (
                     <>
                       <div
-                        className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-primary font-semibold text-primary-foreground" : "text-foreground"}`}
+                        className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-[#A67C52] font-semibold text-white shadow-md shadow-[#A67C52]/20" : "text-foreground"}`}
                       >
                         {day}
                       </div>
@@ -337,10 +388,15 @@ function CalendarView() {
                         {dayShoots.map((s) => (
                           <div
                             key={s.id}
-                            className="truncate rounded border border-primary/40 bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
-                            title={`${s.time} · ${s.school} — ${getShootTypeLabel(s.type, lang)}`}
+                            className="truncate rounded border px-1.5 py-0.5 text-[10px]"
+                            style={{
+                              backgroundColor: `${s.event_color || "#A67C52"}26`,
+                              borderColor: `${s.event_color || "#A67C52"}66`,
+                              color: s.event_color || "#A67C52"
+                            }}
+                            title={`${s.shoot_time} · ${s.school_name} — ${s.photographer_name}`}
                           >
-                            <span className="font-medium">{s.time}</span> {s.school}
+                            <span className="font-medium">{s.shoot_time ? s.shoot_time.slice(0, 5) : ""}</span> {s.school_name}
                           </div>
                         ))}
                       </div>
@@ -355,7 +411,7 @@ function CalendarView() {
         {/* Upcoming shoots sidebar */}
         <aside className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
-            <Camera className="h-4 w-4 text-primary" />
+            <Camera className="h-4 w-4 text-[#A67C52]" />
             <h2 className="font-semibold">Yaklaşan Çekimler</h2>
           </div>
           <ul className="space-y-3">
@@ -363,24 +419,37 @@ function CalendarView() {
               <li className="text-sm text-muted-foreground">Yaklaşan çekim bulunmuyor.</li>
             ) : (
               upcoming.map((s) => {
-                const dt = new Date(s.date);
+                const dt = new Date(s.shoot_date);
                 return (
                   <li
                     key={s.id}
-                    className="flex gap-3 rounded-lg border border-border bg-background/40 p-3"
+                    className="flex gap-3 items-center rounded-lg border border-border bg-background/40 p-3 group relative pr-12"
                   >
-                    <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-primary/15 text-primary">
+                    <div 
+                      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md"
+                      style={{
+                        backgroundColor: `${s.event_color || "#A67C52"}26`,
+                        color: s.event_color || "#A67C52"
+                      }}
+                    >
                       <div className="text-[10px] uppercase">
                         {lang === "TR" ? MONTHS_TR[dt.getMonth()].slice(0, 3) : MONTHS[dt.getMonth()].slice(0, 3)}
                       </div>
                       <div className="text-lg font-bold leading-none">{dt.getDate()}</div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{s.school}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{s.school_name}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {s.time} · {getShootTypeLabel(s.type, lang)}
+                        {s.shoot_time ? s.shoot_time.slice(0,5) : ""} · {s.photographer_name}
                       </div>
                     </div>
+                    <button 
+                      onClick={() => handleDeleteEvent(s.id)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-md text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </li>
                 );
               })
