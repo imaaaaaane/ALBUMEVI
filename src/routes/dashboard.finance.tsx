@@ -157,6 +157,7 @@ const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transacti
 const getSchoolRemaining = (f: School, rates?: Record<string, number>) => Math.max(0, getSchoolDebt(f, rates) - getSchoolPaid(f, rates));
 
 function AccountingDashboard() {
+  const { teamId } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
 
