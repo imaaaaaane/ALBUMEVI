@@ -393,8 +393,11 @@ function AccountingDashboard() {
         .order("created_at", { ascending: true });
       if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
 
-      console.log("Schools Raw:", schools);
-      console.log("School Transactions Raw:", transactions);
+      const { data: orders, error: oErr } = await supabaseClient
+        .from("orders")
+        .select("id, school_id, package_name, quantity, total_price, order_status, created_at")
+        .order("created_at", { ascending: true });
+      const ordersData = orders || [];
 
       return schools.map((s) => ({
         id: s.id,
@@ -1321,7 +1324,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
-                  <Button size="sm" onClick={() => { setNewTxType("debt"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                  <Button size="sm" onClick={() => { setNewTxType("payment"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
                     <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
                   </Button>
                 </div>
@@ -2099,7 +2102,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const totalRemaining = schools.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
 
   const addSchoolMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number }) => {
+    mutationFn: async (input: { name: string; currency: string; rest: number }) => {
       const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
       if (sessionError || !sessionData?.session) {
         throw new Error("Oturum bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yapın.");
@@ -2112,11 +2115,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         .single();
       if (sErr) throw sErr;
 
-      if (input.taken > 0) {
-        await supabaseClient.from("school_transactions").insert({
-          school_id: school.id, transaction_type: "debt", amount: input.taken, description: "İlk Borç Kaydı", currency: input.currency
-        });
-      }
+
       if (input.rest > 0) {
         await supabaseClient.from("school_transactions").insert({
           school_id: school.id, transaction_type: "payment", amount: input.rest, description: "İlk Ödeme Kaydı", currency: input.currency
@@ -2133,13 +2132,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   });
 
   const editSchoolMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; takenDiff: number; restDiff: number }) => {
+    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number }) => {
       await supabaseClient.from("schools").update({ name: input.name, currency: input.currency }).eq("id", input.id);
-      if (input.takenDiff !== 0) {
-        await supabaseClient.from("school_transactions").insert({
-          school_id: input.id, transaction_type: "debt", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Borç)", currency: input.currency
-        });
-      }
+
       if (input.restDiff !== 0) {
         await supabaseClient.from("school_transactions").insert({
           school_id: input.id, transaction_type: "payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)", currency: input.currency
@@ -2177,7 +2172,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchoolName.trim()) return;
-    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, taken: parseFloat(newSchoolTaken) || 0, rest: parseFloat(newSchoolRest) || 0 });
+    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0 });
   };
 
   const handleEditSchool = (e: React.FormEvent) => {
@@ -2185,13 +2180,11 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     if (!editSchoolId || !editSchoolName.trim()) return;
     const school = schools.find(f => f.id === editSchoolId);
     if (!school) return;
-    const currentTaken = school.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
     const currentRest = school.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const newTaken = parseFloat(editSchoolTaken) || 0;
     const newRest = parseFloat(editSchoolRest) || 0;
     editSchoolMutation.mutate({
       id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency,
-      takenDiff: newTaken - currentTaken, restDiff: newRest - currentRest
+      restDiff: newRest - currentRest
     });
   };
 
@@ -2344,15 +2337,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newSchoolTaken} onChange={(e) => setNewSchoolTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
+              <Input type="number" min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAddSchoolOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
@@ -2379,15 +2366,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
-                <Input type="number" min="0" value={editSchoolRest} onChange={(e) => setEditSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
-                <Input type="number" min="0" value={editSchoolTaken} onChange={(e) => setEditSchoolTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
+              <Input type="number" min="0" value={editSchoolRest} onChange={(e) => setEditSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setEditSchoolId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
@@ -2458,13 +2439,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
           <DialogHeader><DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle></DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">İşlem Tipi</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setNewTxType("debt")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "debt" ? "bg-[#A67C52]/10 border-[#A67C52] text-[#A67C52]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Borç Ekle</button>
-                <button type="button" onClick={() => setNewTxType("payment")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "payment" ? "bg-[#12B76A]/10 border-[#12B76A] text-[#12B76A]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Ödeme Yapıldı</button>
-              </div>
-            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number" min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
