@@ -11,8 +11,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
 
-import appCss from "../styles.css?url";
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -94,7 +92,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
       {
         rel: "icon",
         type: "image/svg+xml",
