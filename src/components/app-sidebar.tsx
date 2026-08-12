@@ -63,7 +63,7 @@ export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const { lang, setLang } = useI18n();
-  const { user, role, fullName, avatarUrl, refreshProfile } = useAuth();
+  const { user, role, teamId, fullName, avatarUrl, refreshProfile } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(fullName || user?.email || "");
   const [editFile, setEditFile] = useState<File | null>(null);
@@ -91,10 +91,17 @@ export function AppSidebar() {
         newAvatarUrl = urlData.publicUrl;
       }
       
-      const { error } = await (supabase as any).from('profiles').update({
+      const payload: any = {
         full_name: editName,
         avatar_url: newAvatarUrl
-      }).eq('id', user.id);
+      };
+      
+      // Prevent UUID 'all' string error
+      if (teamId) {
+        payload.team_id = teamId === "all" ? null : teamId;
+      }
+      
+      const { error } = await (supabase as any).from('profiles').update(payload).eq('id', user.id);
       
       if (error) throw error;
       

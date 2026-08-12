@@ -50,7 +50,7 @@ function PortfolioPage() {
         .from("portfolio_images")
         .insert({
           image_url: publicUrlData.publicUrl,
-          team_id: teamId || null,
+          team_id: teamId === "all" ? null : (teamId || null),
         });
 
       if (dbError) throw dbError;

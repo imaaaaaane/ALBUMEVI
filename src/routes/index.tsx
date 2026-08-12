@@ -514,7 +514,7 @@ function Landing() {
         </div>
 
         {/* Image Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[250px]">
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
           {(dynamicPortfolio.length > 0 ? dynamicPortfolio : GALLERY_ITEMS).map((item: any, i: number) => (
             <motion.div
               key={item.id}
@@ -522,14 +522,14 @@ function Landing() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.5 }}
-              className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 aspect-[4/5]"
+              className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 break-inside-avoid mb-4"
             >
               <img
                 src={item.image_url || item.src}
                 alt={item.alt || "Portfolyo Görseli"}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                className="w-full h-auto object-cover rounded-lg group-hover:scale-110 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
             </motion.div>
           ))}
         </div>

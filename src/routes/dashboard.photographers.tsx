@@ -33,11 +33,14 @@ function PhotographersPage() {
     queryKey: ["photographers", teamId],
     queryFn: async () => {
       if (!teamId) return [];
-      const { data, error } = await (supabase as any)
+      let q = (supabase as any)
         .from("photographers")
         .select("*")
-        .eq("team_id", teamId)
         .order("created_at", { ascending: false });
+      if (teamId !== "all") {
+        q = q.eq("team_id", teamId);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -55,7 +58,7 @@ function PhotographersPage() {
       } else {
         const { error } = await (supabase as any)
           .from("photographers")
-          .insert({ ...payload, team_id: teamId });
+          .insert({ ...payload, team_id: teamId === "all" ? null : teamId });
         if (error) throw error;
       }
     },

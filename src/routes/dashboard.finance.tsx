@@ -2370,11 +2370,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryKey: ["print_expenses", teamId],
     enabled: !!teamId,
     queryFn: async () => {
-      const { data, error } = await supabaseClient
+      let q = supabaseClient
         .from("print_expenses")
         .select("*")
-        .eq("team_id", teamId)
         .order("created_at", { ascending: false });
+      
+      if (teamId !== "all") {
+        q = q.eq("team_id", teamId);
+      }
+      
+      const { data, error } = await q;
       if (error) throw error;
       return data.map((t) => {
         const match = String(t.description || "").match(/^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i);
@@ -2403,6 +2408,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
       setBaskiQuantity("1");
