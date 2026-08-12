@@ -2397,7 +2397,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .insert({
           amount: amount,
           description: desc,
-          team_id: teamId
+          team_id: teamId === "all" ? null : teamId
         });
       if (txErr) throw txErr;
     },
