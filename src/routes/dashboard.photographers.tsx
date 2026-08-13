@@ -23,7 +23,7 @@ function PhotographersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    name: "",
+    full_name: "",
     role: "Fotoğrafçı",
     phone: "",
     img: "",
@@ -115,7 +115,7 @@ function PhotographersPage() {
   };
 
   const handleSave = () => {
-    if (!form.name || !form.role) {
+    if (!form.full_name || !form.role) {
       toast.error("Ad ve Unvan alanları zorunludur.");
       return;
     }
@@ -124,13 +124,13 @@ function PhotographersPage() {
 
   const openAddModal = () => {
     setEditingId(null);
-    setForm({ name: "", role: "Fotoğrafçı", phone: "", img: "" });
+    setForm({ full_name: "", role: "Fotoğrafçı", phone: "", img: "" });
     setIsModalOpen(true);
   };
 
   const openEditModal = (p: any) => {
     setEditingId(p.id);
-    setForm({ name: p.name || "", role: p.role || "", phone: p.phone || "", img: p.img || "" });
+    setForm({ full_name: p.full_name || "", role: p.role || "", phone: p.phone || "", img: p.img || "" });
     setIsModalOpen(true);
   };
 
@@ -173,7 +173,7 @@ function PhotographersPage() {
             >
               <div className="aspect-[4/3] relative bg-black">
                 {p.img ? (
-                  <img src={p.img} alt={p.name} className="w-full h-full object-cover opacity-80" />
+                  <img src={p.img} alt={p.full_name} className="w-full h-full object-cover opacity-80" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/30">
                     Görsel Yok
@@ -200,7 +200,7 @@ function PhotographersPage() {
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="text-xl font-bold text-white">{p.name}</h3>
+                <h3 className="text-xl font-bold text-white">{p.full_name}</h3>
                 <p className="text-[#A67C52] font-medium text-sm mt-1">{p.role}</p>
                 {p.phone && (
                   <p className="text-white/60 text-sm mt-3 flex items-center gap-2">
@@ -256,9 +256,10 @@ function PhotographersPage() {
             <div className="space-y-2">
               <Label className="text-white/70">Ad Soyad</Label>
               <Input
+                id="full_name"
                 placeholder="Örn. Can Kaya"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                 className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
               />
             </div>

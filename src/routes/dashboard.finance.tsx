@@ -98,6 +98,8 @@ interface Employee {
   id: string;
   name: string;
   currency?: "TRY";
+  total_debt?: number;
+  total_paid?: number;
   transactions: EmployeeTransaction[];
 }
 
@@ -130,6 +132,8 @@ interface School {
   id: string;
   name: string;
   currency?: "TRY" | "EUR" | "USD";
+  paid_amount: number;
+  remaining_amount: number;
   transactions: SchoolTransaction[];
 }
 // --- Helper Functions for Calculations ---
@@ -144,23 +148,29 @@ const getFirmPaid = (f: Firm, rates?: Record<string, number>) => f.transactions.
 const getFirmDebt = (f: Firm, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
 const getFirmRemaining = (f: Firm, rates?: Record<string, number>) => Math.max(0, getFirmDebt(f, rates) - getFirmPaid(f, rates));
 
-const getEmployeePaid = (f: Employee) => f.transactions.filter((tx) => tx.type === "salary_payment" || tx.type === "advance").reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-const getEmployeeDebt = (f: Employee) => f.transactions.filter((tx) => tx.type === "debt_addition").reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-const getEmployeeRemaining = (f: Employee) => Math.max(0, getEmployeeDebt(f) - getEmployeePaid(f));
+const getEmployeeSalary = (f: Employee) => Number(f.total_debt || 0);
+const getEmployeePaid = (f: Employee) => Number(f.total_paid || 0);
+const getEmployeeRemaining = (f: Employee) => getEmployeeSalary(f) - getEmployeePaid(f);
 
 const getExpensePaid = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_paid, f.currency, rates);
 const getExpenseDebt = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_debt, f.currency, rates);
 const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) => Math.max(0, getExpenseDebt(f, rates) - getExpensePaid(f, rates));
 
-const getSchoolPaid = (f: School, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
+const getSchoolPaid = (f: School, rates?: Record<string, number>) => getConvertedAmount(f.paid_amount || 0, f.currency, rates);
 const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getSchoolRemaining = (f: School, rates?: Record<string, number>) => Math.max(0, getSchoolDebt(f, rates) - getSchoolPaid(f, rates));
+const getSchoolRemaining = (f: School, rates?: Record<string, number>) => getConvertedAmount(f.remaining_amount || 0, f.currency, rates);
 
 function AccountingDashboard() {
   const navigate = useNavigate();
-  const { teamId } = useAuth();
+  const { teamId, role } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState("");
+
+  useEffect(() => {
+    if (role === "photographer") {
+      navigate({ to: "/dashboard" });
+    }
+  }, [role, navigate]);
 
   const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski">("overview");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -303,7 +313,7 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: employees, error: sErr } = await supabaseClient
         .from("employees")
-        .select("id, name, currency, created_at")
+        .select("id, name, currency, total_debt, total_paid, created_at")
         .order("created_at", { ascending: false });
       if (sErr) return [];
 
@@ -320,6 +330,8 @@ function AccountingDashboard() {
         id: s.id,
         name: s.name,
         currency: s.currency as any,
+        total_debt: Number(s.total_debt || 0),
+        total_paid: Number(s.total_paid || 0),
         transactions: transactions
           .filter((t) => String(t.employee_id) === String(s.id))
           .map((t) => ({
@@ -362,7 +374,7 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: schools, error: sErr } = await supabaseClient
         .from("schools")
-        .select("id, name, currency, created_at")
+        .select("id, name, currency, created_at, paid_amount, remaining_amount")
         .order("created_at", { ascending: false });
       if (sErr) return [];
 
@@ -370,18 +382,14 @@ function AccountingDashboard() {
         .from("school_transactions")
         .select("id, school_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: true });
-      if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
-
-      const { data: orders, error: oErr } = await supabaseClient
-        .from("orders")
-        .select("id, school_id, package_name, quantity, total_price, order_status, created_at")
-        .order("created_at", { ascending: true });
-      const ordersData = orders || [];
+      if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, paid_amount: Number(s.paid_amount) || 0, remaining_amount: Number(s.remaining_amount) || 0, transactions: [] }));
 
       return schools.map((s) => ({
         id: s.id,
         name: s.name,
         currency: s.currency as any,
+        paid_amount: Number(s.paid_amount) || 0,
+        remaining_amount: Number(s.remaining_amount) || 0,
         transactions: transactions
           .filter((t) => String(t.school_id) === String(s.id))
           .map((t) => ({
@@ -843,6 +851,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
   const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
 
   const [newFirmName, setNewFirmName] = useState("");
+  const [newFirmDesc, setNewFirmDesc] = useState("");
   const [newFirmTaken, setNewFirmTaken] = useState(""); 
   const [newFirmRest, setNewFirmRest] = useState(""); 
   const [newFirmCurrency, setNewFirmCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
@@ -885,10 +894,10 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
   const totalRemaining = firms.reduce((sum, f) => sum + getFirmRemaining(f, exchangeRates), 0);
 
   const addFirmMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number }) => {
+    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number; desc: string }) => {
       const { data: supplier, error: sErr } = await supabaseClient
         .from("firms")
-        .insert({ name: input.name, currency: input.currency })
+        .insert({ name: input.name, currency: input.currency, description: input.desc })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
@@ -909,7 +918,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("Firma eklendi");
       setIsAddFirmOpen(false);
-      setNewFirmName(""); setNewFirmTaken(""); setNewFirmRest(""); setNewFirmCurrency("TRY");
+      setNewFirmName(""); setNewFirmDesc(""); setNewFirmTaken(""); setNewFirmRest(""); setNewFirmCurrency("TRY");
     },
   });
 
@@ -958,7 +967,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
   const handleAddFirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFirmName.trim()) return;
-    addFirmMutation.mutate({ name: newFirmName.trim(), currency: newFirmCurrency, taken: parseFloat(newFirmTaken) || 0, rest: parseFloat(newFirmRest) || 0 });
+    addFirmMutation.mutate({ name: newFirmName.trim(), currency: newFirmCurrency, taken: parseFloat(newFirmTaken) || 0, rest: parseFloat(newFirmRest) || 0, desc: newFirmDesc.trim() });
   };
 
   const handleEditFirm = (e: React.FormEvent) => {
@@ -1108,23 +1117,27 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
       <Dialog open={isAddFirmOpen} onOpenChange={setIsAddFirmOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
           <DialogHeader><DialogTitle className="text-xl font-bold">Firma Ekle</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddFirm} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Firma Adı</Label>
-              <Input required placeholder="Örn. Batman Albüm" value={newFirmName} onChange={(e) => setNewFirmName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 rounded-xl" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
-              <Select value={newFirmCurrency} onValueChange={(v: any) => setNewFirmCurrency(v)}>
-                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-[#131316] border-white/10 text-white">
-                  <SelectItem value="TRY">TRY (₺)</SelectItem>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                  <SelectItem value="EUR">EUR (€)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleAddFirm}>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Firma Adı</Label>
+                <Input required value={newFirmName} onChange={(e) => setNewFirmName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+                <Input value={newFirmDesc} onChange={(e) => setNewFirmDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
+                <Select value={newFirmCurrency} onValueChange={(v: any) => setNewFirmCurrency(v)}>
+                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#131316] border-white/10 text-white">
+                    <SelectItem value="TRY">TRY (₺)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newFirmCurrency)}</Label>
                 <Input type="number" min="0" placeholder="0" value={newFirmRest} onChange={(e) => setNewFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
@@ -1295,6 +1308,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
 
   const [newEmployeeName, setNewEmployeeName] = useState("");
+  const [newEmployeeDesc, setNewEmployeeDesc] = useState("");
   const [newEmployeeTaken, setNewEmployeeTaken] = useState(""); 
   const [newEmployeeRest, setNewEmployeeRest] = useState(""); 
 
@@ -1314,40 +1328,42 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const totalRemaining = employees.reduce((sum, f) => sum + getEmployeeRemaining(f), 0);
 
   const addEmployeeMutation = useMutation({
-    mutationFn: async (input: { name: string; taken: number; rest: number }) => {
+    mutationFn: async (input: { name: string; taken: number; rest: number; desc: string }) => {
+      const remaining = input.taken - input.rest;
       const { data: employee, error: sErr } = await supabaseClient
         .from("employees")
-        .insert({ name: input.name, currency: "TRY" })
+        .insert({ 
+          name: input.name, 
+          currency: "TRY",
+          total_debt: input.taken,
+          total_paid: input.rest
+        })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
 
-      if (input.taken > 0) {
-        await supabaseClient.from("salary_transactions").insert({
-          employee_id: employee.id, transaction_type: "debt_addition", amount: input.taken, description: "İlk Maaş Tahakkuku"
-        });
-      }
-      if (input.rest > 0) {
-        await supabaseClient.from("salary_transactions").insert({
-          employee_id: employee.id, transaction_type: "salary_payment", amount: input.rest, description: "İlk Maaş Ödemesi"
-        });
-      }
       return employee;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("Personel eklendi");
       setIsAddEmployeeOpen(false);
-      setNewEmployeeName(""); setNewEmployeeTaken(""); setNewEmployeeRest("");
+      setNewEmployeeName(""); setNewEmployeeDesc(""); setNewEmployeeTaken(""); setNewEmployeeRest("");
     },
   });
 
   const editEmployeeMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; takenDiff: number; restDiff: number }) => {
-      await supabaseClient.from("employees").update({ name: input.name }).eq("id", input.id);
+    mutationFn: async (input: { id: string; name: string; takenDiff: number; restDiff: number; newTaken: number; newRest: number }) => {
+      const remaining = input.newTaken - input.newRest;
+      await supabaseClient.from("employees").update({ 
+        name: input.name,
+        total_debt: input.newTaken,
+        total_paid: input.newRest
+      }).eq("id", input.id);
+      
       if (input.takenDiff !== 0) {
         await supabaseClient.from("salary_transactions").insert({
-          employee_id: input.id, transaction_type: "debt_addition", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Borç)"
+          employee_id: input.id, transaction_type: "debt_addition", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Maaş)"
         });
       }
       if (input.restDiff !== 0) {
@@ -1372,10 +1388,24 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   });
 
   const addTxMutation = useMutation({
-    mutationFn: async (input: { employee_id: string; type: string; amount: number; desc: string; date: string }) => {
+    mutationFn: async (input: { employee_id: string; type: string; amount: number; desc: string; date: string; currentSalary: number; currentPaid: number }) => {
       await supabaseClient.from("salary_transactions").insert({
         employee_id: input.employee_id, transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString()
       });
+
+      let newSalary = input.currentSalary;
+      let newPaid = input.currentPaid;
+
+      if (input.type === "debt_addition") {
+        newSalary += input.amount;
+      } else if (input.type === "salary_payment" || input.type === "advance") {
+        newPaid += input.amount;
+      }
+
+      await supabaseClient.from("employees").update({
+        total_debt: newSalary,
+        total_paid: newPaid
+      }).eq("id", input.employee_id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
@@ -1387,7 +1417,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const handleAddEmployee = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmployeeName.trim()) return;
-    addEmployeeMutation.mutate({ name: newEmployeeName.trim(), taken: parseFloat(newEmployeeTaken) || 0, rest: parseFloat(newEmployeeRest) || 0 });
+    addEmployeeMutation.mutate({ name: newEmployeeName.trim(), taken: parseFloat(newEmployeeTaken) || 0, rest: parseFloat(newEmployeeRest) || 0, desc: newEmployeeDesc.trim() });
   };
 
   const handleEditEmployee = (e: React.FormEvent) => {
@@ -1395,20 +1425,35 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     if (!editEmployeeId || !editEmployeeName.trim()) return;
     const employee = employees.find(f => f.id === editEmployeeId);
     if (!employee) return;
-    const currentTaken = employee.transactions.filter((tx) => tx.type === "debt_addition").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const currentRest = employee.transactions.filter((tx) => tx.type === "salary_payment" || tx.type === "advance").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentTaken = employee.total_debt || 0;
+    const currentRest = employee.total_paid || 0;
     const newTaken = parseFloat(editEmployeeTaken) || 0;
     const newRest = parseFloat(editEmployeeRest) || 0;
     editEmployeeMutation.mutate({
-      id: editEmployeeId, name: editEmployeeName.trim(),
-      takenDiff: newTaken - currentTaken, restDiff: newRest - currentRest
+      id: editEmployeeId, 
+      name: editEmployeeName.trim(),
+      newTaken,
+      newRest,
+      takenDiff: newTaken - currentTaken, 
+      restDiff: newRest - currentRest
     });
   };
 
   const handleAddTx = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployeeId || !newTxAmount || !newTxDesc.trim()) return;
-    addTxMutation.mutate({ employee_id: selectedEmployeeId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate });
+    const employee = employees.find((f) => f.id === selectedEmployeeId);
+    if (!employee) return;
+    
+    addTxMutation.mutate({ 
+      employee_id: selectedEmployeeId, 
+      type: newTxType, 
+      amount: parseFloat(newTxAmount), 
+      desc: newTxDesc.trim(), 
+      date: newTxDate,
+      currentSalary: employee.total_debt || 0,
+      currentPaid: employee.total_paid || 0
+    });
   };
 
   const selectedEmployee = employees.find((f) => f.id === selectedEmployeeId);
@@ -1476,8 +1521,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                         e.stopPropagation(); 
                         setEditEmployeeId(f.id); 
                         setEditEmployeeName(f.name); 
-                        setEditEmployeeRest(f.transactions.filter((tx) => tx.type === "salary_payment" || tx.type === "advance").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                        setEditEmployeeTaken(f.transactions.filter((tx) => tx.type === "debt_addition").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
+                        setEditEmployeeRest(f.total_paid?.toString() || "0");
+                        setEditEmployeeTaken(f.total_debt?.toString() || "0");
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
@@ -1531,6 +1576,10 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Personel Adı</Label>
               <Input required placeholder="Örn. İmane Himmich" value={newEmployeeName} onChange={(e) => setNewEmployeeName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+              <Input placeholder="Ek notlar..." value={newEmployeeDesc} onChange={(e) => setNewEmployeeDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -1594,7 +1643,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                 </div>
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Maaş</span>
-                  <span className="font-mono text-sm font-bold text-white block mt-0.5">{getEmployeeDebt(selectedEmployee).toLocaleString()} ₺</span>
+                  <span className="font-mono text-sm font-bold text-white block mt-0.5">{getEmployeeSalary(selectedEmployee).toLocaleString()} ₺</span>
                 </div>
                 <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
                   <span className="text-[9px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Alacak</span>
@@ -1684,6 +1733,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
   const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
 
   const [newExpenseName, setNewExpenseName] = useState("");
+  const [newExpenseDesc, setNewExpenseDesc] = useState("");
   const [newExpenseTaken, setNewExpenseTaken] = useState(""); 
   const [newExpenseRest, setNewExpenseRest] = useState(""); 
 
@@ -1705,10 +1755,10 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
   const totalRemaining = expenses.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
 
   const addExpenseMutation = useMutation({
-    mutationFn: async (input: { name: string; taken: number; rest: number }) => {
+    mutationFn: async (input: { name: string; taken: number; rest: number; desc: string }) => {
       const { data: expense, error: sErr } = await supabaseClient
         .from("common_expenses")
-        .insert({ name: input.name, currency: "TRY", total_debt: input.taken, total_paid: input.rest })
+        .insert({ name: input.name, currency: "TRY", total_debt: input.taken, total_paid: input.rest, description: input.desc })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
@@ -1718,7 +1768,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
       qc.invalidateQueries({ queryKey: ["expenses_ledger"] });
       toast.success("Gider merkezi eklendi");
       setIsAddExpenseOpen(false);
-      setNewExpenseName(""); setNewExpenseTaken(""); setNewExpenseRest("");
+      setNewExpenseName(""); setNewExpenseDesc(""); setNewExpenseTaken(""); setNewExpenseRest("");
     },
   });
 
@@ -1747,7 +1797,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExpenseName.trim()) return;
-    addExpenseMutation.mutate({ name: newExpenseName.trim(), taken: parseFloat(newExpenseTaken) || 0, rest: parseFloat(newExpenseRest) || 0 });
+    addExpenseMutation.mutate({ name: newExpenseName.trim(), taken: parseFloat(newExpenseTaken) || 0, rest: parseFloat(newExpenseRest) || 0, desc: newExpenseDesc.trim() });
   };
 
   const handleUpdateExpense = (e: React.FormEvent) => {
@@ -1875,6 +1925,10 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
               <Label className="text-sm font-semibold text-gray-300">Gider Adı (Örn: Elektrik Faturası)</Label>
               <Input required placeholder="Örn. Kira" value={newExpenseName} onChange={(e) => setNewExpenseName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+              <Input placeholder="Ek notlar..." value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) ₺</Label>
@@ -1921,7 +1975,6 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     </div>
   );
 }
-
 // ───────── Okullar ListView Component ─────────
 interface OkullarListViewProps {
   schools: School[];
@@ -1939,6 +1992,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
 
   const [newSchoolName, setNewSchoolName] = useState("");
+  const [newSchoolDesc, setNewSchoolDesc] = useState("");
   const [newSchoolTaken, setNewSchoolTaken] = useState("");
   const [newSchoolRest, setNewSchoolRest] = useState("");
   const [newSchoolCurrency, setNewSchoolCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
@@ -1973,29 +2027,17 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     return amount;
   };
 
-  const getTransactionTryAmount = (tx: SchoolTransaction, schoolCurrency?: string) => convertToTry(tx.amount, schoolCurrency);
-
-  const totalPaid = schools.reduce((sum, f) => {
-    const paidTry = f.transactions.filter((tx) => tx.type === "payment").reduce((s, tx) => s + getTransactionTryAmount(tx, f.currency), 0);
-    return sum + paidTry;
-  }, 0);
-
+  const totalPaid = schools.reduce((sum, f) => sum + getSchoolPaid(f, exchangeRates), 0);
   const totalRemaining = schools.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
 
   const addSchoolMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; rest: number }) => {
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-      if (sessionError || !sessionData?.session) {
-        throw new Error("Oturum bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yapın.");
-      }
-
+    mutationFn: async (input: { name: string; currency: string; rest: number; desc: string }) => {
       const { data: school, error: sErr } = await supabaseClient
         .from("schools")
-        .insert({ name: input.name, currency: input.currency })
+        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0 })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
-
 
       if (input.rest > 0) {
         await supabaseClient.from("school_transactions").insert({
@@ -2008,13 +2050,13 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("Okul eklendi");
       setIsAddSchoolOpen(false);
-      setNewSchoolName(""); setNewSchoolTaken(""); setNewSchoolRest(""); setNewSchoolCurrency("TRY");
+      setNewSchoolName(""); setNewSchoolDesc(""); setNewSchoolTaken(""); setNewSchoolRest(""); setNewSchoolCurrency("TRY");
     },
   });
 
   const editSchoolMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number }) => {
-      await supabaseClient.from("schools").update({ name: input.name, currency: input.currency }).eq("id", input.id);
+    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number; paid_amount: number }) => {
+      await supabaseClient.from("schools").update({ name: input.name, currency: input.currency, paid_amount: input.paid_amount }).eq("id", input.id);
 
       if (input.restDiff !== 0) {
         await supabaseClient.from("school_transactions").insert({
@@ -2053,20 +2095,18 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchoolName.trim()) return;
-    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0 });
+    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0, desc: newSchoolDesc.trim() });
   };
 
   const handleEditSchool = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editSchoolId || !editSchoolName.trim()) return;
-    const school = schools.find(f => f.id === editSchoolId);
+    if (!editSchoolId) return;
+    const school = schools.find((f) => f.id === editSchoolId);
     if (!school) return;
-    const currentRest = school.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const newRest = parseFloat(editSchoolRest) || 0;
-    editSchoolMutation.mutate({
-      id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency,
-      restDiff: newRest - currentRest
-    });
+    const oldPaid = school.paid_amount || 0;
+    const newPaid = parseFloat(editSchoolRest) || 0;
+    const diff = newPaid - oldPaid;
+    editSchoolMutation.mutate({ id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency, restDiff: diff, paid_amount: newPaid });
   };
 
   const handleAddTx = (e: React.FormEvent) => {
@@ -2148,7 +2188,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                         setEditSchoolId(f.id); 
                         setEditSchoolName(f.name); 
                         setEditSchoolCurrency(f.currency as any || "TRY");
-                        setEditSchoolRest(f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
+                        setEditSchoolRest(String(f.paid_amount || 0));
                         setEditSchoolTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
                         <Edit2 className="w-4.5 h-4.5" />
@@ -2208,6 +2248,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               <Input required placeholder="Örn. Atatürk İlkokulu" value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 rounded-xl" />
             </div>
             <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+                <Input placeholder="Ek notlar..." value={newSchoolDesc} onChange={(e) => setNewSchoolDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
               <Select value={newSchoolCurrency} onValueChange={(v: any) => setNewSchoolCurrency(v)}>
                 <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
@@ -2351,6 +2395,13 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const [baskiSelectedProduct, setBaskiSelectedProduct] = useState("");
   const [baskiQuantity, setBaskiQuantity] = useState("1");
   const [baskiAciklama, setBaskiAciklama] = useState("");
+  const [baskiPaidAmount, setBaskiPaidAmount] = useState("");
+  const [baskiRemainingAmount, setBaskiRemainingAmount] = useState("");
+  const [baskiEditId, setBaskiEditId] = useState<string | null>(null);
+  const [isBaskiEditModalOpen, setBaskiEditModalOpen] = useState(false);
+  const [baskiEditAmount, setBaskiEditAmount] = useState("");
+  const [baskiEditPaid, setBaskiEditPaid] = useState("");
+  const [baskiEditDesc, setBaskiEditDesc] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -2389,19 +2440,22 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           product: match ? match[1].trim() : "-",
           quantity: match ? parseInt(match[2], 10) : "-",
           desc: match ? (match[3] ? match[3].trim() : "-") : (t.description || "-"),
-          amount: t.amount
+          amount: t.amount,
+          paidAmount: t.paid_amount || 0,
         };
       });
     }
   });
 
   const addBaskiExpenseMutation = useMutation({
-    mutationFn: async ({ amount, desc }: { amount: number; desc: string }) => {
+    mutationFn: async ({ amount, desc, paid, remaining }: { amount: number; desc: string; paid: number; remaining: number }) => {
       const { error: txErr } = await supabaseClient
         .from("print_expenses")
         .insert({
           amount: amount,
           description: desc,
+          paid_amount: paid,
+          remaining_amount: remaining,
           team_id: teamId === "all" ? null : teamId
         });
       if (txErr) throw txErr;
@@ -2415,13 +2469,59 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       setBaskiQuantity("1");
       setBaskiSelectedProduct("");
       setBaskiAciklama("");
+      setBaskiPaidAmount("");
+      setBaskiRemainingAmount("");
     },
     onError: (error) => {
       toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
     }
   });
 
+  const deleteBaskiExpenseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabaseClient.from("print_expenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+      toast.success("Kayıt silindi");
+    }
+  });
+
+  const editBaskiExpenseMutation = useMutation({
+    mutationFn: async (input: { id: string, amount: number, paid: number, desc: string }) => {
+      const remaining = input.amount - input.paid;
+      const { error } = await supabaseClient.from("print_expenses").update({
+        amount: input.amount,
+        paid_amount: input.paid,
+        remaining_amount: remaining > 0 ? remaining : 0,
+        description: input.desc
+      }).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+      toast.success("Kayıt güncellendi");
+      setBaskiEditModalOpen(false);
+    }
+  });
+
+  const openBaskiEdit = (tx: any) => {
+    setBaskiEditId(tx.id);
+    setBaskiEditAmount(String(tx.amount));
+    setBaskiEditPaid(String(tx.paidAmount));
+    setBaskiEditDesc(tx.desc);
+    setBaskiEditModalOpen(true);
+  };
+
+
   const genelToplam = baskiTransactions.reduce((sum: number, item: any) => sum + item.amount, 0);
+  const totalBaskiPaid = baskiTransactions.reduce((sum: number, item: any) => sum + item.paidAmount, 0);
+  const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
   return (
     <div className="space-y-6">
@@ -2452,13 +2552,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   <th className="px-4 py-3 font-semibold">Açıklama</th>
                   <th className="px-4 py-3 font-semibold">Ürün/Ölçü</th>
                   <th className="px-4 py-3 font-semibold text-center">Adet</th>
-                  <th className="px-4 py-3 font-semibold text-right rounded-tr-xl">Tutar (₺)</th>
+                  <th className="px-4 py-3 font-semibold text-right">Tutar (₺)</th>
+                  <th className="px-4 py-3 font-semibold text-right">Ödenen (₺)</th>
+                  <th className="px-4 py-3 font-semibold text-right">Kalan (₺)</th>
+                  <th className="px-4 py-3 font-semibold text-center rounded-tr-xl">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {baskiTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4">
+                    <td colSpan={8} className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4">
                       Henüz işlem bulunmuyor.
                     </td>
                   </tr>
@@ -2472,6 +2575,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                       <td className="px-4 py-3 text-right font-mono font-bold text-[#A67C52]">
                         {tx.amount.toLocaleString()} ₺
                       </td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">
+                        {tx.paidAmount.toLocaleString()} ₺
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-rose-400">
+                        {(tx.amount - tx.paidAmount).toLocaleString()} ₺
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <Button variant="ghost" size="icon" onClick={() => openBaskiEdit(tx)} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"><Edit2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteBaskiExpenseMutation.mutate(tx.id)} disabled={deleteBaskiExpenseMutation.isPending} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"><Trash2 className="h-4 w-4" /></Button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -2479,16 +2592,35 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               {baskiTransactions.length > 0 && (
                 <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
                   <tr>
-                    <td colSpan={4} className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-green-500">
+                    <td colSpan={4} className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white">
                       Genel Toplam:
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-green-500 rounded-br-xl">
+                    <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
                       {genelToplam.toLocaleString()} ₺
                     </td>
+                    <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
+                      {totalBaskiPaid.toLocaleString()} ₺
+                    </td>
+                    <td className="px-4 py-4 text-right text-lg font-bold text-rose-400">
+                      {totalBaskiRemaining.toLocaleString()} ₺
+                    </td>
+                    <td className="px-4 py-4 rounded-br-xl"></td>
                   </tr>
                 </tfoot>
               )}
             </table>
+          </div>
+        </div>
+        <div className="p-6 bg-white/[0.02] border-t border-white/5 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 transition-all">
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
+              <h4 className="font-mono text-2xl font-black text-emerald-400 mt-1.5">{Math.round(totalBaskiPaid).toLocaleString()} ₺</h4>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 transition-all">
+              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
+              <h4 className="font-mono text-2xl font-black text-rose-400 mt-1.5">{Math.round(totalBaskiRemaining).toLocaleString()} ₺</h4>
+            </div>
           </div>
         </div>
       </div>
@@ -2536,6 +2668,28 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 className="bg-white/5 border-white/10 text-white"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Ödenen Tutar (₺)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={baskiPaidAmount}
+                  onChange={(e) => setBaskiPaidAmount(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Kalan Borç (₺)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={baskiRemainingAmount}
+                  onChange={(e) => setBaskiRemainingAmount(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+            </div>
             {baskiSelectedProduct && (
               <div className="p-3 bg-[#D0A36D]/10 border border-[#D0A36D]/20 rounded-md mt-2 flex justify-between items-center">
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
@@ -2556,12 +2710,71 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 if (p) {
                   const total = p.base_price * (parseInt(baskiQuantity) || 0);
                   const desc = `${p.name} (${parseInt(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
-                  addBaskiExpenseMutation.mutate({ amount: total, desc });
+                  addBaskiExpenseMutation.mutate({ amount: total, desc, paid: parseFloat(baskiPaidAmount) || 0, remaining: parseFloat(baskiRemainingAmount) || 0 });
                 }
               }} 
               className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
             >
               {addBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+      <Dialog open={isBaskiEditModalOpen} onOpenChange={setBaskiEditModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
+          <DialogHeader>
+            <DialogTitle>Baskı İşlemini Düzenle</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Açıklama</Label>
+              <Input
+                type="text"
+                value={baskiEditDesc}
+                onChange={(e) => setBaskiEditDesc(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Toplam Tutar (₺)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={baskiEditAmount}
+                  onChange={(e) => setBaskiEditAmount(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ödenen Tutar (₺)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={baskiEditPaid}
+                  onChange={(e) => setBaskiEditPaid(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              disabled={editBaskiExpenseMutation.isPending || !baskiEditAmount}
+              onClick={() => {
+                if (baskiEditId) {
+                  editBaskiExpenseMutation.mutate({ 
+                    id: baskiEditId, 
+                    amount: parseFloat(baskiEditAmount) || 0, 
+                    paid: parseFloat(baskiEditPaid) || 0, 
+                    desc: baskiEditDesc 
+                  });
+                }
+              }} 
+              className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
+            >
+              {editBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
         </DialogContent>

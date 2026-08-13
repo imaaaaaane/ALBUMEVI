@@ -368,6 +368,56 @@ function Landing() {
         </motion.main>
       </div>
 
+      {/* FOUNDER / PROFILE SECTION */}
+      <section className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A] flex flex-col items-center justify-center text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative group max-w-md mx-auto"
+        >
+          <div className="w-48 h-48 md:w-56 md:h-56 rounded-full p-1.5 border border-white/10 group-hover:border-[#D0A36D]/50 transition-colors duration-500 mx-auto overflow-hidden">
+            <img 
+              src="/pic4.jpg" 
+              alt="Amine Himmich"
+              className="w-full h-full object-cover rounded-full filter grayscale group-hover:grayscale-0 transition-all duration-700"
+            />
+          </div>
+          
+          <div className="mt-8 space-y-3">
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-3xl md:text-4xl font-extrabold text-white"
+            >
+              Amine Himmich
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-[#D0A36D] text-sm md:text-base font-bold tracking-widest uppercase"
+            >
+              Kurucu & Baş Fotoğrafçı
+            </motion.p>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center justify-center pt-4"
+            >
+              <a href="tel:+905551234567" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-[#D0A36D] text-gray-300 hover:text-black transition-colors px-6 py-3 rounded-full border border-white/10 w-full sm:w-auto">
+                <Phone className="w-5 h-5" />
+                <span className="font-semibold">+90 555 123 4567</span>
+              </a>
+            </motion.div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* SERVICES GRID SECTION - Katana Animation */}
       <div
         id="hizmetler"
@@ -870,26 +920,32 @@ function Landing() {
               {/* Content */}
               <div className="p-6 space-y-8">
                 {/* CEO Section */}
-                <div className="bg-[#151515] rounded-2xl p-5 border border-[#D0A36D]/20 flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-full bg-[#111] border-2 border-[#D0A36D] overflow-hidden shrink-0">
+                <div className="flex flex-col items-center justify-center text-center bg-[#151515] rounded-3xl p-8 border border-[#D0A36D]/30 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#D0A36D]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  
+                  <div className="w-28 h-28 rounded-full p-1 border-2 border-[#D0A36D]/60 mb-5 relative z-10 shadow-lg shadow-[#D0A36D]/10 group-hover:border-[#D0A36D] transition-colors duration-500">
                     <img 
-                      src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop" 
-                      alt="Serhat Güneş" 
-                      className="w-full h-full object-cover"
+                      src="/pic4.jpg" 
+                      alt="Amine Himmich" 
+                      className="w-full h-full object-cover rounded-full"
                     />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-bold text-white">Serhat Güneş</h4>
-                    <p className="text-[#D0A36D] text-sm font-medium mb-2">Kurucu / CEO</p>
-                    <a
-                      href="https://wa.me/905551234567"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg text-sm font-medium"
-                    >
-                      <Phone className="w-4 h-4 text-[#D0A36D]" />
-                      +90 555 123 4567
-                    </a>
+                  
+                  <div className="relative z-10 space-y-2 flex flex-col items-center">
+                    <h4 className="text-2xl font-bold text-white">Amine Himmich</h4>
+                    <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase">Kurucu & Baş Fotoğrafçı</p>
+                    
+                    <div className="pt-3 w-full">
+                      <a
+                        href="https://wa.me/905551234567"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 text-gray-300 hover:text-[#0A0A0A] transition-all duration-300 bg-white/5 hover:bg-[#D0A36D] px-6 py-3 rounded-full text-sm font-semibold border border-[#D0A36D]/30 hover:border-transparent w-full sm:w-auto"
+                      >
+                        <Phone className="w-4 h-4" />
+                        +90 555 123 4567
+                      </a>
+                    </div>
                   </div>
                 </div>
 

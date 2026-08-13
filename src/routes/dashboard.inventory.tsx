@@ -70,12 +70,16 @@ function Inventory() {
         { data: pData, error: pError },
         { data: spData, error: spError },
         { data: stData, error: stError },
-        { data: cData, error: cError }
+        { data: cData, error: cError },
+        { data: albumeviSales, error: aError },
+        { data: ordersData, error: oError }
       ] = await Promise.all([
         (supabase as any).from("products").select("id, name, base_price, created_at").order("created_at", { ascending: true }),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price").order("id", { ascending: true }),
         (supabase as any).from("students").select("id, class_id, selection").not("selection", "is", null),
-        (supabase as any).from("classes").select("id, school_id")
+        (supabase as any).from("classes").select("id, school_id"),
+        (supabase as any).from("albumevi_sales").select("product_id, quantity"),
+        (supabase as any).from("orders").select("package_name, quantity")
       ]);
 
       if (pError) throw new Error(pError.message);
@@ -120,9 +124,29 @@ function Inventory() {
            const pStat = productsWithStats.find((p: any) => p.id === selectedProduct.id);
            if (pStat) {
               pStat.sold_count += 1;
-              pStat.total_revenue += selectedProduct.price || pStat.base_price || 0;
            }
         }
+      });
+
+      // Aggregate from albumevi_sales
+      (albumeviSales ?? []).forEach((sale: any) => {
+        const pStat = productsWithStats.find((p: any) => p.id === sale.product_id);
+        if (pStat) {
+          pStat.sold_count += (sale.quantity || 1);
+        }
+      });
+
+      // Aggregate from orders (matches by package_name)
+      (ordersData ?? []).forEach((order: any) => {
+        const pStat = productsWithStats.find((p: any) => (p.name || "").toLowerCase() === (order.package_name || "").toLowerCase());
+        if (pStat) {
+          pStat.sold_count += (order.quantity || 1);
+        }
+      });
+
+      // Calculate Total Revenue based on base_price * sold_count
+      productsWithStats.forEach((p: any) => {
+        p.total_revenue = (p.sold_count || 0) * (p.base_price || 0);
       });
 
       return productsWithStats;
@@ -136,7 +160,7 @@ function Inventory() {
         .insert({
           name: input.name,
           base_price: input.base_price,
-          team_id: teamId,
+          team_id: teamId === "all" ? null : teamId,
         })
         .select()
         .single();
@@ -195,10 +219,6 @@ function Inventory() {
      totalRevenueAll += p.total_revenue || 0;
      totalSoldAll += p.sold_count || 0;
   });
-  
-  const avgPrice = totalSoldAll > 0
-    ? (totalRevenueAll / totalSoldAll).toFixed(2)
-    : "0.00";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,7 +260,7 @@ function Inventory() {
       {/* Stats row */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Toplam Ürün" value={String(totalProducts)} icon={Package} />
-        <StatCard label="Ortalama Fiyat" value={`${avgPrice} ₺`} icon={DollarSign} />
+        <StatCard label="Genel Toplam Gelir" value={`${totalRevenueAll.toLocaleString()} ₺`} icon={DollarSign} />
         <StatCard label="Son Güncelleme" value={products.length ? new Date(products[products.length - 1]?.created_at).toLocaleDateString("tr-TR") : "-"} icon={Clock} />
       </div>
 

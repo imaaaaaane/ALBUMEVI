@@ -26,7 +26,7 @@ function DashboardLayout() {
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background text-foreground">
           <AppSidebar />
-          <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col transition-all duration-300 ease-in-out w-full overflow-hidden">
             <header className="flex h-16 items-center gap-3 border-b border-white/5 bg-background/60 px-4 backdrop-blur">
               <SidebarTrigger className="flex items-center justify-center h-9 w-9 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 text-white/70 hover:text-white rounded-xl transition-all duration-200" />
               <div className="relative ml-2 max-w-md flex-1">
