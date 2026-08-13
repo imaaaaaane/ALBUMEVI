@@ -38,6 +38,7 @@ import {
   GraduationCap,
   Edit2,
   Lock,
+  Wallet,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -1314,9 +1315,11 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null);
   const [editEmployeeName, setEditEmployeeName] = useState("");
-  const [editEmployeeTaken, setEditEmployeeTaken] = useState(""); 
-  const [editEmployeeRest, setEditEmployeeRest] = useState(""); 
+  const [editEmployeeTaken, setEditEmployeeTaken] = useState("");
+  const [editEmployeeRest, setEditEmployeeRest] = useState("");
 
+  const [paymentEmployeeId, setPaymentEmployeeId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("debt_addition");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
@@ -1411,6 +1414,23 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+    },
+  });
+
+  const addPaymentMutation = useMutation({
+    mutationFn: async (input: { employee_id: string; amount: number; currentPaid: number }) => {
+      await supabaseClient.from("salary_transactions").insert({
+        employee_id: input.employee_id, transaction_type: "salary_payment", amount: input.amount, description: "Hızlı Ödeme", created_at: new Date().toISOString()
+      });
+      await supabaseClient.from("employees").update({
+        total_paid: input.currentPaid + input.amount
+      }).eq("id", input.employee_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees_ledger"] });
+      toast.success("Ödeme başarıyla eklendi");
+      setPaymentEmployeeId(null);
+      setPaymentAmount("");
     },
   });
 
@@ -1525,6 +1545,12 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                         setEditEmployeeTaken(f.total_debt?.toString() || "0");
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
                         <Edit2 className="w-4.5 h-4.5" />
+                      </button>
+                      <button onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setPaymentEmployeeId(f.id); 
+                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-1" title="Ödeme Ekle">
+                        <Wallet className="w-4.5 h-4.5" />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu personeli silmek istediğinizden emin misiniz?")) deleteEmployeeMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
                         <Trash2 className="w-4.5 h-4.5" />
@@ -1710,6 +1736,37 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
               <Button type="submit" disabled={addTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Ekle</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hızlı Ödeme Modal */}
+      <Dialog open={!!paymentEmployeeId} onOpenChange={(open) => !open && setPaymentEmployeeId(null)}>
+        <DialogContent className="bg-[#0A0A0A] border-white/10 text-white sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Yeni Ödeme Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
+              <Input type="number" min="1" placeholder="Örn: 5000" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPaymentEmployeeId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
+            <Button disabled={addPaymentMutation.isPending} onClick={() => {
+              if (!paymentAmount) return;
+              const emp = filteredEmployees.find(e => e.id === paymentEmployeeId);
+              if (emp && paymentEmployeeId) {
+                addPaymentMutation.mutate({
+                  employee_id: paymentEmployeeId,
+                  amount: parseFloat(paymentAmount),
+                  currentPaid: Number(emp.total_paid || 0)
+                });
+              }
+            }} className="h-11 bg-[#12B76A] hover:bg-[#12B76A]/90 text-white font-bold rounded-xl px-6">
+              Ödeme Kaydet
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

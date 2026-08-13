@@ -130,6 +130,15 @@ export function AppSidebar() {
     navigate({ to: "/" });
   };
 
+  const userDisplayName = fullName || user?.email || "Kullanıcı";
+  const userDisplayNameLower = userDisplayName.toLowerCase();
+  
+  let displayRole = "FOTOĞRAFÇILAR";
+  if (userDisplayNameLower.includes("serhat")) {
+    displayRole = "CEO";
+  } else if (userDisplayNameLower.includes("imane")) {
+    displayRole = "CO-CEO";
+  }
 
 
   return (
@@ -201,10 +210,10 @@ export function AppSidebar() {
                 </div>
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="truncate text-sm font-bold text-white">
-                    {fullName || user?.email || "Kullanıcı"}
+                    {userDisplayName}
                   </div>
-                  <div className="truncate text-xs text-[#9E9696] mt-0.5">
-                    {role === "admin" ? "Sistem Yöneticisi" : "Fotoğrafçı"}
+                  <div className="truncate text-xs text-[#9E9696] mt-0.5 font-semibold tracking-wider">
+                    {displayRole}
                   </div>
                 </div>
               </div>

@@ -368,55 +368,7 @@ function Landing() {
         </motion.main>
       </div>
 
-      {/* FOUNDER / PROFILE SECTION */}
-      <section className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A] flex flex-col items-center justify-center text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative group max-w-md mx-auto"
-        >
-          <div className="w-48 h-48 md:w-56 md:h-56 rounded-full p-1.5 border border-white/10 group-hover:border-[#D0A36D]/50 transition-colors duration-500 mx-auto overflow-hidden">
-            <img 
-              src="/pic4.jpg" 
-              alt="Amine Himmich"
-              className="w-full h-full object-cover rounded-full filter grayscale group-hover:grayscale-0 transition-all duration-700"
-            />
-          </div>
-          
-          <div className="mt-8 space-y-3">
-            <motion.h2 
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-3xl md:text-4xl font-extrabold text-white"
-            >
-              Amine Himmich
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-[#D0A36D] text-sm md:text-base font-bold tracking-widest uppercase"
-            >
-              Kurucu & Baş Fotoğrafçı
-            </motion.p>
-            
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center justify-center pt-4"
-            >
-              <a href="tel:+905551234567" className="flex items-center justify-center gap-2 bg-white/5 hover:bg-[#D0A36D] text-gray-300 hover:text-black transition-colors px-6 py-3 rounded-full border border-white/10 w-full sm:w-auto">
-                <Phone className="w-5 h-5" />
-                <span className="font-semibold">+90 555 123 4567</span>
-              </a>
-            </motion.div>
-          </div>
-        </motion.div>
-      </section>
+
 
       {/* SERVICES GRID SECTION - Katana Animation */}
       <div
@@ -515,7 +467,7 @@ function Landing() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-center max-w-7xl mx-auto">
           {(dynamicPhotographers.length > 0 ? dynamicPhotographers : PHOTOGRAPHERS).map((photographer: any, idx: number) => (
             <motion.div
               key={idx}
@@ -523,29 +475,28 @@ function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="bg-[#111111] rounded-3xl overflow-hidden border border-white/5 hover:border-[#D0A36D]/30 transition-all group"
+              className="flex flex-col items-center text-center group"
             >
-              <div className="aspect-[4/5] relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-[#111111] to-transparent z-10" />
+              <div className="w-48 h-48 rounded-full border-4 border-[#A67C52] overflow-hidden mb-5 relative shadow-lg shadow-[#A67C52]/10 group-hover:shadow-[#A67C52]/30 transition-shadow duration-500 p-1">
                 <img
-                  src={photographer.img}
-                  alt={photographer.name}
-                  className="object-cover w-full h-full opacity-80 group-hover:scale-105 transition-transform duration-700"
+                  src={photographer.img || photographer.image_url}
+                  alt={photographer.full_name || photographer.name}
+                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute bottom-6 left-6 right-6 z-20">
-                  <h3 className="text-2xl font-bold text-white mb-1">{photographer.name}</h3>
-                  <p className="text-[#D0A36D] text-sm font-medium mb-4">{photographer.role}</p>
-                  <a
-                    href={`https://wa.me/${photographer.phone.replace(/[^0-9]/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-[#D0A36D] text-white py-3 rounded-xl backdrop-blur-md transition-colors"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span className="font-medium text-sm">{photographer.phone}</span>
-                  </a>
-                </div>
               </div>
+              
+              <h3 className="text-2xl font-bold text-white mt-1">{photographer.full_name || photographer.name}</h3>
+              <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase mt-2 mb-4">{photographer.role || photographer.title}</p>
+              
+              <a
+                href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 bg-[#111111] hover:bg-[#D0A36D] text-white hover:text-[#0A0A0A] py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-colors duration-300 w-full max-w-[200px]"
+              >
+                <Phone className="w-4 h-4" />
+                <span className="font-semibold text-sm">{photographer.phone}</span>
+              </a>
             </motion.div>
           ))}
         </div>
