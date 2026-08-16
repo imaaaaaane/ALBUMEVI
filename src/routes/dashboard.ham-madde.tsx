@@ -107,89 +107,55 @@ function HamMaddeView() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { id: string | number; malzeme_adi: string; plaka_en: number; plaka_boy: number; plaka_fiyat: number }) => {
-      const { data: existing } = await supabaseClient
+    mutationFn: async (payload: { malzeme_adi: string; plaka_en: number; plaka_boy: number; plaka_fiyat: number }) => {
+      const { data, error } = await supabaseClient
         .from("ham_maddeler")
-        .select("id")
-        .eq("malzeme_adi", payload.malzeme_adi)
-        .maybeSingle();
-
-      if (existing) {
-        const { data, error } = await supabaseClient
-          .from("ham_maddeler")
-          .update({
-            plaka_en: payload.plaka_en,
-            plaka_boy: payload.plaka_boy,
-            plaka_fiyat: payload.plaka_fiyat
-          })
-          .eq("id", existing.id)
-          .select();
-          
-        if (error) throw error;
-        return data;
-      } else {
-        const { data, error } = await supabaseClient
-          .from("ham_maddeler")
-          .insert({
-            malzeme_adi: payload.malzeme_adi,
-            plaka_en: payload.plaka_en,
-            plaka_boy: payload.plaka_boy,
-            plaka_fiyat: payload.plaka_fiyat
-          })
-          .select();
-        if (error) throw error;
-        return data;
+        .update({
+          plaka_en: payload.plaka_en,
+          plaka_boy: payload.plaka_boy,
+          plaka_fiyat: payload.plaka_fiyat
+        })
+        .eq("malzeme_adi", payload.malzeme_adi);
+        
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
       }
+      return data;
     },
-    onSuccess: (data) => {
-      // If we inserted a new record with a real UUID, we might want to update the local state with that UUID so future edits are faster,
-      // but invalidateQueries will reload anyway if we had a query. Since we use useEffect, we can just fetch again.
+    onSuccess: () => {
+      // Background re-fetch to ensure sync without blocking UI
       fetchHamMaddeler();
-      toast.success("Değişiklikler kaydedildi");
     },
     onError: (error) => {
       console.error("Güncelleme hatası:", error);
-      toast.error("Değişiklikler kaydedilirken bir hata oluştu");
     }
   });
 
   const updateYieldMutation = useMutation({
     mutationFn: async (payload: { urun_adi: string; malzeme_adi: string; cikan_adet: number }) => {
-      const { data: existing } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('ebatlama_verimi')
-        .select('id')
-        .eq('urun_adi', payload.urun_adi)
-        .eq('malzeme_adi', payload.malzeme_adi)
-        .maybeSingle();
+        .upsert(
+          { 
+            urun_adi: payload.urun_adi, 
+            malzeme_adi: payload.malzeme_adi, 
+            cikan_adet: payload.cikan_adet 
+          }, 
+          { onConflict: 'urun_adi,malzeme_adi' }
+        );
 
-      if (existing) {
-        const { data, error } = await supabaseClient
-          .from('ebatlama_verimi')
-          .update({ cikan_adet: payload.cikan_adet })
-          .eq('id', existing.id)
-          .select();
-        if (error) throw error;
-        return data;
-      } else {
-        const { data, error } = await supabaseClient
-          .from('ebatlama_verimi')
-          .insert({
-            urun_adi: payload.urun_adi,
-            malzeme_adi: payload.malzeme_adi,
-            cikan_adet: payload.cikan_adet
-          })
-          .select();
-        if (error) throw error;
-        return data;
+      if (error) {
+        console.error("Supabase upsert error:", error);
+        throw error;
       }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ebatlama_verimi'] });
-      toast.success("Verim (Çıkan Adet) kaydedildi");
     },
     onError: (error) => {
       console.error("Verim güncelleme hatası:", error);
-      toast.error("Verim güncellenirken bir hata oluştu");
     }
   });
 
@@ -197,7 +163,6 @@ function HamMaddeView() {
     const numericVal = Number(val) || 0;
     
     updateMutation.mutate({
-      id: hm.id,
       malzeme_adi: hm.malzeme_adi,
       plaka_en: field === 'plaka_en' ? numericVal : hm.plaka_en,
       plaka_boy: field === 'plaka_boy' ? numericVal : hm.plaka_boy,
