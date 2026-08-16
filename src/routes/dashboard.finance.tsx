@@ -173,7 +173,7 @@ function AccountingDashboard() {
     }
   }, [role, navigate]);
 
-  const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski">("overview");
+  const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski" | "sarf">("overview");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const [isAddCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
@@ -182,52 +182,6 @@ function AccountingDashboard() {
 
 
   const queryClient = useQueryClient();
-
-
-  const { data: albumeviSales = [] } = useQuery({
-    queryKey: ["albumevi_sales"],
-    queryFn: async () => {
-      const { data, error } = await supabaseClient
-        .from("albumevi_sales")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["products_for_sales"],
-    queryFn: async () => {
-      const { data, error } = await supabaseClient
-        .from("products")
-        .select("id, name, base_price");
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const totalAlbumeviRevenue = albumeviSales.reduce((sum, s) => sum + (Number(s.total_price) || 0), 0);
-
-  const addExpenseMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const { data, error } = await supabaseClient
-        .from("common_expenses")
-        .insert([{ name, currency: "TRY" }])
-        .select();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses_ledger"] });
-      toast.success("Yeni bölüm başarıyla eklendi.");
-      setAddCategoryModalOpen(false);
-      setNewCategoryName("");
-    },
-    onError: (error) => {
-      toast.error("Bölüm eklenirken hata oluştu: " + error.message);
-    }
-  });
 
   // 0. Fetch Live Exchange Rates from ExchangeRate-API
   const { data: exchangeRates, isError: isRatesError } = useQuery<Record<string, number>>({
@@ -262,6 +216,77 @@ function AccountingDashboard() {
     const rate = exchangeRates?.[fromCurrency] ?? staticRates[fromCurrency] ?? 1.0;
     return amount * rate;
   };
+
+
+
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["finance_products"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.from("products").select("*");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: suppliersData = [] } = useQuery<Firm[]>({
+    queryKey: ["suppliers_ledger"],
+    queryFn: async () => {
+      const { data: suppliers, error: sErr } = await supabaseClient
+        .from("suppliers")
+        .select("id, name, currency, created_at")
+        .order("created_at", { ascending: false });
+
+      if (sErr) return [];
+
+      const { data: transactions, error: tErr } = await supabaseClient
+        .from("supplier_transactions")
+        .select("id, supplier_id, transaction_type, amount, description, created_at, currency")
+        .order("created_at", { ascending: true });
+
+      if (tErr) return suppliers.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
+
+      return suppliers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        currency: s.currency as any,
+        transactions: transactions
+          .filter((t) => String(t.supplier_id) === String(s.id))
+          .map((t) => ({
+            id: t.id,
+            date: new Date(t.created_at).toISOString().split("T")[0],
+            type: t.transaction_type as "debt" | "payment",
+            amount: Number(t.amount),
+            desc: t.description ?? "",
+            createdAt: t.created_at,
+            currency: t.currency,
+          })),
+      }));
+    }
+  });
+
+  const totalSarfPaid = suppliersData.reduce((sum, s) => sum + getFirmPaid(s, exchangeRates), 0);
+
+  const addExpenseMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabaseClient
+        .from("common_expenses")
+        .insert([{ name, currency: "TRY" }])
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses_ledger"] });
+      toast.success("Yeni bölüm başarıyla eklendi.");
+      setAddCategoryModalOpen(false);
+      setNewCategoryName("");
+    },
+    onError: (error) => {
+      toast.error("Bölüm eklenirken hata oluştu: " + error.message);
+    }
+  });
+
+
 
   // 1. Fetch Firms & Transactions from new English DB Schema
   const { data: firmsData = [] } = useQuery<Firm[]>({
@@ -430,7 +455,7 @@ function AccountingDashboard() {
   // Categories list dynamically calculated from database aggregates
   const categories: CategoryItem[] = [
     { id: "cat-1", title: "FİRMALAR", amount: totalPaidFirms, change: "+8%", isPositive: true },
-    { id: "albumevi-sales", title: "ALBÜMEVİ", amount: totalAlbumeviRevenue, change: "+12%", isPositive: true },
+    { id: "sarf-malzemeler", title: "SARF MALZEMELER", amount: totalSarfPaid, change: "+0%", isPositive: false },
     { id: "cat-2", title: "ORTAK GİDERLER", amount: totalPaidExpenses, change: "-3%", isPositive: false },
     { id: "cat-4", title: "BASKI", amount: totalPaidBaski, change: "+5%", isPositive: false },
     { id: "cat-3", title: "MAAŞLAR", amount: totalPaidEmployees, change: "-2%", isPositive: false },
@@ -439,16 +464,7 @@ function AccountingDashboard() {
 
   const combinedTx: TransactionItem[] = [];
 
-  albumeviSales.forEach((sale: any) => {
-    combinedTx.push({
-      id: sale.id,
-      desc: `${sale.company_name} - ${sale.product_name} (${sale.quantity}x)`,
-      date: new Date(sale.created_at).toISOString().split("T")[0],
-      amount: Number(sale.total_price),
-      category: "albumevi-sales",
-      createdAt: sale.created_at,
-    });
-  });
+
 
   firmsData.forEach((f) => {
     f.transactions.forEach((tx) => {
@@ -502,7 +518,7 @@ function AccountingDashboard() {
     : sortedCombinedTx.slice(0, 5);
 
   // Dynamic Budget Breakdown based strictly on real-time database totals (Firms, Common Expenses, Employees, Schools)
-  const dbCategories = categories.filter((c) => ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id));
+  const dbCategories = categories.filter((c) => ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id));
   const breakdownItems: BreakdownItem[] = dbCategories.map((c, i) => {
     const colors = ["#A67C52", "#C01C1C", "#9E9696", "#E57373", "#D0A36D", "#6D4C41", "#8D6E63"];
     const totalAmount = dbCategories.reduce((sum, item) => sum + item.amount, 0);
@@ -596,7 +612,7 @@ function AccountingDashboard() {
               {categories.map((c) => {
                 const isActive = activeCategory === c.id;
                 const handleClick = () => {
-                  if (c.id === "albumevi-sales") navigate({ to: "/dashboard/finance/albumevi" as any });
+                  if (c.id === "sarf-malzemeler") setView("sarf");
                   else if (c.id === "cat-1") setView("firmalar");
                   else if (c.id === "cat-3") setView("maaslar");
                   else if (c.id === "cat-2") setView("ortak_giderler");
@@ -612,8 +628,8 @@ function AccountingDashboard() {
                     amount={c.amount}
                     change={c.change}
                     isPositive={c.isPositive}
-                    isActive={isActive || ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id)}
-                    isPortal={["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "albumevi-sales"].includes(c.id)}
+                    isActive={isActive || ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id)}
+                    isPortal={["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id)}
                     onClick={handleClick}
                   />
                 );
@@ -644,7 +660,8 @@ function AccountingDashboard() {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2 }}
           >
-            {view === "firmalar" && <FirmsListView firms={firmsData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
+            {view === "sarf" && <SarfListView suppliers={suppliersData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
+            {view === "firmalar" && <FirmsListView firms={firmsData} products={products} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
             {view === "maaslar" && <EmployeesListView employees={employeesData} onBack={() => setView("overview")} />}
             {view === "ortak_giderler" && <ExpensesListView expenses={expensesData} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
             {view === "okullar" && <OkullarListView schools={schoolsData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
@@ -756,6 +773,11 @@ interface TransactionListProps {
 }
 
 function TransactionList({ transactions, activeCategoryName, onClearFilter }: TransactionListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const filteredTransactions = transactions
+    .filter((tx) => tx.desc.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.desc.localeCompare(b.desc, 'tr'));
+
   return (
     <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
       <div className="flex justify-between items-start gap-4">
@@ -775,13 +797,24 @@ function TransactionList({ transactions, activeCategoryName, onClearFilter }: Tr
         )}
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
+        <Input 
+          type="text" 
+          placeholder="İşlem ara..." 
+          value={searchQuery} 
+          onChange={(e) => setSearchQuery(e.target.value)} 
+          className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
+      </div>
+
       <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-        {transactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <div className="text-center py-12 text-sm text-[#9E9696] font-medium border border-dashed border-white/5 rounded-2xl">
             Bu bölümde işlem bulunamadı.
           </div>
         ) : (
-          transactions.map((tx) => {
+          filteredTransactions.map((tx) => {
             const isIncome = tx.amount > 0;
             return (
               <motion.div
@@ -833,16 +866,638 @@ function MonthlyBreakdown({ items }: { items: BreakdownItem[] }) {
   );
 }
 
-// ───────── Firmalar (Cari Hesap) ListView Component ─────────
 
-interface FirmsListViewProps {
-  firms: Firm[];
+// ───────── Sarf Malzemeler (Tedarikçi) ListView Component ─────────
+
+interface SarfListViewProps {
+  suppliers: Firm[];
   exchangeRates?: Record<string, number>;
   isRatesError?: boolean;
   onBack: () => void;
 }
 
-function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsListViewProps) {
+function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfListViewProps) {
+  const qc = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [isAddTxOpen, setIsAddTxOpen] = useState(false);
+  const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
+
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [newSupplierDesc, setNewSupplierDesc] = useState("");
+  const [newSupplierTaken, setNewSupplierTaken] = useState("");
+  const [newSupplierRest, setNewSupplierRest] = useState("");
+  const [newSupplierCurrency, setNewSupplierCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
+
+  const [editSupplierId, setEditSupplierId] = useState<string | null>(null);
+  const [editSupplierName, setEditSupplierName] = useState("");
+  const [editSupplierTaken, setEditSupplierTaken] = useState("");
+  const [editSupplierRest, setEditSupplierRest] = useState("");
+  const [editSupplierCurrency, setEditSupplierCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
+
+  const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
+  const [newTxAmount, setNewTxAmount] = useState("");
+  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTxDesc, setNewTxDesc] = useState("");
+  const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
+  
+  const [editTxId, setEditTxId] = useState<string | null>(null);
+
+  const getCurrencySymbol = (currency?: string) => {
+    switch (currency) {
+      case "USD": return "$";
+      case "EUR": return "€";
+      case "TRY": default: return "₺";
+    }
+  };
+
+  const convertToTry = (amount: number, fromCurrency?: string) => {
+    if (!fromCurrency || fromCurrency === "TRY") return amount;
+    if (!exchangeRates) {
+      const staticRates: Record<string, number> = { USD: 33.3, EUR: 37.0 };
+      return amount * (staticRates[fromCurrency] ?? 1);
+    }
+    const rateInTry = exchangeRates[fromCurrency];
+    if (rateInTry && rateInTry > 0) return amount * rateInTry;
+    return amount;
+  };
+
+
+
+  
+  const getGroupedTotals = (supplier: Firm) => {
+    const totals: Record<string, { paid: number; debt: number; remaining: number }> = {};
+    supplier.transactions.forEach((tx: any) => {
+      const cur = tx.currency || supplier.currency || "TRY";
+      if (!totals[cur]) totals[cur] = { paid: 0, debt: 0, remaining: 0 };
+      if (tx.type === "payment") totals[cur].paid += Number(tx.amount);
+      if (tx.type === "debt") totals[cur].debt += Number(tx.amount);
+    });
+    Object.keys(totals).forEach(cur => {
+      totals[cur].remaining = Math.max(0, totals[cur].debt - totals[cur].paid);
+    });
+    return totals;
+  };
+
+  const renderGroupedAmounts = (supplier: Firm, field: "paid" | "debt" | "remaining", colorClass: string) => {
+    const totals = getGroupedTotals(supplier);
+    const keys = Object.keys(totals);
+    if (keys.length === 0) return <span className={`font-mono text-sm font-bold block mt-0.5 ${colorClass}`}>0 ₺</span>;
+    return (
+      <div className="mt-0.5 space-y-0.5">
+        {keys.map(cur => (
+          <span key={cur} className={`font-mono text-sm font-bold block ${colorClass}`}>
+            {totals[cur][field].toLocaleString()} {getCurrencySymbol(cur)}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  const totalPaid = suppliers.reduce((sum, f) => sum + getFirmPaid(f, exchangeRates), 0);
+
+  const totalRemaining = suppliers.reduce((sum, f) => sum + getFirmRemaining(f, exchangeRates), 0);
+
+  const addSupplierMutation = useMutation({
+    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number; desc: string }) => {
+      const { data: supplier, error: sErr } = await supabaseClient
+        .from("suppliers")
+        .insert({ name: input.name, currency: input.currency, description: input.desc })
+        .select("id, name, currency")
+        .single();
+      if (sErr) throw sErr;
+
+      if (input.taken > 0) {
+        await supabaseClient.from("supplier_transactions").insert({
+          supplier_id: supplier.id, transaction_type: "debt", amount: input.taken, description: "İlk Borç Kaydı", currency: input.currency
+        });
+      }
+      if (input.rest > 0) {
+        await supabaseClient.from("supplier_transactions").insert({
+          supplier_id: supplier.id, transaction_type: "payment", amount: input.rest, description: "İlk Ödeme Kaydı", currency: input.currency
+        });
+      }
+      return supplier;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("Suppliera eklendi");
+      setIsAddSupplierOpen(false);
+      setNewSupplierName(""); setNewSupplierDesc(""); setNewSupplierTaken(""); setNewSupplierRest(""); setNewSupplierCurrency("TRY");
+    },
+  });
+
+  const editSupplierMutation = useMutation({
+    mutationFn: async (input: { id: string; name: string; currency: string; takenDiff: number; restDiff: number }) => {
+      await supabaseClient.from("suppliers").update({ name: input.name, currency: input.currency }).eq("id", input.id);
+      if (input.takenDiff !== 0) {
+        await supabaseClient.from("supplier_transactions").insert({
+          supplier_id: input.id, transaction_type: "debt", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Borç)", currency: input.currency
+        });
+      }
+      if (input.restDiff !== 0) {
+        await supabaseClient.from("supplier_transactions").insert({
+          supplier_id: input.id, transaction_type: "payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)", currency: input.currency
+        });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("Suppliera güncellendi");
+      setEditSupplierId(null);
+    },
+  });
+
+  const deleteSupplierMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabaseClient.from("supplier_transactions").delete().eq("supplier_id", id);
+      await supabaseClient.from("suppliers").delete().eq("id", id);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers_ledger"] }); toast.success("Suppliera silindi"); },
+  });
+
+  const addTxMutation = useMutation({
+    mutationFn: async (input: { supplier_id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+      await supabaseClient.from("supplier_transactions").insert({
+        supplier_id: input.supplier_id, transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("İşlem kaydedildi");
+      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      
+      setEditTxId(null);
+    },
+  });
+
+  const editTxMutation = useMutation({
+    mutationFn: async (input: { id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+      await supabaseClient.from("supplier_transactions").update({
+        transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+      }).eq("id", input.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("İşlem güncellendi");
+      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      
+      setEditTxId(null);
+    },
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabaseClient.from("supplier_transactions").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("İşlem silindi");
+    },
+  });
+
+  const handleAddSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupplierName.trim()) return;
+    addSupplierMutation.mutate({ name: newSupplierName.trim(), currency: newSupplierCurrency, taken: parseFloat(newSupplierTaken) || 0, rest: parseFloat(newSupplierRest) || 0, desc: newSupplierDesc.trim() });
+  };
+
+  const handleEditSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editSupplierId || !editSupplierName.trim()) return;
+    const supplier = suppliers.find(f => f.id === editSupplierId);
+    if (!supplier) return;
+    const currentTaken = supplier.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentRest = supplier.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const newTaken = parseFloat(editSupplierTaken) || 0;
+    const newRest = parseFloat(editSupplierRest) || 0;
+    editSupplierMutation.mutate({
+      id: editSupplierId, name: editSupplierName.trim(), currency: editSupplierCurrency,
+      takenDiff: newTaken - currentTaken, restDiff: newRest - currentRest
+    });
+  };
+
+  const handleAddTx = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSupplierId) return;
+
+    
+    let finalAmount = parseFloat(newTxAmount) || 0;
+    let finalDesc = newTxDesc.trim();
+
+    if (finalAmount <= 0) return toast.error("Geçerli bir tutar giriniz.");
+    if (!finalDesc) return toast.error("Açıklama zorunludur.");
+
+    if (editTxId) {
+      editTxMutation.mutate({ id: editTxId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+    } else {
+      addTxMutation.mutate({ supplier_id: selectedSupplierId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+    }
+
+
+
+  };
+
+  const handleEditTransaction = (tx: any) => {
+    setEditTxId(tx.id);
+    setNewTxType(tx.type);
+    setNewTxAmount(tx.amount.toString());
+    setNewTxDesc(tx.desc);
+    setNewTxCurrency(tx.currency || "TRY");
+    setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
+    setIsAddTxOpen(true);
+     
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm("Bu işlemi silmek istediğinize emin misiniz?")) {
+      deleteTxMutation.mutate(id);
+    }
+  };
+
+  const selectedSupplier = suppliers.find((f) => f.id === selectedSupplierId);
+  const filteredSuppliers = suppliers
+    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
+  if (selectedSupplier) {
+    return (
+      <div className="flex flex-col h-full bg-[#131316] text-white rounded-3xl border border-white/5">
+        <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedSupplierId(null)} className="text-[#9E9696] hover:text-white hover:bg-white/5">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">TEDARİKÇİ DETAY PANELİ</span>
+              <h3 className="text-xl font-extrabold text-white leading-tight">{selectedSupplier.name}</h3>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
+          <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen Toplam</span>
+            {renderGroupedAmounts(selectedSupplier, "paid", "text-[#12B76A] text-lg")}
+          </div>
+          <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
+            {renderGroupedAmounts(selectedSupplier, "debt", "text-white text-lg")}
+          </div>
+          <div className="p-4 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç Bakiye</span>
+            {renderGroupedAmounts(selectedSupplier, "remaining", "text-[#A67C52] text-lg")}
+          </div>
+        </div>
+        
+        <div className="flex-1 p-6 space-y-4">
+          <div className="flex justify-between items-center mb-6">
+            <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
+            <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+              <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            {selectedSupplier.transactions.length === 0 && (
+              <div className="text-center p-8 text-sm text-[#9E9696] bg-white/5 rounded-xl border border-white/5">
+                Bu tedarikçiye ait henüz işlem bulunmuyor.
+              </div>
+            )}
+            {selectedSupplier.transactions.map((tx) => {
+              const isTaken = tx.type === "debt";
+              return (
+                <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
+                      {isTaken ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-white block">{tx.desc}</span>
+                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>
+                      {isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedSupplier.currency, exchangeRates).toLocaleString()} ₺
+                    </span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx.id)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* İŞLEM EKLE MODAL */}
+        <Dialog open={isAddTxOpen} onOpenChange={(open) => {
+          setIsAddTxOpen(open);
+          if (!open) {
+            setEditTxId(null);
+            setNewTxAmount("");
+            setNewTxDesc("");
+            
+          }
+        }}>
+          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-md p-6 overflow-hidden">
+            <form onSubmit={handleAddTx} className="space-y-6">
+              <div>
+                <DialogTitle className="text-xl font-bold text-white">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle>
+                <p className="text-xs text-[#9E9696] mt-1">{selectedSupplier.name} supplierası için</p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
+                  <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                      onClick={() => { setNewTxType("debt");  setNewTxDesc(""); }}
+                    >
+                      Satış / Borç
+                    </button>
+                    <button
+                      type="button"
+                      className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); }}
+                    >
+                      Ödeme / Tahsilat
+                    </button>
+                  </div>
+                </div>
+
+                
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-[#9E9696]">Tutar</Label>
+                    <div className="flex gap-2">
+                      <Input required type="number" min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)}  className="h-11 border-white/10 text-white rounded-xl flex-1 font-mono bg-white/5" />
+                      <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR" | "USD") => setNewTxCurrency(v as any)}>
+                        <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#111111] border-white/10 text-white">
+                          <SelectItem value="TRY">TRY</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-[#9E9696]">Tarih</Label>
+                    <Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#9E9696]">{newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}</Label>
+                  <Input required={newTxType === "payment"} placeholder={newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"} value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="bg-white/5 border-white/10 rounded-xl h-11 text-white" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1">İptal</Button>
+                <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending || (!newTxAmount && newTxType === "payment")} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1">
+                  {editTxId ? "Güncelle" : "Kaydet"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+            <ArrowLeft className="w-5 h-5" />
+          </motion.button>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Supplieralar (Cari Hesap)</h1>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Suppliera cari hesap borç ve ödeme bakiye takipleri.</p>
+          </div>
+        </div>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Button onClick={() => setIsAddSupplierOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+            <Plus className="mr-2 h-4 w-4" /> Suppliera Ekle
+          </Button>
+        </motion.div>
+      </div>
+
+      {isRatesError && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları alınamadı.
+        </div>
+      )}
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
+        <Input type="text" placeholder="Suppliera ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+      </div>
+
+      <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Cari Suppliera Listesi</h3>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{suppliers.length} Suppliera</Badge>
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {filteredSuppliers.length === 0 ? (
+            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Hiçbir kayıtlı suppliera bulunamadı.</div>
+          ) : (
+            filteredSuppliers.map((f) => {
+              
+              return (
+                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedSupplierId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div>
+                      <h4 className="font-bold text-white leading-snug">{f.name}</h4>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
+                    <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
+                      <div>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
+                        {renderGroupedAmounts(f, "paid", "text-[#12B76A]")}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Borç</span>
+                        {renderGroupedAmounts(f, "remaining", "text-[#A67C52]")}
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setEditSupplierId(f.id);
+                        setEditSupplierName(f.name);
+                        setEditSupplierCurrency(f.currency as any || "TRY");
+                        setEditSupplierRest(f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
+                        setEditSupplierTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
+                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
+                        <Edit2 className="w-4.5 h-4.5" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu supplierayı silmek istediğinizden emin misiniz?")) deleteSupplierMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="p-6 bg-white/[0.02] border-t border-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
+            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
+            </div>
+            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
+              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
+              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{Math.round(totalRemaining).toLocaleString()} ₺</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
+        <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
+          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-4">
+            {suppliers.map((f) => {
+              const amount = breakdownType === "paid" ? getFirmPaid(f, exchangeRates) : getFirmRemaining(f, exchangeRates);
+              if (amount === 0) return null;
+              return (
+                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                  <span className="font-bold text-white text-sm">{f.name}</span>
+                  <div className="text-right">
+                    <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
+        <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
+          <DialogHeader><DialogTitle className="text-xl font-bold">Suppliera Ekle</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddSupplier}>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Suppliera Adı</Label>
+                <Input required value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+                <Input value={newSupplierDesc} onChange={(e) => setNewSupplierDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
+                <Select value={newSupplierCurrency} onValueChange={(v: any) => setNewSupplierCurrency(v)}>
+                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#131316] border-white/10 text-white">
+                    <SelectItem value="TRY">TRY (₺)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
+                <Input type="number" min="0" placeholder="0" value={newSupplierRest} onChange={(e) => setNewSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
+                <Input type="number" min="0" placeholder="0" value={newSupplierTaken} onChange={(e) => setNewSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsAddSupplierOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
+              <Button type="submit" disabled={addSupplierMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editSupplierId} onOpenChange={(open) => !open && setEditSupplierId(null)}>
+        <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
+          <DialogHeader><DialogTitle className="text-xl font-bold">Supplierayı Düzenle</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditSupplier} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Suppliera Adı</Label>
+              <Input required value={editSupplierName} onChange={(e) => setEditSupplierName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
+              <Select value={editSupplierCurrency} onValueChange={(v: any) => setEditSupplierCurrency(v)}>
+                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-[#131316] border-white/10 text-white">
+                  <SelectItem value="TRY">TRY (₺)</SelectItem><SelectItem value="USD">USD ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
+                <Input type="number" min="0" value={editSupplierRest} onChange={(e) => setEditSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
+                <Input type="number" min="0" value={editSupplierTaken} onChange={(e) => setEditSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditSupplierId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
+              <Button type="submit" disabled={editSupplierMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+
+  );
+}
+
+
+// ───────── Personel (Maaşlar) ListView Component ─────────
+
+interface EmployeesListViewProps {
+  employees: Employee[];
+  onBack: () => void;
+}
+
+
+
+// ───────── Firmalar (Cari Hesap) ListView Component ─────────
+
+interface FirmsListViewProps {
+  firms: Firm[];
+  products: any[];
+  exchangeRates?: Record<string, number>;
+  isRatesError?: boolean;
+  onBack: () => void;
+}
+
+function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }: FirmsListViewProps) {
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFirmId, setSelectedFirmId] = useState<string | null>(null);
@@ -867,6 +1522,8 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
+  const [lineItems, setLineItems] = useState<{ id: string, productId: string, quantity: number, price: number }[]>([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+  const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
@@ -961,6 +1618,33 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+      setEditTxId(null);
+    },
+  });
+
+  const editTxMutation = useMutation({
+    mutationFn: async (input: { id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+      await supabaseClient.from("firm_transactions").update({
+        transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+      }).eq("id", input.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["firms_ledger"] });
+      toast.success("İşlem güncellendi");
+      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+      setEditTxId(null);
+    },
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabaseClient.from("firm_transactions").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["firms_ledger"] });
+      toast.success("İşlem silindi");
     },
   });
 
@@ -987,13 +1671,276 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
 
   const handleAddTx = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFirmId || !newTxAmount || !newTxDesc.trim()) return;
-    const firm = firms.find((f) => f.id === selectedFirmId);
-    addTxMutation.mutate({ firm_id: selectedFirmId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate, currency: newTxCurrency });
+    if (!selectedFirmId) return;
+
+    let finalAmount = parseFloat(newTxAmount) || 0;
+    let finalDesc = newTxDesc.trim();
+
+    if (newTxType === "debt" && lineItems.length > 0) {
+      const validItems = lineItems.filter(item => item.productId !== "");
+      if (validItems.length > 0) {
+        finalAmount = validItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        const productsSummary = validItems.map(item => {
+          const pName = products.find((p: any) => p.id === item.productId)?.name || "Bilinmeyen Ürün";
+          return `${item.quantity}x ${pName}`;
+        }).join(", ");
+        
+        finalDesc = finalDesc ? `${productsSummary} - ${finalDesc}` : productsSummary;
+      }
+    }
+
+    if (finalAmount <= 0) return toast.error("Geçerli bir tutar giriniz.");
+    if (!finalDesc) return toast.error("Açıklama veya ürün seçimi zorunludur.");
+
+    if (editTxId) {
+      editTxMutation.mutate({ id: editTxId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+    } else {
+      addTxMutation.mutate({ firm_id: selectedFirmId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+    }
   };
 
+  const handleEditTransaction = (tx: any) => {
+    setEditTxId(tx.id);
+    setNewTxType(tx.type);
+    setNewTxAmount(tx.amount.toString());
+    setNewTxDesc(tx.desc);
+    setNewTxCurrency(tx.currency || "TRY");
+    setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
+    setIsAddTxOpen(true);
+    setLineItems([]); 
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm("Bu işlemi silmek istediğinize emin misiniz?")) {
+      deleteTxMutation.mutate(id);
+    }
+  };
+
+  const addLineItem = () => setLineItems([...lineItems, { id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+  const removeLineItem = (id: string) => setLineItems(lineItems.filter(item => item.id !== id));
+  
+  const updateLineItem = (id: string, field: "productId" | "quantity", value: any) => {
+    setLineItems(lineItems.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        if (field === "productId") {
+          const prod = products.find((p: any) => p.id === value);
+          updated.price = prod ? prod.base_price : 0;
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  useEffect(() => {
+    if (newTxType === "debt") {
+      const sum = lineItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      setNewTxAmount(sum.toString());
+    }
+  }, [lineItems, newTxType]);
+
   const selectedFirm = firms.find((f) => f.id === selectedFirmId);
-  const filteredFirms = firms.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredFirms = firms
+    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
+  if (selectedFirm) {
+    return (
+      <div className="flex flex-col h-full bg-[#131316] text-white rounded-3xl border border-white/5">
+        <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setSelectedFirmId(null)} className="text-[#9E9696] hover:text-white hover:bg-white/5">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">FİRMA DETAY PANELİ</span>
+              <h3 className="text-xl font-extrabold text-white leading-tight">{selectedFirm.name}</h3>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
+          <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen Toplam</span>
+            <span className="font-mono text-lg font-bold text-[#12B76A] block mt-1">{getFirmPaid(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
+          </div>
+          <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
+            <span className="font-mono text-lg font-bold text-white block mt-1">{getFirmDebt(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
+          </div>
+          <div className="p-4 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç Bakiye</span>
+            <span className="font-mono text-lg font-bold text-[#A67C52] block mt-1">{getFirmRemaining(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
+          </div>
+        </div>
+        
+        <div className="flex-1 p-6 space-y-4">
+          <div className="flex justify-between items-center mb-6">
+            <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
+            <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+              <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            {selectedFirm.transactions.length === 0 && (
+              <div className="text-center p-8 text-sm text-[#9E9696] bg-white/5 rounded-xl border border-white/5">
+                Bu firmaya ait henüz işlem bulunmuyor.
+              </div>
+            )}
+            {selectedFirm.transactions.map((tx) => {
+              const isTaken = tx.type === "debt";
+              return (
+                <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
+                      {isTaken ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-white block">{tx.desc}</span>
+                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>
+                      {isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedFirm.currency, exchangeRates).toLocaleString()} ₺
+                    </span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx.id)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* İŞLEM EKLE MODAL */}
+        <Dialog open={isAddTxOpen} onOpenChange={(open) => {
+          setIsAddTxOpen(open);
+          if (!open) {
+            setEditTxId(null);
+            setNewTxAmount("");
+            setNewTxDesc("");
+            setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+          }
+        }}>
+          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-md p-6 overflow-hidden">
+            <form onSubmit={handleAddTx} className="space-y-6">
+              <div>
+                <DialogTitle className="text-xl font-bold text-white">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle>
+                <p className="text-xs text-[#9E9696] mt-1">{selectedFirm.name} firması için</p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
+                  <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                      onClick={() => { setNewTxType("debt"); setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]); setNewTxDesc(""); }}
+                    >
+                      Satış / Borç
+                    </button>
+                    <button
+                      type="button"
+                      className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); }}
+                    >
+                      Ödeme / Tahsilat
+                    </button>
+                  </div>
+                </div>
+
+                {newTxType === "debt" && (
+                  <div className="space-y-3">
+                    <Label className="text-xs text-[#9E9696]">Ürünler (Satış)</Label>
+                    <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+                      {lineItems.map((item) => (
+                        <div key={item.id} className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <Select value={item.productId} onValueChange={(v) => updateLineItem(item.id, "productId", v)}>
+                              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11">
+                                <SelectValue placeholder="Ürün Seç" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#111111] text-white border-white/10">
+                                {products.map((p: any) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.name} ({p.base_price} ₺)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-20">
+                            <Input
+                              type="number" min="1" value={item.quantity}
+                              onChange={(e) => updateLineItem(item.id, "quantity", parseInt(e.target.value) || 1)}
+                              className="bg-white/5 border-white/10 rounded-xl h-11 text-white text-center px-1"
+                            />
+                          </div>
+                          {lineItems.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="h-11 w-11 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-xl shrink-0">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl h-9 mt-1 border-dashed">
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
+                    </Button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-[#9E9696]">Tutar</Label>
+                    <div className="flex gap-2">
+                      <Input required type="number" min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} readOnly={newTxType === "debt"} className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`} />
+                      <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}>
+                        <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#111111] border-white/10 text-white">
+                          <SelectItem value="TRY">TRY</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-[#9E9696]">Tarih</Label>
+                    <Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#9E9696]">{newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}</Label>
+                  <Input required={newTxType === "payment"} placeholder={newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"} value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="bg-white/5 border-white/10 rounded-xl h-11 text-white" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1">İptal</Button>
+                <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending || (!newTxAmount && newTxType === "payment")} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1">
+                  {editTxId ? "Güncelle" : "Kaydet"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -1190,104 +2137,8 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedFirmId} onOpenChange={(open) => !open && setSelectedFirmId(null)}>
-        <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-lg p-0 overflow-hidden">
-          {selectedFirm && (
-            <div className="flex flex-col h-full max-h-[85vh]">
-              <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">FİRMA DETAY PANELİ</span>
-                  <h3 className="text-xl font-extrabold text-white leading-tight">{selectedFirm.name}</h3>
-                </div>
-                <button onClick={() => setSelectedFirmId(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-white transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
-                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{getFirmPaid(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
-                </div>
-                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
-                  <span className="font-mono text-sm font-bold text-white block mt-0.5">{getFirmDebt(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
-                </div>
-                <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç</span>
-                  <span className="font-mono text-sm font-bold text-[#A67C52] block mt-0.5">{getFirmRemaining(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
-                  <Button size="sm" onClick={() => { setNewTxType("payment"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
-                    <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
-                  </Button>
-                </div>
-                <div className="space-y-2.5">
-                  {selectedFirm.transactions.map((tx) => {
-                    const isTaken = tx.type === "debt";
-                    return (
-                      <div key={tx.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
-                            {isTaken ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-white block">{tx.desc}</span>
-                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5">{tx.date}</span>
-                          </div>
-                        </div>
-                        <span className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>{isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedFirm.currency, exchangeRates).toLocaleString()} ₺</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
-        <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddTx} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">İşlem Tipi</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setNewTxType("debt")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "debt" ? "bg-[#A67C52]/10 border-[#A67C52] text-[#A67C52]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Mal Alımı (Borç)</button>
-                <button type="button" onClick={() => setNewTxType("payment")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "payment" ? "bg-[#12B76A]/10 border-[#12B76A] text-[#12B76A]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Ödeme Yapıldı</button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Tutar</Label>
-                <div className="flex gap-2">
-                  <Input required type="number" min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl flex-1" />
-                  <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}>
-                    <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#111111] border-white/10 text-white">
-                      <SelectItem value="TRY">TRY</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
-              <Input required placeholder="Ödeme veya borç açıklaması..." value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
-              <Button type="submit" disabled={addTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Ekle</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
+
   );
 }
 
@@ -1476,7 +2327,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   };
 
   const selectedEmployee = employees.find((f) => f.id === selectedEmployeeId);
-  const filteredEmployees = employees.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredEmployees = employees
+    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
   return (
     <div className="space-y-8">
@@ -1659,7 +2512,6 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                   <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">PERSONEL DETAY PANELİ</span>
                   <h3 className="text-xl font-extrabold text-white leading-tight">{selectedEmployee.name}</h3>
                 </div>
-                <button onClick={() => setSelectedEmployeeId(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-white transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
               <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
@@ -1867,7 +2719,9 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     });
   };
 
-  const filteredExpenses = expenses.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredExpenses = expenses
+    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
   return (
     <div className="space-y-8">
@@ -2173,7 +3027,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   };
 
   const selectedSchool = schools.find((f) => f.id === selectedSchoolId);
-  const filteredSchools = schools.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredSchools = schools
+    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
   return (
     <div className="space-y-8">
@@ -2368,7 +3224,6 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">OKUL DETAY PANELİ</span>
                   <h3 className="text-xl font-extrabold text-white leading-tight">{selectedSchool.name}</h3>
                 </div>
-                <button onClick={() => setSelectedSchoolId(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-white transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
               <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
@@ -2458,6 +3313,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const [baskiEditAmount, setBaskiEditAmount] = useState("");
   const [baskiEditPaid, setBaskiEditPaid] = useState("");
   const [baskiEditDesc, setBaskiEditDesc] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -2575,8 +3431,13 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   };
 
 
-  const genelToplam = baskiTransactions.reduce((sum: number, item: any) => sum + item.amount, 0);
-  const totalBaskiPaid = baskiTransactions.reduce((sum: number, item: any) => sum + item.paidAmount, 0);
+  const filteredBaskiTransactions = baskiTransactions
+    .filter((tx: any) => tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) || tx.product.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a: any, b: any) => a.desc.localeCompare(b.desc, 'tr'));
+
+  const genelToplam = filteredBaskiTransactions.reduce((sum: number, item: any) => sum + item.amount, 0);
+  const totalBaskiPaid = filteredBaskiTransactions.reduce((sum: number, item: any) => sum + item.paidAmount, 0);
+
   const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
   return (
@@ -2592,6 +3453,19 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
+            <Input 
+              type="text" 
+              placeholder="Baskı ara..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" 
+            />
+          </div>
+        </div>
+
         <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
@@ -2615,14 +3489,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {baskiTransactions.length === 0 ? (
+                {filteredBaskiTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4">
                       Henüz işlem bulunmuyor.
                     </td>
                   </tr>
                 ) : (
-                  baskiTransactions.map((tx: any) => (
+                  filteredBaskiTransactions.map((tx: any) => (
                     <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">{tx.date}</td>
                       <td className="px-4 py-3 font-medium text-white">{tx.desc}</td>
@@ -2645,7 +3519,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   ))
                 )}
               </tbody>
-              {baskiTransactions.length > 0 && (
+              {filteredBaskiTransactions.length > 0 && (
                 <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
                   <tr>
                     <td colSpan={4} className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white">

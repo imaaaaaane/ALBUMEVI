@@ -21,7 +21,8 @@ import {
   Calculator,
   Scissors,
   Moon,
-  Sun
+  Sun,
+  Box
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -61,6 +62,7 @@ const SIDEBAR_ITEMS = [
   { title: "Muhasebe", url: "/dashboard/finance", icon: Wallet },
   { title: "Maliyet", url: "/dashboard/maliyet", icon: Calculator },
   { title: "Ebatlama", url: "/dashboard/ebatlama", icon: Scissors },
+  { title: "Ham Madde", url: "/dashboard/ham-madde", icon: Box },
   { title: "Notlar", url: "/dashboard/notes", icon: StickyNote },
   { title: "Çekimciler", url: "/dashboard/photographers", icon: Camera },
   { title: "Portfolyo", url: "/dashboard/portfolio", icon: ImageIcon },

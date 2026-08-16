@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabaseClient } from "@/lib/supabaseClient";
 
 export const Route = createFileRoute("/dashboard/ebatlama")({
   component: EbatlamaView,
@@ -106,30 +108,96 @@ function EbatlamaView() {
   const [isDark, setIsDark] = useState(true);
   const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
   
-  const [thickness, setThickness] = useState<string>(() => {
-    return localStorage.getItem("ebatlama_thickness") || "2.7 mm";
+  const queryClient = useQueryClient();
+
+  // Settings Query
+  const { data: settings } = useQuery({
+    queryKey: ["ebatlama_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.from("ebatlama_settings").select("*").eq("id", 1).single();
+      if (error && error.code !== "PGRST116" && error.code !== "42P01") throw error;
+      return data || { thickness: "2.7 mm", plate_size: "2800x2100", bicak_payi: "3", auto_rotate: true };
+    }
   });
-  
-  const [plateSize, setPlateSize] = useState<string>(() => {
-    return localStorage.getItem("ebatlama_plateSize") || "2800x2100";
+
+  // Items Query
+  const { data: dbItems = [] } = useQuery({
+    queryKey: ["ebatlama_items"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.from("ebatlama_items").select("*").order("sira");
+      if (error && error.code !== "42P01") throw error; // Ignore undefined table error
+      if (!data) return [];
+      return data.map(d => ({
+        id: d.id,
+        sira: d.sira,
+        parcaAdi: d.parca_adi || "",
+        boy: d.boy || "",
+        en: d.en || "",
+        adet: d.adet || "0"
+      }));
+    }
   });
-  
-  const [bicakPayi, setBicakPayi] = useState<string>(() => {
-    return localStorage.getItem("ebatlama_bicakPayi") || "3";
+
+  const [items, setItems] = useState<CutItem[]>([]);
+  useEffect(() => {
+    setItems(dbItems.length > 0 ? dbItems : [{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "0" }]);
+  }, [dbItems]);
+
+  const [thickness, setThickness] = useState("2.7 mm");
+  const [plateSize, setPlateSize] = useState("2800x2100 mdf");
+  const [bicakPayi, setBicakPayi] = useState("3");
+  const [autoRotate, setAutoRotate] = useState(true);
+
+  useEffect(() => {
+    if (settings) {
+      setThickness(settings.thickness);
+      setPlateSize(settings.plate_size);
+      setBicakPayi(settings.bicak_payi);
+      setAutoRotate(settings.auto_rotate);
+    }
+  }, [settings]);
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (newSettings: any) => {
+      await supabaseClient.from("ebatlama_settings").upsert({ id: 1, ...newSettings });
+    }
   });
-  
-  const [autoRotate, setAutoRotate] = useState<boolean>(() => {
-    const saved = localStorage.getItem("ebatlama_autoRotate");
-    return saved !== null ? JSON.parse(saved) : true;
+
+  const upsertItemMutation = useMutation({
+    mutationFn: async (item: CutItem) => {
+      const { id, sira, parcaAdi, boy, en, adet } = item;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const payload = { sira, parca_adi: parcaAdi, boy, en, adet };
+      if (isUUID) {
+        await supabaseClient.from("ebatlama_items").upsert({ id, ...payload });
+      } else {
+        await supabaseClient.from("ebatlama_items").insert(payload);
+      }
+    }
   });
-  
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabaseClient.from("ebatlama_items").delete().eq("id", id);
+    }
+  });
+
+  // Realtime Sync
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel("ebatlama-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ebatlama_items" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["ebatlama_items"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ebatlama_settings" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["ebatlama_settings"] });
+      })
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [queryClient]);
+
   const printRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  
-  const [items, setItems] = useState<CutItem[]>(() => {
-    const saved = localStorage.getItem("ebatlama_items");
-    return saved ? JSON.parse(saved) : [{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "0" }];
-  });
 
   // 3D Controls
   const [rotX, setRotX] = useState(60);
@@ -142,26 +210,7 @@ function EbatlamaView() {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  // Save to LocalStorage
-  useEffect(() => {
-    localStorage.setItem("ebatlama_thickness", thickness);
-  }, [thickness]);
-
-  useEffect(() => {
-    localStorage.setItem("ebatlama_plateSize", plateSize);
-  }, [plateSize]);
-
-  useEffect(() => {
-    localStorage.setItem("ebatlama_bicakPayi", bicakPayi);
-  }, [bicakPayi]);
-
-  useEffect(() => {
-    localStorage.setItem("ebatlama_autoRotate", JSON.stringify(autoRotate));
-  }, [autoRotate]);
-
-  useEffect(() => {
-    localStorage.setItem("ebatlama_items", JSON.stringify(items));
-  }, [items]);
+  // Migrated from LocalStorage to Supabase
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle("dark");
@@ -169,10 +218,9 @@ function EbatlamaView() {
   };
 
   const handleAddItem = () => {
-    setItems(prev => [
-      ...prev,
-      { id: Date.now().toString(), sira: prev.length + 1, parcaAdi: "", boy: "", en: "", adet: "0" }
-    ]);
+    const newItem = { id: Date.now().toString(), sira: items.length + 1, parcaAdi: "", boy: "", en: "", adet: "0" };
+    setItems(prev => [...prev, newItem]);
+    upsertItemMutation.mutate(newItem);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -195,6 +243,10 @@ function EbatlamaView() {
   };
 
   const handleRemoveItem = (id: string) => {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (isUUID) {
+      deleteItemMutation.mutate(id);
+    }
     const newItems = items.filter(item => item.id !== id).map((item, index) => ({
       ...item,
       sira: index + 1
@@ -203,16 +255,25 @@ function EbatlamaView() {
   };
 
   const handleItemChange = (id: string, field: keyof CutItem, value: string) => {
-    setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+    const newItems = items.map(item => item.id === id ? { ...item, [field]: value } : item);
+    setItems(newItems);
+  };
+
+  const handleItemBlur = (id: string) => {
+    const updatedItem = items.find(i => i.id === id);
+    if (updatedItem) upsertItemMutation.mutate(updatedItem);
   };
 
   const handleSwapDimensions = (id: string) => {
-    setItems(items.map(item => {
+    const newItems = items.map(item => {
       if (item.id === id) {
         return { ...item, boy: item.en, en: item.boy };
       }
       return item;
-    }));
+    });
+    setItems(newItems);
+    const updatedItem = newItems.find(i => i.id === id);
+    if (updatedItem) upsertItemMutation.mutate(updatedItem);
   };
 
   const parseNumber = (val: string) => {
@@ -350,12 +411,12 @@ function EbatlamaView() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Genel Kalınlık</label>
-                <Select value={thickness} onValueChange={setThickness}>
+                <Select value={thickness} onValueChange={(v) => { setThickness(v); updateSettingsMutation.mutate({ thickness: v }); }}>
                   <SelectTrigger className="w-full bg-gray-50 dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white">
-                    <SelectItem value="2 mm">2 mm</SelectItem>
+                    <SelectItem value="1.5 mm">1.5 mm</SelectItem>
                     <SelectItem value="2.7 mm">2.7 mm</SelectItem>
                     <SelectItem value="3 mm">3 mm</SelectItem>
                     <SelectItem value="4 mm">4 mm</SelectItem>
@@ -364,15 +425,15 @@ function EbatlamaView() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Plaka Ebatları (mm)</label>
-                <Select value={plateSize} onValueChange={setPlateSize}>
+                <Select value={plateSize} onValueChange={(v) => { setPlateSize(v); updateSettingsMutation.mutate({ plate_size: v }); }}>
                   <SelectTrigger className="w-full bg-gray-50 dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white">
-                    <SelectItem value="660x1700">660x1700</SelectItem>
-                    <SelectItem value="1400x1000">1400x1000</SelectItem>
-                    <SelectItem value="2800x2100">2800x2100</SelectItem>
-                    <SelectItem value="1700x2100">1700x2100</SelectItem>
+                    <SelectItem value="660x1070 pvc">660x1070 pvc</SelectItem>
+                    <SelectItem value="1400x1000 kumaş">1400x1000 kumaş</SelectItem>
+                    <SelectItem value="2800x2100 mdf">2800x2100 mdf</SelectItem>
+                    <SelectItem value="1700x2100 mdf">1700x2100 mdf</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -382,14 +443,14 @@ function EbatlamaView() {
                   type="number"
                   min="0"
                   value={bicakPayi}
-                  onChange={(e) => setBicakPayi(e.target.value)}
+                  onChange={(e) => { setBicakPayi(e.target.value); updateSettingsMutation.mutate({ bicak_payi: e.target.value }); }}
                   className="bg-gray-50 dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-14 w-full focus-visible:ring-[#A67C52] text-center"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Otomatik Yönlendirme</label>
                 <button
-                  onClick={() => setAutoRotate(!autoRotate)}
+                  onClick={() => { setAutoRotate(!autoRotate); updateSettingsMutation.mutate({ auto_rotate: !autoRotate }); }}
                   className={`h-14 px-4 w-full rounded-xl flex items-center justify-between font-bold border transition-colors ${autoRotate
                     ? 'bg-green-500/10 text-green-500 border-green-500/50'
                     : 'bg-red-500/10 text-red-500 border-red-500/50'
@@ -438,6 +499,7 @@ function EbatlamaView() {
                             type="text"
                             value={item.parcaAdi || ""}
                             onChange={(e) => handleItemChange(item.id, "parcaAdi", e.target.value)}
+                            onBlur={() => handleItemBlur(item.id)}
                             className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                             placeholder="Örn: Kapak"
                           />
@@ -448,6 +510,7 @@ function EbatlamaView() {
                             min="0"
                             value={item.boy}
                             onChange={(e) => handleItemChange(item.id, "boy", e.target.value)}
+                            onBlur={() => handleItemBlur(item.id)}
                             className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                             placeholder="Boy"
                           />
@@ -469,6 +532,7 @@ function EbatlamaView() {
                             min="0"
                             value={item.en}
                             onChange={(e) => handleItemChange(item.id, "en", e.target.value)}
+                            onBlur={() => handleItemBlur(item.id)}
                             className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                             placeholder="En"
                           />
@@ -479,6 +543,7 @@ function EbatlamaView() {
                             min="1"
                             value={item.adet}
                             onChange={(e) => handleItemChange(item.id, "adet", e.target.value)}
+                            onBlur={() => handleItemBlur(item.id)}
                             className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                             placeholder="Adet"
                           />
@@ -806,7 +871,7 @@ function EbatlamaView() {
                         <div
                           className="absolute inset-0 bg-[#8c6239] rounded-sm shadow-2xl"
                           style={{
-                            transform: `translateZ(-${thickness === "4 mm" ? 12 : thickness === "3 mm" ? 9 : thickness === "2.7 mm" ? 8 : thickness === "2 mm" ? 6 : 4}px)`,
+                            transform: `translateZ(-${thickness === "4 mm" ? 12 : thickness === "3 mm" ? 9 : thickness === "2.7 mm" ? 8 : thickness === "1.5 mm" ? 6 : 4}px)`,
                           }}
                         ></div>
 
@@ -814,7 +879,7 @@ function EbatlamaView() {
                         <div
                           className="absolute inset-0 bg-[#593d22] rounded-sm"
                           style={{
-                            transform: `translateZ(-${(thickness === "4 mm" ? 12 : thickness === "3 mm" ? 9 : thickness === "2.7 mm" ? 8 : thickness === "2 mm" ? 6 : 4) / 2}px) scale(0.99)`,
+                            transform: `translateZ(-${(thickness === "4 mm" ? 12 : thickness === "3 mm" ? 9 : thickness === "2.7 mm" ? 8 : thickness === "1.5 mm" ? 6 : 4) / 2}px) scale(0.99)`,
                           }}
                         ></div>
 
