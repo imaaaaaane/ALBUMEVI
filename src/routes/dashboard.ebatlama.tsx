@@ -23,104 +23,84 @@ type CutItem = {
 type Rect = { w: number, h: number, x: number, y: number, effW: number, effH: number, name?: string };
 type Plate = { w: number, h: number, shelves: { rects: Rect[] }[] };
 
-// STRICT SHELF PACKING ALGORITHM (Guillotine Cuts - No Overlaps)
-function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h: number, name?: string }[], autoRotate: boolean, bicakPayi: number): Plate[] {
-  const plates: Plate[] = [];
-  let currentPlate: Plate = { w: plateW, h: plateH, shelves: [{ rects: [] }] };
-  let currentX = 0;
-  let currentY = 0;
-  let shelfHeight = 0;
+const packPiecesMaxRects = (reqPieces: any[], pw: number, ph: number, bicak: number, autoRotate: boolean) => {
+  let pieces = [...reqPieces].sort((a, b) => (b.w * b.h) - (a.w * a.h));
+  let plates = [];
 
-  // Add blade thickness to piece dimensions
-  const mappedPieces = pieces.map(p => ({
-    origW: p.w,
-    origH: p.h,
-    effW: p.w + bicakPayi,
-    effH: p.h + bicakPayi,
-    name: p.name,
-  }));
+  while (pieces.length > 0) {
+    let freeRects = [{ x: 0, y: 0, w: pw, h: ph }];
+    let placedRects: any[] = [];
+    let unplaced = [];
 
-  // Standardize orientation if Auto Rotate is ON to make clean shelves
-  if (autoRotate) {
-    mappedPieces.forEach(p => {
-      if (p.effW > p.effH) {
-        const tempE = p.effW; p.effW = p.effH; p.effH = tempE;
-        const tempO = p.origW; p.origW = p.origH; p.origH = tempO;
-      }
-    });
-  }
+    for (let i = 0; i < pieces.length; i++) {
+      let p = pieces[i];
+      let bestNodeIndex = -1;
+      let bestShortSideFit = Infinity;
+      let bestLongSideFit = Infinity;
+      let placedW = p.w;
+      let placedH = p.h;
 
-  // Sort by effective height descending for optimal shelf packing
-  mappedPieces.sort((a, b) => b.effH - a.effH);
+      let orientations = [{ w: p.w, h: p.h }];
+      if (autoRotate && p.w !== p.h) orientations.push({ w: p.h, h: p.w });
 
-  for (const piece of mappedPieces) {
-    let placed = false;
+      for (let o of orientations) {
+        for (let j = 0; j < freeRects.length; j++) {
+          let fr = freeRects[j];
+          if (fr.w >= o.w && fr.h >= o.h) {
+            let leftoverW = fr.w - o.w;
+            let leftoverH = fr.h - o.h;
+            let shortSide = Math.min(leftoverW, leftoverH);
+            let longSide = Math.max(leftoverW, leftoverH);
 
-    // Test orientations based on user toggle
-    const orientations = autoRotate ?
-      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH, name: piece.name },
-      { ew: piece.effH, eh: piece.effW, ow: piece.origH, oh: piece.origW, name: piece.name }] :
-      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH, name: piece.name }];
-
-    for (const ori of orientations) {
-      if (placed) break;
-      // Fits on current shelf?
-      if (currentX + ori.ew <= plateW && currentY + ori.eh <= plateH) {
-        currentPlate.shelves[0].rects.push({
-          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
-        });
-        currentX += ori.ew;
-        shelfHeight = Math.max(shelfHeight, ori.eh);
-        placed = true;
-      }
-    }
-
-    if (!placed) {
-      // Try new shelf on current plate
-      for (const ori of orientations) {
-        if (placed) break;
-        if (ori.ew <= plateW && currentY + shelfHeight + ori.eh <= plateH) {
-          currentY += shelfHeight;
-          currentX = 0;
-          shelfHeight = ori.eh;
-
-          currentPlate.shelves[0].rects.push({
-            x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
-          });
-          currentX += ori.ew;
-          placed = true;
+            if (shortSide < bestShortSideFit || (shortSide === bestShortSideFit && longSide < bestLongSideFit)) {
+              bestNodeIndex = j;
+              bestShortSideFit = shortSide;
+              bestLongSideFit = longSide;
+              placedW = o.w;
+              placedH = o.h;
+            }
+          }
         }
       }
-    }
 
-    if (!placed) {
-      // Start a completely new plate
-      if (currentPlate.shelves[0].rects.length > 0) {
-        plates.push(currentPlate);
-      }
-      currentPlate = { w: plateW, h: plateH, shelves: [{ rects: [] }] };
-      currentX = 0;
-      currentY = 0;
-      shelfHeight = 0;
+      if (bestNodeIndex !== -1) {
+        let fr = freeRects[bestNodeIndex];
+        let placed = { x: fr.x, y: fr.y, w: placedW, h: placedH, name: p.name };
+        placedRects.push(placed);
 
-      const ori = orientations[0];
-      if (ori.ew <= plateW && ori.eh <= plateH) {
-        shelfHeight = ori.eh;
-        currentPlate.shelves[0].rects.push({
-          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
+        let pBicak = { x: placed.x, y: placed.y, w: placed.w + bicak, h: placed.h + bicak };
+        let newFreeRects = [];
+
+        for (let F of freeRects) {
+          if (pBicak.x < F.x + F.w && pBicak.x + pBicak.w > F.x &&
+              pBicak.y < F.y + F.h && pBicak.y + pBicak.h > F.y) {
+            
+            if (pBicak.y > F.y) newFreeRects.push({ x: F.x, y: F.y, w: F.w, h: pBicak.y - F.y });
+            if (pBicak.y + pBicak.h < F.y + F.h) newFreeRects.push({ x: F.x, y: pBicak.y + pBicak.h, w: F.w, h: F.y + F.h - (pBicak.y + pBicak.h) });
+            if (pBicak.x > F.x) newFreeRects.push({ x: F.x, y: F.y, w: pBicak.x - F.x, h: F.h });
+            if (pBicak.x + pBicak.w < F.x + F.w) newFreeRects.push({ x: pBicak.x + pBicak.w, y: F.y, w: F.x + F.w - (pBicak.x + pBicak.w), h: F.h });
+          } else {
+            newFreeRects.push(F);
+          }
+        }
+
+        freeRects = newFreeRects.filter((rect, idx) => {
+          for (let j = 0; j < newFreeRects.length; j++) {
+            if (idx !== j && rect.x >= newFreeRects[j].x && rect.y >= newFreeRects[j].y &&
+                rect.x + rect.w <= newFreeRects[j].x + newFreeRects[j].w &&
+                rect.y + rect.h <= newFreeRects[j].y + newFreeRects[j].h) return false;
+          }
+          return true;
         });
-        currentX += ori.ew;
-        placed = true;
+      } else {
+        unplaced.push(p);
       }
     }
+    plates.push({ w: pw, h: ph, shelves: [{ rects: placedRects }] });
+    pieces = unplaced;
   }
-
-  if (currentPlate.shelves[0].rects.length > 0) {
-    plates.push(currentPlate);
-  }
-
   return plates;
-}
+};
 
 function EbatlamaView() {
   const [isDark, setIsDark] = useState(true);
@@ -285,7 +265,7 @@ function EbatlamaView() {
 
     if (reqPieces.length === 0) return null;
 
-    const plates = packPiecesShelf(pw, ph, reqPieces, autoRotate, bp);
+    const plates = packPiecesMaxRects(reqPieces, pw, ph, bp, autoRotate);
 
     const gerekenPlaka = plates.length;
     const toplamParca = reqPieces.length;

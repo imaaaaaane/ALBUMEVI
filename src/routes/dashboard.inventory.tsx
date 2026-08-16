@@ -265,7 +265,7 @@ function Inventory() {
       </div>
 
       {/* Products grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">
         {isLoading ? (
           <div className="col-span-full rounded-2xl border border-white/5 bg-white/5 p-12 text-center text-white/50">
             Ürünler yükleniyor...
@@ -279,53 +279,53 @@ function Inventory() {
                 key={p.id} 
                 className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:border-[#A67C52]/50 hover:bg-white/10 relative"
               >
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-lg"
+                    className="h-5 w-5 p-1 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-md"
                     onClick={() => {
                       setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0" });
                       setEditOpen(true);
                     }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3 w-3" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                    className="h-5 w-5 p-1 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-md"
                     onClick={() => {
                       if (confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
                         deleteMutation.mutate(p.id);
                       }
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center p-8 bg-black/20 border-b border-white/5 mt-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-4">
-                    <Package className="h-8 w-8" />
+                <div className="flex flex-col items-center justify-center p-3 bg-black/20 border-b border-white/5 mt-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-1.5">
+                    <Package className="h-4 w-4" />
                   </div>
-                  <h3 className="text-xl font-bold text-center leading-snug">
+                  <h3 className="text-xs font-bold text-center truncate w-full px-1">
                     {p.name}
                   </h3>
                 </div>
                 
-                <div className="flex flex-col p-6 bg-white/5 flex-1">
-                  <div className="text-sm text-white/50 mb-1">Varsayılan Fiyat</div>
-                  <div className="text-3xl font-black text-[#A67C52] mb-4">{Number(p.base_price).toLocaleString()} ₺</div>
+                <div className="flex flex-col p-3 bg-white/5 flex-1">
+                  <div className="text-[10px] opacity-70 mb-0.5">Varsayılan Fiyat</div>
+                  <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.base_price).toLocaleString()} ₺</div>
                   
-                  <div className="grid grid-cols-2 gap-4 mt-auto pt-4 border-t border-white/5">
+                  <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5">
                     <div>
-                      <span className="text-white/60 group-hover:text-white transition-colors block text-xs">Satılan Miktar</span>
-                      <span className="font-semibold text-[#A67C52]">{p.sold_count || 0} Adet</span>
+                      <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Satılan</span>
+                      <span className="font-medium text-[#A67C52] text-[10px]">{p.sold_count || 0} Adet</span>
                     </div>
                     <div>
-                      <span className="text-white/60 group-hover:text-white transition-colors block text-xs">Toplam Gelir</span>
-                      <span className="font-semibold text-[#A67C52]">{Number(p.total_revenue || 0).toLocaleString()} ₺</span>
+                      <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Gelir</span>
+                      <span className="font-medium text-[#A67C52] text-[10px]">{Number(p.total_revenue || 0).toLocaleString()} ₺</span>
                     </div>
                   </div>
                 </div>
@@ -335,14 +335,14 @@ function Inventory() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="group flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-6 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
+              className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-3 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
-                <Plus className="h-8 w-8" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
+                <Plus className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-lg font-bold text-white mb-1">Yeni Ürün Ekle</div>
-                <p className="text-sm text-white/40 max-w-[200px] mx-auto">
+                <div className="text-xs font-bold text-white mb-0.5">Yeni Ürün Ekle</div>
+                <p className="text-[9px] text-white/40 max-w-[120px] mx-auto leading-tight">
                   Envantere yeni bir ürün veya paket seçeneği ekleyin.
                 </p>
               </div>
