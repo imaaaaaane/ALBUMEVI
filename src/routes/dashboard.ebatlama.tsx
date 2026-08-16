@@ -596,6 +596,7 @@ function EbatlamaView() {
                       {plate.shelves.map((shelf, sIdx) => (
                         <React.Fragment key={sIdx}>
                           {shelf.rects.map((rect, rIdx) => {
+                            const isTiny = (rect.w / plate.w) < 0.07 || (rect.w / rect.h) < 0.7;
                             return (
                               <div
                                 key={rIdx}
@@ -608,8 +609,18 @@ function EbatlamaView() {
                                   height: `${(rect.h / plate.h) * 100}%`
                                 }}
                               >
-                                <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
-                                  <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                <div className="flex flex-col items-center justify-center w-full h-full text-center overflow-hidden p-0.5">
+                                  {isTiny ? (
+                                    <span className="font-bold text-white drop-shadow-md leading-none flex flex-col items-center justify-center" style={{ fontSize: 'min(12px, max(6px, 1.5cqw))' }}>
+                                      <span>{rect.w}</span>
+                                      <span className="text-[0.7em] opacity-80 my-[1px] leading-none">x</span>
+                                      <span>{rect.h}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="font-bold text-white drop-shadow-md leading-none flex items-center justify-center tracking-tight" style={{ fontSize: 'min(14px, max(7px, 2cqw))' }}>
+                                      {rect.w}x{rect.h}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -757,6 +768,7 @@ function EbatlamaView() {
                       {plate.shelves.map((shelf, sIdx) => (
                         <React.Fragment key={sIdx}>
                           {shelf.rects.map((rect, rIdx) => {
+                            const isTiny = (rect.w / plate.w) < 0.07 || (rect.w / rect.h) < 0.7;
                             return (
                               <div
                                 key={rIdx}
@@ -769,8 +781,18 @@ function EbatlamaView() {
                                   height: `${(rect.h / plate.h) * 100}%`
                                 }}
                               >
-                                <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
-                                  <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                <div className="flex flex-col items-center justify-center w-full h-full text-center overflow-hidden p-0.5">
+                                  {isTiny ? (
+                                    <span className="font-bold text-white drop-shadow-md leading-none flex flex-col items-center justify-center" style={{ fontSize: 'min(12px, max(6px, 1.5cqw))' }}>
+                                      <span>{rect.w}</span>
+                                      <span className="text-[0.7em] opacity-80 my-[1px] leading-none">x</span>
+                                      <span>{rect.h}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="font-bold text-white drop-shadow-md leading-none flex items-center justify-center tracking-tight" style={{ fontSize: 'min(14px, max(7px, 2cqw))' }}>
+                                      {rect.w}x{rect.h}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -829,6 +851,7 @@ function EbatlamaView() {
                           {plate.shelves.map((shelf, sIdx) => (
                             <React.Fragment key={sIdx}>
                               {shelf.rects.map((rect, rIdx) => {
+                                const isTiny = (rect.w / plate.w) < 0.07 || (rect.w / rect.h) < 0.7;
                                 return (
                                   <div
                                     key={rIdx}
@@ -841,8 +864,18 @@ function EbatlamaView() {
                                       height: `${(rect.h / plate.h) * 100}%`
                                     }}
                                   >
-                                    <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
-                                      <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                    <div className="flex flex-col items-center justify-center w-full h-full text-center overflow-hidden p-0.5">
+                                      {isTiny ? (
+                                        <span className="font-bold text-white drop-shadow-md leading-none flex flex-col items-center justify-center" style={{ fontSize: 'min(12px, max(6px, 1.5cqw))' }}>
+                                          <span>{rect.w}</span>
+                                          <span className="text-[0.7em] opacity-80 my-[1px] leading-none">x</span>
+                                          <span>{rect.h}</span>
+                                        </span>
+                                      ) : (
+                                        <span className="font-bold text-white drop-shadow-md leading-none flex items-center justify-center tracking-tight" style={{ fontSize: 'min(14px, max(7px, 2cqw))' }}>
+                                          {rect.w}x{rect.h}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 );
