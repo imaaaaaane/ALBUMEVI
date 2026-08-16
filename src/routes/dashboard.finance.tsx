@@ -73,7 +73,7 @@ interface BreakdownItem {
 interface FirmTransaction {
   id: string;
   date: string;
-  type: "debt" | "payment"; 
+  type: "debt" | "payment";
   amount: number;
   desc: string;
   exchangeRate?: number;
@@ -271,7 +271,7 @@ function AccountingDashboard() {
         .from("firms")
         .select("id, name, currency, created_at")
         .order("created_at", { ascending: false });
-      
+
       if (sErr) return [];
 
       const { data: transactions, error: tErr } = await supabaseClient
@@ -419,7 +419,7 @@ function AccountingDashboard() {
   });
 
   const totalPaidBaski = printExpensesData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  
+
   const commonExpensesList = expensesData.filter(e => e.name.toLowerCase() !== "baskı" && e.name.toLowerCase() !== "baski");
   const totalPaidExpenses = commonExpensesList.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
   const totalRemainingExpenses = commonExpensesList.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
@@ -527,7 +527,7 @@ function AccountingDashboard() {
   if (!isAuthenticated) {
     return (
       <div className="flex items-start pt-[20vh] justify-center min-h-screen">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-[#131316] border border-white/5 shadow-2xl rounded-3xl p-8 max-w-sm w-full mx-auto"
@@ -539,18 +539,18 @@ function AccountingDashboard() {
             <h2 className="text-xl font-bold text-white">Muhasebe Girişi</h2>
             <p className="text-white/50 text-sm mt-2 text-center">Lütfen erişim şifresini girin.</p>
           </div>
-          
+
           <form onSubmit={handlePasscodeSubmit}>
             <div className="space-y-4">
-              <Input 
-                type="password" 
-                value={passcode} 
-                onChange={(e) => setPasscode(e.target.value)} 
+              <Input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
                 autoFocus
-                className="bg-white/5 border-white/10 text-white text-center tracking-[1em] font-mono text-2xl h-14 rounded-xl focus-visible:ring-[#A67C52]" 
+                className="bg-white/5 border-white/10 text-white text-center tracking-[1em] font-mono text-2xl h-14 rounded-xl focus-visible:ring-[#A67C52]"
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full"
               >
                 Giriş Yap
@@ -718,11 +718,10 @@ function CategoryCard({ title, amount, change, isPositive, isActive, isPortal, o
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl p-5 border transition-all cursor-pointer ${
-        isActive
+      className={`relative overflow-hidden rounded-2xl p-5 border transition-all cursor-pointer ${isActive
           ? "bg-[#131316] border-[#A67C52] shadow-[0_0_15px_rgba(166,124,82,0.15)]"
           : "bg-[#131316] border-white/5 hover:border-white/10"
-      }`}
+        }`}
     >
       <div className="flex flex-col justify-between h-full gap-4">
         <div>
@@ -853,14 +852,14 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
 
   const [newFirmName, setNewFirmName] = useState("");
   const [newFirmDesc, setNewFirmDesc] = useState("");
-  const [newFirmTaken, setNewFirmTaken] = useState(""); 
-  const [newFirmRest, setNewFirmRest] = useState(""); 
+  const [newFirmTaken, setNewFirmTaken] = useState("");
+  const [newFirmRest, setNewFirmRest] = useState("");
   const [newFirmCurrency, setNewFirmCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
   const [editFirmId, setEditFirmId] = useState<string | null>(null);
   const [editFirmName, setEditFirmName] = useState("");
-  const [editFirmTaken, setEditFirmTaken] = useState(""); 
-  const [editFirmRest, setEditFirmRest] = useState(""); 
+  const [editFirmTaken, setEditFirmTaken] = useState("");
+  const [editFirmRest, setEditFirmRest] = useState("");
   const [editFirmCurrency, setEditFirmCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
@@ -1045,7 +1044,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0,8).toUpperCase()}</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
@@ -1060,10 +1059,10 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setEditFirmId(f.id); 
-                        setEditFirmName(f.name); 
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setEditFirmId(f.id);
+                        setEditFirmName(f.name);
                         setEditFirmCurrency(f.currency as any || "TRY");
                         setEditFirmRest(f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
                         setEditFirmTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
@@ -1101,7 +1100,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
           <div className="space-y-3 pt-4">
             {firms.map((f) => {
               const amount = breakdownType === "paid" ? getFirmPaid(f, exchangeRates) : getFirmRemaining(f, exchangeRates);
-              if(amount === 0) return null;
+              if (amount === 0) return null;
               return (
                 <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
                   <span className="font-bold text-white text-sm">{f.name}</span>
@@ -1264,7 +1263,7 @@ function FirmsListView({ firms, exchangeRates, isRatesError, onBack }: FirmsList
                 <Label className="text-sm font-semibold text-gray-300">Tutar</Label>
                 <div className="flex gap-2">
                   <Input required type="number" min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl flex-1" />
-                  <Select value={newTxCurrency} onValueChange={(v: "TRY"|"EUR") => setNewTxCurrency(v)}>
+                  <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}>
                     <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
@@ -1310,8 +1309,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const [newEmployeeName, setNewEmployeeName] = useState("");
   const [newEmployeeDesc, setNewEmployeeDesc] = useState("");
-  const [newEmployeeTaken, setNewEmployeeTaken] = useState(""); 
-  const [newEmployeeRest, setNewEmployeeRest] = useState(""); 
+  const [newEmployeeTaken, setNewEmployeeTaken] = useState("");
+  const [newEmployeeRest, setNewEmployeeRest] = useState("");
 
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null);
   const [editEmployeeName, setEditEmployeeName] = useState("");
@@ -1323,7 +1322,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("debt_addition");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
-  const [newTxDesc, setNewTxDesc] = useState(""); 
+  const [newTxDesc, setNewTxDesc] = useState("");
 
 
 
@@ -1335,8 +1334,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       const remaining = input.taken - input.rest;
       const { data: employee, error: sErr } = await supabaseClient
         .from("employees")
-        .insert({ 
-          name: input.name, 
+        .insert({
+          name: input.name,
           currency: "TRY",
           total_debt: input.taken,
           total_paid: input.rest
@@ -1358,12 +1357,12 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const editEmployeeMutation = useMutation({
     mutationFn: async (input: { id: string; name: string; takenDiff: number; restDiff: number; newTaken: number; newRest: number }) => {
       const remaining = input.newTaken - input.newRest;
-      await supabaseClient.from("employees").update({ 
+      await supabaseClient.from("employees").update({
         name: input.name,
         total_debt: input.newTaken,
         total_paid: input.newRest
       }).eq("id", input.id);
-      
+
       if (input.takenDiff !== 0) {
         await supabaseClient.from("salary_transactions").insert({
           employee_id: input.id, transaction_type: "debt_addition", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Maaş)"
@@ -1450,11 +1449,11 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     const newTaken = parseFloat(editEmployeeTaken) || 0;
     const newRest = parseFloat(editEmployeeRest) || 0;
     editEmployeeMutation.mutate({
-      id: editEmployeeId, 
+      id: editEmployeeId,
       name: editEmployeeName.trim(),
       newTaken,
       newRest,
-      takenDiff: newTaken - currentTaken, 
+      takenDiff: newTaken - currentTaken,
       restDiff: newRest - currentRest
     });
   };
@@ -1464,12 +1463,12 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     if (!selectedEmployeeId || !newTxAmount || !newTxDesc.trim()) return;
     const employee = employees.find((f) => f.id === selectedEmployeeId);
     if (!employee) return;
-    
-    addTxMutation.mutate({ 
-      employee_id: selectedEmployeeId, 
-      type: newTxType, 
-      amount: parseFloat(newTxAmount), 
-      desc: newTxDesc.trim(), 
+
+    addTxMutation.mutate({
+      employee_id: selectedEmployeeId,
+      type: newTxType,
+      amount: parseFloat(newTxAmount),
+      desc: newTxDesc.trim(),
       date: newTxDate,
       currentSalary: employee.total_debt || 0,
       currentPaid: employee.total_paid || 0
@@ -1537,18 +1536,18 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setEditEmployeeId(f.id); 
-                        setEditEmployeeName(f.name); 
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setEditEmployeeId(f.id);
+                        setEditEmployeeName(f.name);
                         setEditEmployeeRest(f.total_paid?.toString() || "0");
                         setEditEmployeeTaken(f.total_debt?.toString() || "0");
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setPaymentEmployeeId(f.id); 
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setPaymentEmployeeId(f.id);
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-1" title="Ödeme Ekle">
                         <Wallet className="w-4.5 h-4.5" />
                       </button>
@@ -1583,7 +1582,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           <div className="space-y-3 pt-4">
             {employees.map((f) => {
               const amount = breakdownType === "paid" ? getEmployeePaid(f) : getEmployeeRemaining(f);
-              if(amount === 0) return null;
+              if (amount === 0) return null;
               return (
                 <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
                   <span className="font-bold text-white text-sm">{f.name}</span>
@@ -1718,8 +1717,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
               <div className="grid grid-cols-1 gap-2">
                 <button type="button" onClick={() => setNewTxType("debt_addition")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "debt_addition" ? "bg-[#A67C52]/10 border-[#A67C52] text-[#A67C52]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Maaş Tahakkuku (Yeni Borç)</button>
                 <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setNewTxType("salary_payment")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "salary_payment" ? "bg-[#12B76A]/10 border-[#12B76A] text-[#12B76A]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Maaş Ödemesi</button>
-                    <button type="button" onClick={() => setNewTxType("advance")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "advance" ? "bg-[#F79009]/10 border-[#F79009] text-[#F79009]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Avans</button>
+                  <button type="button" onClick={() => setNewTxType("salary_payment")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "salary_payment" ? "bg-[#12B76A]/10 border-[#12B76A] text-[#12B76A]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Maaş Ödemesi</button>
+                  <button type="button" onClick={() => setNewTxType("advance")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "advance" ? "bg-[#F79009]/10 border-[#F79009] text-[#F79009]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Avans</button>
                 </div>
               </div>
             </div>
@@ -1791,8 +1790,8 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
   const [newExpenseName, setNewExpenseName] = useState("");
   const [newExpenseDesc, setNewExpenseDesc] = useState("");
-  const [newExpenseTaken, setNewExpenseTaken] = useState(""); 
-  const [newExpenseRest, setNewExpenseRest] = useState(""); 
+  const [newExpenseTaken, setNewExpenseTaken] = useState("");
+  const [newExpenseRest, setNewExpenseRest] = useState("");
 
   const [editExpenseName, setEditExpenseName] = useState("");
   const [editExpenseTaken, setEditExpenseTaken] = useState("");
@@ -1962,7 +1961,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
           <div className="space-y-3 pt-4">
             {expenses.map((f) => {
               const amount = breakdownType === "paid" ? getExpensePaid(f, exchangeRates) : getExpenseRemaining(f, exchangeRates);
-              if(amount === 0) return null;
+              if (amount === 0) return null;
               return (
                 <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
                   <span className="font-bold text-white text-sm">{f.name}</span>
@@ -2225,7 +2224,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><GraduationCap className="w-5 h-5 text-[#9E9696]" /></div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0,8).toUpperCase()}</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
@@ -2240,10 +2239,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setEditSchoolId(f.id); 
-                        setEditSchoolName(f.name); 
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setEditSchoolId(f.id);
+                        setEditSchoolName(f.name);
                         setEditSchoolCurrency(f.currency as any || "TRY");
                         setEditSchoolRest(String(f.paid_amount || 0));
                         setEditSchoolTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
@@ -2281,7 +2280,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           <div className="space-y-3 pt-4">
             {schools.map((f) => {
               const amount = breakdownType === "paid" ? getSchoolPaid(f, exchangeRates) : getSchoolRemaining(f, exchangeRates);
-              if(amount === 0) return null;
+              if (amount === 0) return null;
               const hasForeignCurrency = f.currency && f.currency !== "TRY";
               return (
                 <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
@@ -2305,10 +2304,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               <Input required placeholder="Örn. Atatürk İlkokulu" value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 rounded-xl" />
             </div>
             <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-                <Input placeholder="Ek notlar..." value={newSchoolDesc} onChange={(e) => setNewSchoolDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
-              </div>
-              <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
+              <Input placeholder="Ek notlar..." value={newSchoolDesc} onChange={(e) => setNewSchoolDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
               <Select value={newSchoolCurrency} onValueChange={(v: any) => setNewSchoolCurrency(v)}>
                 <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
@@ -2482,11 +2481,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .from("print_expenses")
         .select("*")
         .order("created_at", { ascending: false });
-      
+
       if (teamId !== "all") {
         q = q.eq("team_id", teamId);
       }
-      
+
       const { data, error } = await q;
       if (error) throw error;
       return data.map((t) => {
@@ -2600,7 +2599,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
             </Button>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-[#9E9696]">
               <thead className="text-xs uppercase text-[#9E9696] bg-white/5 rounded-t-xl">
@@ -2698,10 +2697,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   {productsForBaski
                     .filter((p: any) => /^\d+x\d+$/i.test(p.name.trim()))
                     .map((p: any) => (
-                    <SelectItem key={p.id} value={p.id} className="hover:bg-white/10 focus:bg-white/10 focus:text-white">
-                      {p.name} ({p.base_price} ₺)
-                    </SelectItem>
-                  ))}
+                      <SelectItem key={p.id} value={p.id} className="hover:bg-white/10 focus:bg-white/10 focus:text-white">
+                        {p.name} ({p.base_price} ₺)
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -2752,7 +2751,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
                   {(
-                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || 0) * 
+                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || 0) *
                     (parseInt(baskiQuantity) || 0)
                   ).toLocaleString("tr-TR")} ₺
                 </span>
@@ -2760,7 +2759,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             )}
           </div>
           <DialogFooter>
-            <Button 
+            <Button
               disabled={!baskiSelectedProduct || addBaskiExpenseMutation.isPending || parseInt(baskiQuantity) < 1 || !baskiAciklama.trim()}
               onClick={() => {
                 const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
@@ -2769,14 +2768,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   const desc = `${p.name} (${parseInt(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
                   addBaskiExpenseMutation.mutate({ amount: total, desc, paid: parseFloat(baskiPaidAmount) || 0, remaining: parseFloat(baskiRemainingAmount) || 0 });
                 }
-              }} 
+              }}
               className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
             >
               {addBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
         </DialogContent>
-    </Dialog>
+      </Dialog>
 
       <Dialog open={isBaskiEditModalOpen} onOpenChange={setBaskiEditModalOpen}>
         <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
@@ -2817,18 +2816,18 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button 
+            <Button
               disabled={editBaskiExpenseMutation.isPending || !baskiEditAmount}
               onClick={() => {
                 if (baskiEditId) {
-                  editBaskiExpenseMutation.mutate({ 
-                    id: baskiEditId, 
-                    amount: parseFloat(baskiEditAmount) || 0, 
-                    paid: parseFloat(baskiEditPaid) || 0, 
-                    desc: baskiEditDesc 
+                  editBaskiExpenseMutation.mutate({
+                    id: baskiEditId,
+                    amount: parseFloat(baskiEditAmount) || 0,
+                    paid: parseFloat(baskiEditPaid) || 0,
+                    desc: baskiEditDesc
                   });
                 }
-              }} 
+              }}
               className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
             >
               {editBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}

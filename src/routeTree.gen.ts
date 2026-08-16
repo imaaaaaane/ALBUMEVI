@@ -9,31 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminLoginRouteImport } from './routes/admin-login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
-import { Route as SchoolSlugRouteImport } from './routes/school.$slug'
-import { Route as PortalSchoolIdRouteImport } from './routes/portal.$schoolId'
-import { Route as DashboardSchoolsRouteImport } from './routes/dashboard.schools'
-import { Route as DashboardOrdersRouteImport } from './routes/dashboard.orders'
-import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
-import { Route as DashboardInventoryRouteImport } from './routes/dashboard.inventory'
-import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance'
 import { Route as DashboardCalendarRouteImport } from './routes/dashboard.calendar'
-import { Route as DashboardPortfolioRouteImport } from './routes/dashboard.portfolio'
+import { Route as DashboardEbatlamaRouteImport } from './routes/dashboard.ebatlama'
+import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance'
+import { Route as DashboardInventoryRouteImport } from './routes/dashboard.inventory'
+import { Route as DashboardMaliyetRouteImport } from './routes/dashboard.maliyet'
+import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
+import { Route as DashboardOrdersRouteImport } from './routes/dashboard.orders'
 import { Route as DashboardPhotographersRouteImport } from './routes/dashboard.photographers'
+import { Route as DashboardPortfolioRouteImport } from './routes/dashboard.portfolio'
+import { Route as DashboardSchoolsRouteImport } from './routes/dashboard.schools'
+import { Route as PortalSchoolIdRouteImport } from './routes/portal.$schoolId'
+import { Route as SchoolSlugRouteImport } from './routes/school.$slug'
 import { Route as DashboardFinanceAlbumeviRouteImport } from './routes/dashboard.finance_.albumevi'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -41,9 +38,14 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -51,34 +53,14 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const SchoolSlugRoute = SchoolSlugRouteImport.update({
-  id: '/school/$slug',
-  path: '/school/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortalSchoolIdRoute = PortalSchoolIdRouteImport.update({
-  id: '/portal/$schoolId',
-  path: '/portal/$schoolId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardSchoolsRoute = DashboardSchoolsRouteImport.update({
-  id: '/schools',
-  path: '/schools',
+const DashboardCalendarRoute = DashboardCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardOrdersRoute = DashboardOrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardNotesRoute = DashboardNotesRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardInventoryRoute = DashboardInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
+const DashboardEbatlamaRoute = DashboardEbatlamaRouteImport.update({
+  id: '/ebatlama',
+  path: '/ebatlama',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardFinanceRoute = DashboardFinanceRouteImport.update({
@@ -86,9 +68,24 @@ const DashboardFinanceRoute = DashboardFinanceRouteImport.update({
   path: '/finance',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardCalendarRoute = DashboardCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const DashboardInventoryRoute = DashboardInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardMaliyetRoute = DashboardMaliyetRouteImport.update({
+  id: '/maliyet',
+  path: '/maliyet',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardNotesRoute = DashboardNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardOrdersRoute = DashboardOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardPhotographersRoute = DashboardPhotographersRouteImport.update({
@@ -96,16 +93,32 @@ const DashboardPhotographersRoute = DashboardPhotographersRouteImport.update({
   path: '/photographers',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardFinanceAlbumeviRoute = DashboardFinanceAlbumeviRouteImport.update({
-  id: '/finance/albumevi',
-  path: '/finance/albumevi',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardPortfolioRoute = DashboardPortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSchoolsRoute = DashboardSchoolsRouteImport.update({
+  id: '/schools',
+  path: '/schools',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const PortalSchoolIdRoute = PortalSchoolIdRouteImport.update({
+  id: '/portal/$schoolId',
+  path: '/portal/$schoolId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolSlugRoute = SchoolSlugRouteImport.update({
+  id: '/school/$slug',
+  path: '/school/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardFinanceAlbumeviRoute =
+  DashboardFinanceAlbumeviRouteImport.update({
+    id: '/finance_/albumevi',
+    path: '/finance/albumevi',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -113,33 +126,38 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/dashboard/calendar': typeof DashboardCalendarRoute
+  '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
-  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
-  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
-  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
+  '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
-  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
+  '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-login': typeof AdminLoginRoute
   '/login': typeof LoginRoute
   '/dashboard/calendar': typeof DashboardCalendarRoute
+  '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
+  '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
-  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
+  '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/finance/albumevi': typeof DashboardFinanceAlbumeviRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,15 +166,19 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
   '/dashboard/calendar': typeof DashboardCalendarRoute
+  '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
+  '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
-  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
+  '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/finance_/albumevi': typeof DashboardFinanceAlbumeviRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,33 +188,38 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/dashboard/calendar'
+    | '/dashboard/ebatlama'
     | '/dashboard/finance'
-    | '/dashboard/finance/albumevi'
-    | '/dashboard/finance/albumevi'
-    | '/dashboard/finance/albumevi'
     | '/dashboard/inventory'
+    | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
-    | '/dashboard/schools'
     | '/dashboard/photographers'
+    | '/dashboard/portfolio'
+    | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard/'
+    | '/dashboard/finance/albumevi'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin-login'
     | '/login'
     | '/dashboard/calendar'
+    | '/dashboard/ebatlama'
     | '/dashboard/finance'
     | '/dashboard/inventory'
+    | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
-    | '/dashboard/schools'
     | '/dashboard/photographers'
+    | '/dashboard/portfolio'
+    | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard'
+    | '/dashboard/finance/albumevi'
   id:
     | '__root__'
     | '/'
@@ -200,15 +227,19 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/dashboard/calendar'
+    | '/dashboard/ebatlama'
     | '/dashboard/finance'
     | '/dashboard/inventory'
+    | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
-    | '/dashboard/schools'
     | '/dashboard/photographers'
+    | '/dashboard/portfolio'
+    | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
     | '/dashboard/'
+    | '/dashboard/finance_/albumevi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -222,18 +253,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-login': {
@@ -243,11 +267,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -257,25 +288,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/school/$slug': {
-      id: '/school/$slug'
-      path: '/school/$slug'
-      fullPath: '/school/$slug'
-      preLoaderRoute: typeof SchoolSlugRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dashboard/calendar': {
+      id: '/dashboard/calendar'
+      path: '/calendar'
+      fullPath: '/dashboard/calendar'
+      preLoaderRoute: typeof DashboardCalendarRouteImport
+      parentRoute: typeof DashboardRoute
     }
-    '/portal/$schoolId': {
-      id: '/portal/$schoolId'
-      path: '/portal/$schoolId'
-      fullPath: '/portal/$schoolId'
-      preLoaderRoute: typeof PortalSchoolIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dashboard/ebatlama': {
+      id: '/dashboard/ebatlama'
+      path: '/ebatlama'
+      fullPath: '/dashboard/ebatlama'
+      preLoaderRoute: typeof DashboardEbatlamaRouteImport
+      parentRoute: typeof DashboardRoute
     }
-    '/dashboard/schools': {
-      id: '/dashboard/schools'
-      path: '/schools'
-      fullPath: '/dashboard/schools'
-      preLoaderRoute: typeof DashboardSchoolsRouteImport
+    '/dashboard/finance': {
+      id: '/dashboard/finance'
+      path: '/finance'
+      fullPath: '/dashboard/finance'
+      preLoaderRoute: typeof DashboardFinanceRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/inventory': {
+      id: '/dashboard/inventory'
+      path: '/inventory'
+      fullPath: '/dashboard/inventory'
+      preLoaderRoute: typeof DashboardInventoryRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/maliyet': {
+      id: '/dashboard/maliyet'
+      path: '/maliyet'
+      fullPath: '/dashboard/maliyet'
+      preLoaderRoute: typeof DashboardMaliyetRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/notes': {
+      id: '/dashboard/notes'
+      path: '/notes'
+      fullPath: '/dashboard/notes'
+      preLoaderRoute: typeof DashboardNotesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/orders': {
+      id: '/dashboard/orders'
+      path: '/orders'
+      fullPath: '/dashboard/orders'
+      preLoaderRoute: typeof DashboardOrdersRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/photographers': {
@@ -292,33 +351,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPortfolioRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/orders': {
-      id: '/dashboard/orders'
-      path: '/orders'
-      fullPath: '/dashboard/orders'
-      preLoaderRoute: typeof DashboardOrdersRouteImport
+    '/dashboard/schools': {
+      id: '/dashboard/schools'
+      path: '/schools'
+      fullPath: '/dashboard/schools'
+      preLoaderRoute: typeof DashboardSchoolsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/notes': {
-      id: '/dashboard/notes'
-      path: '/notes'
-      fullPath: '/dashboard/notes'
-      preLoaderRoute: typeof DashboardNotesRouteImport
-      parentRoute: typeof DashboardRoute
+    '/portal/$schoolId': {
+      id: '/portal/$schoolId'
+      path: '/portal/$schoolId'
+      fullPath: '/portal/$schoolId'
+      preLoaderRoute: typeof PortalSchoolIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/inventory': {
-      id: '/dashboard/inventory'
-      path: '/inventory'
-      fullPath: '/dashboard/inventory'
-      preLoaderRoute: typeof DashboardInventoryRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/finance': {
-      id: '/dashboard/finance'
-      path: '/finance'
-      fullPath: '/dashboard/finance'
-      preLoaderRoute: typeof DashboardFinanceRouteImport
-      parentRoute: typeof DashboardRoute
+    '/school/$slug': {
+      id: '/school/$slug'
+      path: '/school/$slug'
+      fullPath: '/school/$slug'
+      preLoaderRoute: typeof SchoolSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/finance_/albumevi': {
       id: '/dashboard/finance_/albumevi'
@@ -327,40 +379,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardFinanceAlbumeviRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/calendar': {
-      id: '/dashboard/calendar'
-      path: '/calendar'
-      fullPath: '/dashboard/calendar'
-      preLoaderRoute: typeof DashboardCalendarRouteImport
-      parentRoute: typeof DashboardRoute
-    }
   }
 }
 
 interface DashboardRouteChildren {
-  DashboardFinanceAlbumeviRoute: typeof DashboardFinanceAlbumeviRoute
   DashboardCalendarRoute: typeof DashboardCalendarRoute
+  DashboardEbatlamaRoute: typeof DashboardEbatlamaRoute
   DashboardFinanceRoute: typeof DashboardFinanceRoute
   DashboardInventoryRoute: typeof DashboardInventoryRoute
+  DashboardMaliyetRoute: typeof DashboardMaliyetRoute
   DashboardNotesRoute: typeof DashboardNotesRoute
   DashboardOrdersRoute: typeof DashboardOrdersRoute
-  DashboardSchoolsRoute: typeof DashboardSchoolsRoute
   DashboardPhotographersRoute: typeof DashboardPhotographersRoute
   DashboardPortfolioRoute: typeof DashboardPortfolioRoute
+  DashboardSchoolsRoute: typeof DashboardSchoolsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardFinanceAlbumeviRoute: typeof DashboardFinanceAlbumeviRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardFinanceAlbumeviRoute: DashboardFinanceAlbumeviRoute,
   DashboardCalendarRoute: DashboardCalendarRoute,
+  DashboardEbatlamaRoute: DashboardEbatlamaRoute,
   DashboardFinanceRoute: DashboardFinanceRoute,
   DashboardInventoryRoute: DashboardInventoryRoute,
+  DashboardMaliyetRoute: DashboardMaliyetRoute,
   DashboardNotesRoute: DashboardNotesRoute,
   DashboardOrdersRoute: DashboardOrdersRoute,
-  DashboardSchoolsRoute: DashboardSchoolsRoute,
   DashboardPhotographersRoute: DashboardPhotographersRoute,
   DashboardPortfolioRoute: DashboardPortfolioRoute,
+  DashboardSchoolsRoute: DashboardSchoolsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardFinanceAlbumeviRoute: DashboardFinanceAlbumeviRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
@@ -378,13 +427,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

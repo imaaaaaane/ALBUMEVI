@@ -17,7 +17,11 @@ import {
   Image as ImageIcon,
   UploadCloud,
   Loader2,
-  Pencil
+  Pencil,
+  Calculator,
+  Scissors,
+  Moon,
+  Sun
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -44,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-provider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -54,6 +59,8 @@ const SIDEBAR_ITEMS = [
   { title: "Ürün Envanteri", url: "/dashboard/inventory", icon: Package },
   { title: "Takvim", url: "/dashboard/calendar", icon: Calendar },
   { title: "Muhasebe", url: "/dashboard/finance", icon: Wallet },
+  { title: "Maliyet", url: "/dashboard/maliyet", icon: Calculator },
+  { title: "Ebatlama", url: "/dashboard/ebatlama", icon: Scissors },
   { title: "Notlar", url: "/dashboard/notes", icon: StickyNote },
   { title: "Çekimciler", url: "/dashboard/photographers", icon: Camera },
   { title: "Portfolyo", url: "/dashboard/portfolio", icon: ImageIcon },
@@ -64,6 +71,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { lang, setLang } = useI18n();
   const { user, role, teamId, fullName, avatarUrl, refreshProfile } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(fullName || user?.email || "");
   const [editFile, setEditFile] = useState<File | null>(null);
@@ -271,8 +279,8 @@ export function AppSidebar() {
         </div>
         
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={signOut} className="flex items-center gap-2 p-0 h-auto">
+          <SidebarMenuItem className="flex items-center gap-2">
+            <SidebarMenuButton onClick={signOut} className="flex-1 flex items-center gap-2 p-0 h-auto">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -280,6 +288,18 @@ export function AppSidebar() {
               >
                 <LogOut className="h-4 w-4" />
                 <span>Çıkış Yap</span>
+              </motion.div>
+            </SidebarMenuButton>
+            <SidebarMenuButton 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+              className="w-10 flex-none flex items-center justify-center p-0 h-auto"
+            >
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center justify-center px-0 py-2.5 w-full text-xs font-semibold text-[#9E9696] hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer"
+              >
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </motion.div>
             </SidebarMenuButton>
           </SidebarMenuItem>
