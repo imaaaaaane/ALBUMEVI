@@ -14,6 +14,7 @@ export const Route = createFileRoute("/dashboard/ebatlama")({
 type CutItem = {
   id: string;
   sira: number;
+  parcaAdi: string;
   boy: string;
   en: string;
   adet: string;
@@ -145,7 +146,7 @@ function EbatlamaView() {
     setPlateSize("2800x2100");
     setBicakPayi("3");
     setAutoRotate(true);
-    setItems([{ id: Date.now().toString(), sira: 1, boy: "", en: "", adet: "1" }]);
+    setItems([{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "1" }]);
     setViewMode("2D");
   }, []);
 
@@ -157,7 +158,7 @@ function EbatlamaView() {
   const handleAddItem = () => {
     setItems(prev => [
       ...prev,
-      { id: Date.now().toString(), sira: prev.length + 1, boy: "", en: "", adet: "1" }
+      { id: Date.now().toString(), sira: prev.length + 1, parcaAdi: "", boy: "", en: "", adet: "1" }
     ]);
   };
 
@@ -387,7 +388,7 @@ function EbatlamaView() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-600 dark:text-[#9E9696] uppercase bg-gray-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-4 py-4 rounded-tl-lg w-16 text-center">Sıra</th>
+                    <th className="px-4 py-4 rounded-tl-lg w-40 text-center">Parça Adı</th>
                     <th className="px-4 py-4">Boy (mm)</th>
                     <th className="px-4 py-4">En (mm)</th>
                     <th className="px-4 py-4">Adet</th>
@@ -404,7 +405,15 @@ function EbatlamaView() {
 
                     return (
                       <tr key={item.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-center font-bold text-slate-500 dark:text-[#9E9696]">{item.sira}</td>
+                        <td className="px-4 py-3">
+                          <Input 
+                            type="text"
+                            value={item.parcaAdi || ""}
+                            onChange={(e) => handleItemChange(item.id, "parcaAdi", e.target.value)}
+                            className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                            placeholder="Örn: Kapak"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <Input
                             type="number"
