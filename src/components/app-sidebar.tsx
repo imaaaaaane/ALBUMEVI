@@ -130,10 +130,24 @@ export function AppSidebar() {
     return true; // Admin sees all
   });
 
-  const signOut = () => {
+  const signOut = async () => {
     if (typeof window !== "undefined") {
+      const ebatlamaItems = localStorage.getItem("ebatlama_items");
+      const ebatlamaThickness = localStorage.getItem("ebatlama_thickness");
+      const ebatlamaPlateSize = localStorage.getItem("ebatlama_plateSize");
+      const ebatlamaBicakPayi = localStorage.getItem("ebatlama_bicakPayi");
+      const ebatlamaAutoRotate = localStorage.getItem("ebatlama_autoRotate");
+
       localStorage.removeItem("albumevi_admin");
       localStorage.removeItem("albumevi_school");
+      
+      await supabase.auth.signOut();
+
+      if (ebatlamaItems) localStorage.setItem("ebatlama_items", ebatlamaItems);
+      if (ebatlamaThickness) localStorage.setItem("ebatlama_thickness", ebatlamaThickness);
+      if (ebatlamaPlateSize) localStorage.setItem("ebatlama_plateSize", ebatlamaPlateSize);
+      if (ebatlamaBicakPayi) localStorage.setItem("ebatlama_bicakPayi", ebatlamaBicakPayi);
+      if (ebatlamaAutoRotate) localStorage.setItem("ebatlama_autoRotate", ebatlamaAutoRotate);
     }
     navigate({ to: "/" });
   };

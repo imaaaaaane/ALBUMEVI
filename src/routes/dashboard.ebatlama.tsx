@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { toJpeg } from "html-to-image";
-import { Plus, Trash2, Download, Settings, Box, LayoutGrid, Loader2, Layers, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { Plus, Trash2, Download, Settings, Box, LayoutGrid, Loader2, Layers, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,11 +20,11 @@ type CutItem = {
   adet: string;
 };
 
-type Rect = { w: number, h: number, x: number, y: number, effW: number, effH: number };
+type Rect = { w: number, h: number, x: number, y: number, effW: number, effH: number, name?: string };
 type Plate = { w: number, h: number, shelves: { rects: Rect[] }[] };
 
 // STRICT SHELF PACKING ALGORITHM (Guillotine Cuts - No Overlaps)
-function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h: number }[], autoRotate: boolean, bicakPayi: number): Plate[] {
+function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h: number, name?: string }[], autoRotate: boolean, bicakPayi: number): Plate[] {
   const plates: Plate[] = [];
   let currentPlate: Plate = { w: plateW, h: plateH, shelves: [{ rects: [] }] };
   let currentX = 0;
@@ -37,6 +37,7 @@ function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h:
     origH: p.h,
     effW: p.w + bicakPayi,
     effH: p.h + bicakPayi,
+    name: p.name,
   }));
 
   // Standardize orientation if Auto Rotate is ON to make clean shelves
@@ -57,16 +58,16 @@ function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h:
 
     // Test orientations based on user toggle
     const orientations = autoRotate ?
-      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH },
-      { ew: piece.effH, eh: piece.effW, ow: piece.origH, oh: piece.origW }] :
-      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH }];
+      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH, name: piece.name },
+      { ew: piece.effH, eh: piece.effW, ow: piece.origH, oh: piece.origW, name: piece.name }] :
+      [{ ew: piece.effW, eh: piece.effH, ow: piece.origW, oh: piece.origH, name: piece.name }];
 
     for (const ori of orientations) {
       if (placed) break;
       // Fits on current shelf?
       if (currentX + ori.ew <= plateW && currentY + ori.eh <= plateH) {
         currentPlate.shelves[0].rects.push({
-          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh
+          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
         });
         currentX += ori.ew;
         shelfHeight = Math.max(shelfHeight, ori.eh);
@@ -84,7 +85,7 @@ function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h:
           shelfHeight = ori.eh;
 
           currentPlate.shelves[0].rects.push({
-            x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh
+            x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
           });
           currentX += ori.ew;
           placed = true;
@@ -106,7 +107,7 @@ function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h:
       if (ori.ew <= plateW && ori.eh <= plateH) {
         shelfHeight = ori.eh;
         currentPlate.shelves[0].rects.push({
-          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh
+          x: currentX, y: currentY, w: ori.ow, h: ori.oh, effW: ori.ew, effH: ori.eh, name: ori.name
         });
         currentX += ori.ew;
         placed = true;
@@ -124,13 +125,31 @@ function packPiecesShelf(plateW: number, plateH: number, pieces: { w: number, h:
 function EbatlamaView() {
   const [isDark, setIsDark] = useState(true);
   const [viewMode, setViewMode] = useState<"2D" | "3D">("2D");
-  const [thickness, setThickness] = useState<string>("2.7 mm");
-  const [plateSize, setPlateSize] = useState<string>("2800x2100");
-  const [bicakPayi, setBicakPayi] = useState<string>("3");
-  const [autoRotate, setAutoRotate] = useState<boolean>(true);
+  
+  const [thickness, setThickness] = useState<string>(() => {
+    return localStorage.getItem("ebatlama_thickness") || "2.7 mm";
+  });
+  
+  const [plateSize, setPlateSize] = useState<string>(() => {
+    return localStorage.getItem("ebatlama_plateSize") || "2800x2100";
+  });
+  
+  const [bicakPayi, setBicakPayi] = useState<string>(() => {
+    return localStorage.getItem("ebatlama_bicakPayi") || "3";
+  });
+  
+  const [autoRotate, setAutoRotate] = useState<boolean>(() => {
+    const saved = localStorage.getItem("ebatlama_autoRotate");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const printRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [items, setItems] = useState<CutItem[]>([]);
+  
+  const [items, setItems] = useState<CutItem[]>(() => {
+    const saved = localStorage.getItem("ebatlama_items");
+    return saved ? JSON.parse(saved) : [{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "0" }];
+  });
 
   // 3D Controls
   const [rotX, setRotX] = useState(60);
@@ -139,16 +158,30 @@ function EbatlamaView() {
   const dragStartPos = useRef({ x: 0, y: 0 });
   const dragStartRot = useRef({ x: 60, z: -30 });
 
-  // Reset State on Mount
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
-    setThickness("2.7 mm");
-    setPlateSize("2800x2100");
-    setBicakPayi("3");
-    setAutoRotate(true);
-    setItems([{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "1" }]);
-    setViewMode("2D");
   }, []);
+
+  // Save to LocalStorage
+  useEffect(() => {
+    localStorage.setItem("ebatlama_thickness", thickness);
+  }, [thickness]);
+
+  useEffect(() => {
+    localStorage.setItem("ebatlama_plateSize", plateSize);
+  }, [plateSize]);
+
+  useEffect(() => {
+    localStorage.setItem("ebatlama_bicakPayi", bicakPayi);
+  }, [bicakPayi]);
+
+  useEffect(() => {
+    localStorage.setItem("ebatlama_autoRotate", JSON.stringify(autoRotate));
+  }, [autoRotate]);
+
+  useEffect(() => {
+    localStorage.setItem("ebatlama_items", JSON.stringify(items));
+  }, [items]);
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle("dark");
@@ -158,7 +191,7 @@ function EbatlamaView() {
   const handleAddItem = () => {
     setItems(prev => [
       ...prev,
-      { id: Date.now().toString(), sira: prev.length + 1, parcaAdi: "", boy: "", en: "", adet: "1" }
+      { id: Date.now().toString(), sira: prev.length + 1, parcaAdi: "", boy: "", en: "", adet: "0" }
     ]);
   };
 
@@ -193,6 +226,15 @@ function EbatlamaView() {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
+  const handleSwapDimensions = (id: string) => {
+    setItems(items.map(item => {
+      if (item.id === id) {
+        return { ...item, boy: item.en, en: item.boy };
+      }
+      return item;
+    }));
+  };
+
   const parseNumber = (val: string) => {
     const num = parseFloat(val);
     return isNaN(num) ? 0 : num;
@@ -203,6 +245,11 @@ function EbatlamaView() {
     const e = parseNumber(en);
     return (b / 1000) * (e / 1000);
   };
+
+  const activeNames = Array.from(new Set(items.filter(item => {
+    const adetNum = parseFloat(item.adet);
+    return !isNaN(adetNum) && adetNum > 0 && item.parcaAdi && item.parcaAdi.trim() !== "";
+  }).map(item => item.parcaAdi))).join(" & ");
 
   // -------------------------
   // EXACT OPTIMIZATION ALGORITHM
@@ -223,7 +270,7 @@ function EbatlamaView() {
       ph = temp;
     }
 
-    const reqPieces: { w: number, h: number }[] = [];
+    const reqPieces: { w: number, h: number, name?: string }[] = [];
 
     items.forEach(item => {
       const b = parseNumber(item.boy);
@@ -231,7 +278,7 @@ function EbatlamaView() {
       const adet = parseNumber(item.adet);
       if (b > 0 && e > 0 && adet > 0) {
         for (let i = 0; i < adet; i++) {
-          reqPieces.push({ w: b, h: e }); // Do NOT sort here, let AutoRotate logic handle it
+          reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" }); // Do NOT sort here, let AutoRotate logic handle it
         }
       }
     });
@@ -390,6 +437,7 @@ function EbatlamaView() {
                   <tr>
                     <th className="px-4 py-4 rounded-tl-lg w-40 text-center">Parça Adı</th>
                     <th className="px-4 py-4">Boy (mm)</th>
+                    <th className="px-1 py-4 w-10 text-center"></th>
                     <th className="px-4 py-4">En (mm)</th>
                     <th className="px-4 py-4">Adet</th>
                     <th className="px-4 py-4">Birim (M²)</th>
@@ -423,6 +471,17 @@ function EbatlamaView() {
                             className="bg-white dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                             placeholder="Boy"
                           />
+                        </td>
+                        <td className="px-1 py-3 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleSwapDimensions(item.id)}
+                            className="h-8 w-8 text-slate-400 hover:text-[#A67C52] hover:bg-[#A67C52]/10 transition-colors"
+                            title="Boy ve En'i Değiştir"
+                          >
+                            <ArrowRightLeft className="w-4 h-4" />
+                          </Button>
                         </td>
                         <td className="px-4 py-3">
                           <Input
@@ -540,14 +599,19 @@ function EbatlamaView() {
                             return (
                               <div
                                 key={rIdx}
-                                className="absolute bg-[#16A34A] border border-[#FFFFFF] flex items-center justify-center overflow-hidden shadow-sm"
+                                title={`${rect.name ? rect.name + ' - ' : ''}${rect.w}x${rect.h}`}
+                                className="absolute bg-[#16A34A] border-[0.5px] border-[#FFFFFF] flex flex-col items-center justify-center shadow-sm overflow-hidden"
                                 style={{
                                   top: `${(rect.y / plate.h) * 100}%`,
                                   left: `${(rect.x / plate.w) * 100}%`,
                                   width: `${(rect.w / plate.w) * 100}%`,
                                   height: `${(rect.h / plate.h) * 100}%`
                                 }}
-                              />
+                              >
+                                <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
+                                  <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                </div>
+                              </div>
                             );
                           })}
                         </React.Fragment>
@@ -609,13 +673,20 @@ function EbatlamaView() {
         >
           {/* Header & Legend */}
           <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 border-b pb-4 gap-4 ${isDownloading ? 'border-gray-200' : 'border-gray-200 dark:border-[#1a1a1e]'}`}>
-            <div>
-              <h2 className={`text-3xl font-bold mb-2 ${isDownloading ? 'text-black' : 'text-slate-900 dark:text-white'}`}>Kesim Şeması</h2>
-              {optimizationResults && (
-                <p className={`font-medium ${isDownloading ? 'text-gray-600' : 'text-slate-500 dark:text-[#9E9696]'}`}>
-                  Plaka Ebatı: {optimizationResults.pw}x{optimizationResults.ph} mm
-                </p>
+            <div className="flex items-center gap-6">
+              {activeNames && (
+                <div className="bg-[#A67C52]/10 px-4 py-2.5 rounded-xl border border-[#A67C52]/20">
+                  <span className="text-2xl font-extrabold text-[#A67C52] uppercase tracking-wider">{activeNames}</span>
+                </div>
               )}
+              <div>
+                <h2 className={`text-3xl font-bold mb-2 ${isDownloading ? 'text-black' : 'text-slate-900 dark:text-white'}`}>Kesim Şeması</h2>
+                {optimizationResults && (
+                  <p className={`font-medium ${isDownloading ? 'text-gray-600' : 'text-slate-500 dark:text-[#9E9696]'}`}>
+                    Plaka Ebatı: {optimizationResults.pw}x{optimizationResults.ph} mm
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-6">
@@ -689,7 +760,8 @@ function EbatlamaView() {
                             return (
                               <div
                                 key={rIdx}
-                                className="absolute bg-[#16A34A] border border-[#FFFFFF] flex items-center justify-center overflow-hidden shadow-sm"
+                                title={`${rect.name ? rect.name + ' - ' : ''}${rect.w}x${rect.h}`}
+                                className="absolute bg-[#16A34A] border-[0.5px] border-[#FFFFFF] flex flex-col items-center justify-center shadow-sm overflow-hidden"
                                 style={{
                                   top: `${(rect.y / plate.h) * 100}%`,
                                   left: `${(rect.x / plate.w) * 100}%`,
@@ -697,9 +769,9 @@ function EbatlamaView() {
                                   height: `${(rect.h / plate.h) * 100}%`
                                 }}
                               >
-                                <span className="text-[10px] font-bold text-[#FFFFFF] drop-shadow-md">
-                                  {rect.w}x{rect.h}
-                                </span>
+                                <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
+                                  <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                </div>
                               </div>
                             );
                           })}
@@ -760,7 +832,8 @@ function EbatlamaView() {
                                 return (
                                   <div
                                     key={rIdx}
-                                    className="absolute bg-[#16A34A] border border-[#FFFFFF] flex items-center justify-center overflow-hidden shadow-sm"
+                                    title={`${rect.name ? rect.name + ' - ' : ''}${rect.w}x${rect.h}`}
+                                    className="absolute bg-[#16A34A] border-[0.5px] border-[#FFFFFF] flex flex-col items-center justify-center shadow-sm overflow-hidden"
                                     style={{
                                       top: `${(rect.y / plate.h) * 100}%`,
                                       left: `${(rect.x / plate.w) * 100}%`,
@@ -768,9 +841,9 @@ function EbatlamaView() {
                                       height: `${(rect.h / plate.h) * 100}%`
                                     }}
                                   >
-                                    <span className="text-[10px] font-bold text-[#FFFFFF] drop-shadow-md">
-                                      {rect.w}x{rect.h}
-                                    </span>
+                                    <div className="flex flex-col items-center justify-center w-full h-full text-center" style={{ fontSize: 'min(0.7rem, max(7px, 1cqw))', lineHeight: '1.1' }}>
+                                      <span className="font-bold text-white drop-shadow-md truncate w-full px-0.5">{rect.w}x{rect.h}</span>
+                                    </div>
                                   </div>
                                 );
                               })}
