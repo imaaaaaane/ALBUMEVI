@@ -127,13 +127,26 @@ function EbatlamaView() {
       const { data, error } = await supabaseClient.from("ebatlama_items").select("*").order("sira");
       if (error && error.code !== "42P01") throw error; // Ignore undefined table error
       if (!data) return [];
-      return data.map(d => ({
+      
+      const validData = data.filter(d => {
+        const bStr = String(d.boy || "").toLowerCase();
+        const eStr = String(d.en || "").toLowerCase();
+        if (bStr.includes("boy") || eStr.includes("en") || bStr === "" || eStr === "") return false;
+        
+        const b = parseFloat(d.boy);
+        const e = parseFloat(d.en);
+        if (isNaN(b) || b <= 0 || isNaN(e) || e <= 0) return false;
+        
+        return true;
+      });
+
+      return validData.map(d => ({
         id: d.id,
         sira: d.sira,
         parcaAdi: d.parca_adi || "",
-        boy: d.boy || "",
-        en: d.en || "",
-        adet: d.adet || "0"
+        boy: String(d.boy || ""),
+        en: String(d.en || ""),
+        adet: String(d.adet || "0")
       }));
     }
   });
@@ -166,12 +179,36 @@ function EbatlamaView() {
   const upsertItemMutation = useMutation({
     mutationFn: async (item: CutItem) => {
       const { id, sira, parcaAdi, boy, en, adet } = item;
+      
+      const b = parseFloat(boy);
+      const e = parseFloat(en);
+      const a = parseFloat(adet);
+      
+      // STRICT VALIDATION: DO NOT save empty or invalid rows
+      if (isNaN(b) || isNaN(e) || b <= 0 || e <= 0 || isNaN(a)) {
+        return null;
+      }
+
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       const payload = { sira, parca_adi: parcaAdi, boy, en, adet };
+      
       if (isUUID) {
-        await supabaseClient.from("ebatlama_items").upsert({ id, ...payload });
+        const { data, error } = await supabaseClient.from("ebatlama_items").update(payload).eq("id", id).select().single();
+        if (error) throw error;
+        return data;
       } else {
-        await supabaseClient.from("ebatlama_items").insert(payload);
+        const { data, error } = await supabaseClient.from("ebatlama_items").insert(payload).select().single();
+        if (error) throw error;
+        return { ...data, oldId: id }; // return oldId to update UI state
+      }
+    },
+    onSuccess: (data) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: ["ebatlama_items"] });
+        if (data.oldId) {
+          // Immediately update UI with the new UUID to prevent duplicate inserts on next blur
+          setItems(prev => prev.map(item => item.id === data.oldId ? { ...item, id: data.id } : item));
+        }
       }
     }
   });
@@ -220,7 +257,6 @@ function EbatlamaView() {
   const handleAddItem = () => {
     const newItem = { id: Date.now().toString(), sira: items.length + 1, parcaAdi: "", boy: "", en: "", adet: "0" };
     setItems(prev => [...prev, newItem]);
-    upsertItemMutation.mutate(newItem);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
