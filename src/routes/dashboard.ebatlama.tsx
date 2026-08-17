@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { toJpeg } from "html-to-image";
-import { Plus, Trash2, Download, Settings, Box, LayoutGrid, Loader2, Layers, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, ArrowRightLeft } from "lucide-react";
+import { Plus, Trash2, Download, Settings, Box, LayoutGrid, Loader2, Layers, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, ArrowRightLeft, GripVertical } from "lucide-react";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ type CutItem = {
   boy: string;
   en: string;
   adet: string;
+  plaka_tipi?: string;
 };
 
 type Rect = { w: number, h: number, x: number, y: number, effW: number, effH: number, name?: string };
@@ -131,12 +133,8 @@ function EbatlamaView() {
       const validData = data.filter(d => {
         const bStr = String(d.boy || "").toLowerCase();
         const eStr = String(d.en || "").toLowerCase();
-        if (bStr.includes("boy") || eStr.includes("en") || bStr === "" || eStr === "") return false;
-        
-        const b = parseFloat(d.boy);
-        const e = parseFloat(d.en);
-        if (isNaN(b) || b <= 0 || isNaN(e) || e <= 0) return false;
-        
+        // Only block literally corrupt string placeholders like "Boy" or "En", allow empty string WIPs
+        if (bStr.includes("boy") || eStr.includes("en")) return false;
         return true;
       });
 
@@ -146,27 +144,33 @@ function EbatlamaView() {
         parcaAdi: d.parca_adi || "",
         boy: String(d.boy || ""),
         en: String(d.en || ""),
-        adet: String(d.adet || "0")
-      }));
+        adet: String(d.adet || "0"),
+        plaka_tipi: d.plaka_tipi || ""
+      })) as CutItem[];
     }
   });
 
-  const [items, setItems] = useState<CutItem[]>([]);
-  useEffect(() => {
-    setItems(dbItems.length > 0 ? dbItems : [{ id: Date.now().toString(), sira: 1, parcaAdi: "", boy: "", en: "", adet: "0" }]);
-  }, [dbItems]);
+  const [thickness, setThickness] = useState("1.5 mm");
+  const [plateSize, setPlateSize] = useState("");
+  const [bicakPayi, setBicakPayi] = useState("0");
+  const [autoRotate, setAutoRotate] = useState(false);
 
-  const [thickness, setThickness] = useState("2.7 mm");
-  const [plateSize, setPlateSize] = useState("2800x2100 mdf");
-  const [bicakPayi, setBicakPayi] = useState("3");
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [items, setItems] = useState<CutItem[]>([]);
+
+  useEffect(() => {
+    if (!plateSize) {
+      setItems([]);
+      return;
+    }
+    const filtered = dbItems.filter(i => i.plaka_tipi === plateSize);
+    setItems(filtered);
+  }, [dbItems, plateSize]);
 
   useEffect(() => {
     if (settings) {
-      setThickness(settings.thickness);
-      setPlateSize(settings.plate_size);
-      setBicakPayi(settings.bicak_payi);
-      setAutoRotate(settings.auto_rotate);
+      setThickness(settings.thickness || "1.5 mm");
+      // Intentionally NOT setting plateSize to keep it empty on load
+      setAutoRotate(false);
     }
   }, [settings]);
 
@@ -184,13 +188,13 @@ function EbatlamaView() {
       const e = parseFloat(en);
       const a = parseFloat(adet);
       
-      // STRICT VALIDATION: DO NOT save empty or invalid rows
-      if (isNaN(b) || isNaN(e) || b <= 0 || e <= 0 || isNaN(a)) {
+      // Allow partial saves so inputs survive refresh. Block only obvious garbage strings.
+      if (String(boy).toLowerCase().includes("boy") || String(en).toLowerCase().includes("en")) {
         return null;
       }
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-      const payload = { sira, parca_adi: parcaAdi, boy, en, adet };
+      const payload = { sira, parca_adi: parcaAdi, boy, en, adet, plaka_tipi: item.plaka_tipi || plateSize };
       
       if (isUUID) {
         const { data, error } = await supabaseClient.from("ebatlama_items").update(payload).eq("id", id).select().single();
@@ -212,6 +216,48 @@ function EbatlamaView() {
       }
     }
   });
+
+  
+  const updateSiraMutation = useMutation({
+    mutationFn: async (updates: { id: string; sira: number }[]) => {
+      const updatePromises = updates.map(u => 
+        supabaseClient.from("ebatlama_items").update({ sira: u.sira }).eq("id", u.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ebatlama_items"] });
+    },
+    onError: (err: any) => {
+      toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const { source, destination } = result;
+    if (source.index === destination.index) return;
+
+    const list = Array.from(items);
+    const [moved] = list.splice(source.index, 1);
+    list.splice(destination.index, 0, moved);
+
+    // Update local state immediately for snappy UI
+    setItems(list);
+
+    // Save to Supabase
+    const updates = list.map((item, index) => ({
+      id: item.id,
+      sira: index + 1 // Keep 1-indexed or 0-indexed, up to preference
+    })).filter(item => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)); // Only send valid UUIDs to DB
+    
+    if (updates.length > 0) {
+      updateSiraMutation.mutate(updates);
+    }
+  };
 
   const deleteItemMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -255,7 +301,7 @@ function EbatlamaView() {
   };
 
   const handleAddItem = () => {
-    const newItem = { id: Date.now().toString(), sira: items.length + 1, parcaAdi: "", boy: "", en: "", adet: "0" };
+    const newItem = { id: Date.now().toString(), sira: items.length + 1, parcaAdi: "", boy: "", en: "", adet: "0", plaka_tipi: plateSize };
     setItems(prev => [...prev, newItem]);
   };
 
@@ -411,6 +457,13 @@ function EbatlamaView() {
     }, 150);
   };
 
+  const plateSizeMapping: Record<string, string[]> = {
+    "1.5 mm": ["660x1070 pvc", "1400x1000 kumaş", "2800x2100 mdf"],
+    "2.7 mm": ["1700x2100 mdf", "2800x2100 mdf"],
+    "4 mm": ["2800x2100 mdf"]
+  };
+  const availablePlateSizes = plateSizeMapping[thickness] || [];
+
   return (
     <div className="p-8 space-y-10 w-full 2xl:max-w-[1600px] mx-auto pb-24 transition-colors duration-300 min-h-screen">
 
@@ -447,29 +500,42 @@ function EbatlamaView() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Genel Kalınlık</label>
-                <Select value={thickness} onValueChange={(v) => { setThickness(v); updateSettingsMutation.mutate({ thickness: v }); }}>
+                <Select value={thickness} onValueChange={(v) => { 
+                  setThickness(v); 
+                  const newPlateSizes = plateSizeMapping[v] || [];
+                  const newSettings: any = { thickness: v };
+                  if (!newPlateSizes.includes(plateSize)) {
+                    setPlateSize("");
+                    newSettings.plate_size = "";
+                  }
+                  updateSettingsMutation.mutate(newSettings); 
+                }}>
                   <SelectTrigger className="w-full bg-gray-50 dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white">
                     <SelectItem value="1.5 mm">1.5 mm</SelectItem>
                     <SelectItem value="2.7 mm">2.7 mm</SelectItem>
-                    <SelectItem value="3 mm">3 mm</SelectItem>
+                    
                     <SelectItem value="4 mm">4 mm</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Plaka Ebatları (mm)</label>
-                <Select value={plateSize} onValueChange={(v) => { setPlateSize(v); updateSettingsMutation.mutate({ plate_size: v }); }}>
+                <Select value={plateSize} onValueChange={(v) => { 
+                  setPlateSize(v); 
+                  const defaultBicak = "0";
+                  setBicakPayi(defaultBicak);
+                  updateSettingsMutation.mutate({ plate_size: v, bicak_payi: defaultBicak }); 
+                }}>
                   <SelectTrigger className="w-full bg-gray-50 dark:bg-[#0A0A0A] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#1a1a1e] text-slate-900 dark:text-white">
-                    <SelectItem value="660x1070 pvc">660x1070 pvc</SelectItem>
-                    <SelectItem value="1400x1000 kumaş">1400x1000 kumaş</SelectItem>
-                    <SelectItem value="2800x2100 mdf">2800x2100 mdf</SelectItem>
-                    <SelectItem value="1700x2100 mdf">1700x2100 mdf</SelectItem>
+                    {availablePlateSizes.map(size => (
+                      <SelectItem key={size} value={size}>{size}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -486,14 +552,11 @@ function EbatlamaView() {
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Otomatik Yönlendirme</label>
                 <button
-                  onClick={() => { setAutoRotate(!autoRotate); updateSettingsMutation.mutate({ auto_rotate: !autoRotate }); }}
-                  className={`h-14 px-4 w-full rounded-xl flex items-center justify-between font-bold border transition-colors ${autoRotate
-                    ? 'bg-green-500/10 text-green-500 border-green-500/50'
-                    : 'bg-red-500/10 text-red-500 border-red-500/50'
-                    }`}
+                  disabled
+                  className="h-14 px-4 w-full rounded-xl flex items-center justify-between font-bold border transition-colors bg-red-500/10 text-red-500 border-red-500/50 opacity-50 cursor-not-allowed"
                 >
-                  {autoRotate ? "Açık" : "Kapalı"}
-                  <div className={`w-4 h-4 rounded-full transition-colors ${autoRotate ? 'bg-green-500' : 'bg-red-500'}`} />
+                  Kapalı
+                  <div className="w-4 h-4 rounded-full transition-colors bg-red-500" />
                 </button>
               </div>
             </div>
@@ -508,11 +571,13 @@ function EbatlamaView() {
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ebatlama Listesi</h2>
             </div>
 
+            <DragDropContext onDragEnd={onDragEnd}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-600 dark:text-[#9E9696] uppercase bg-gray-50 dark:bg-white/5">
                   <tr>
-                    <th className="px-4 py-4 rounded-tl-lg w-40 text-center">Parça Adı</th>
+                    <th className="px-2 py-4 rounded-tl-lg w-8"></th>
+                    <th className="px-4 py-4 w-40 text-center">Parça Adı</th>
                     <th className="px-4 py-4">Boy (mm)</th>
                     <th className="px-1 py-4 w-10 text-center"></th>
                     <th className="px-4 py-4">En (mm)</th>
@@ -522,14 +587,27 @@ function EbatlamaView() {
                     <th className="px-4 py-4 rounded-tr-lg w-16 text-center">İşlem</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {items.map((item) => {
+                <Droppable droppableId="ebatlamaList">
+                  {(provided) => (
+                    <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                  {plateSize && items.map((item, index) => {
                     const birimM2 = calcM2(item.boy, item.en);
                     const adetNum = parseNumber(item.adet);
                     const toplamM2 = birimM2 * adetNum;
 
                     return (
-                      <tr key={item.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                      <Draggable key={item.id} draggableId={item.id} index={items.indexOf(item)}>
+                        {(provided, snapshot) => (
+                          <tr 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${snapshot.isDragging ? 'bg-gray-100 dark:bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+                          >
+                            <td className="px-2 py-3 text-center">
+                              <div {...provided.dragHandleProps} className="text-slate-400 dark:text-[#9E9696] hover:text-slate-600 dark:hover:text-white cursor-grab active:cursor-grabbing flex justify-center">
+                                <GripVertical className="w-4 h-4" />
+                              </div>
+                            </td>
                         <td className="px-4 py-3">
                           <Input 
                             type="text"
@@ -601,11 +679,17 @@ function EbatlamaView() {
                           </Button>
                         </td>
                       </tr>
+                        )}
+                      </Draggable>
                     );
                   })}
+                  {provided.placeholder}
                 </tbody>
+                    )}
+                  </Droppable>
               </table>
             </div>
+            </DragDropContext>
 
             <div className="mt-6">
               <Button

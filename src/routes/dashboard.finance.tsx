@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useAuth } from "@/lib/auth-context";
 import {
   Dialog,
@@ -39,6 +40,7 @@ import {
   Edit2,
   Lock,
   Wallet,
+  GripVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -118,6 +120,7 @@ interface Expense {
   currency?: "TRY";
   total_debt: number;
   total_paid: number;
+  sira?: number;
 }
 
 interface SchoolTransaction {
@@ -381,8 +384,8 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: expenses, error: sErr } = await supabaseClient
         .from("common_expenses")
-        .select("id, name, currency, total_debt, total_paid, created_at")
-        .order("created_at", { ascending: false });
+        .select("id, name, currency, total_debt, total_paid, created_at, sira")
+        .order("sira", { ascending: true });
       if (sErr) return [];
 
       return expenses.map((s) => ({
@@ -391,6 +394,7 @@ function AccountingDashboard() {
         currency: s.currency as any,
         total_debt: Number(s.total_debt) || 0,
         total_paid: Number(s.total_paid) || 0,
+        sira: s.sira,
       }));
     }
   });
@@ -2680,6 +2684,49 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     },
   });
 
+  
+  const updateSiraMutation = useMutation({
+    mutationFn: async (updates: { id: string; sira: number }[]) => {
+      const updatePromises = updates.map(u => 
+        supabaseClient.from("common_expenses").update({ sira: u.sira }).eq("id", u.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses_ledger"] });
+    },
+    onError: (err: any) => {
+      toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const { source, destination } = result;
+    if (source.index === destination.index) return;
+
+    const list = Array.from(expenses);
+    const sourceExpense = filteredExpenses[source.index];
+    const destinationExpense = filteredExpenses[destination.index];
+
+    const sourceGlobalIndex = list.findIndex(e => e.id === sourceExpense.id);
+    const destGlobalIndex = list.findIndex(e => e.id === destinationExpense.id);
+
+    const [moved] = list.splice(sourceGlobalIndex, 1);
+    list.splice(destGlobalIndex, 0, moved);
+
+    qc.setQueryData(["expenses_ledger"], list);
+
+    const updates = list.map((item, index) => ({
+      id: item.id,
+      sira: index
+    }));
+    
+    updateSiraMutation.mutate(updates);
+  };
+
   const deleteExpenseMutation = useMutation({
     mutationFn: async (id: string) => {
       await supabaseClient.from("common_expenses").delete().eq("id", id);
@@ -2753,17 +2800,29 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
           <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{expenses.length} Gider</Badge>
         </div>
 
-        <div className="divide-y divide-white/5">
-          {filteredExpenses.length === 0 ? (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="expensesList">
+            {(provided) => (
+              <div ref={provided.innerRef} {...provided.droppableProps} className="divide-y divide-white/5">
+                {filteredExpenses.length === 0 ? (
             <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Kayıtlı gider merkezi bulunamadı.</div>
           ) : (
-            filteredExpenses.map((f) => {
+            filteredExpenses.map((f, index) => {
               const paid = getExpensePaid(f, exchangeRates);
               const remaining = getExpenseRemaining(f, exchangeRates);
               return (
-                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedExpenseId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                <Draggable key={f.id} draggableId={f.id.toString()} index={index}>
+                    {(provided, snapshot) => (
+                      <motion.div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        style={provided.draggableProps.style}
+                        key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedExpenseId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing mr-2 flex items-center justify-center">
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
                       <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">Sabit / Değişken Gider</span>
@@ -2790,10 +2849,16 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
                     </div>
                   </div>
                 </motion.div>
-              );
-            })
-          )}
-        </div>
+                    )}
+                  </Draggable>
+                );
+              })
+            )}
+            {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">

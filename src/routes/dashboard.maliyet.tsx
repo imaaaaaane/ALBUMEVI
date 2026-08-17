@@ -18,6 +18,7 @@ type ProductCost = {
   id: number;
   urun_adi: string;
   sira?: number;
+  kategori?: string;
   sayfa_sayisi: number;
   baski: number;
   pvc: number;
@@ -36,10 +37,7 @@ function MaliyetView() {
   const [quantity, setQuantity] = useState<number>(1);
   const [editingProduct, setEditingProduct] = useState<ProductCost | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [isZamModalOpen, setIsZamModalOpen] = useState(false);
-  const [zamData, setZamData] = useState({ column: 'baski', type: 'percentage', amount: '' });
-  const [isUpdatingBulk, setIsUpdatingBulk] = useState(false);
-  const [newProductId, setNewProductId] = useState<string>("");
+        const [newProductId, setNewProductId] = useState<string>("");
   const [newSayfaSayisi, setNewSayfaSayisi] = useState<number>(1);
   const [formulaConfirmData, setFormulaConfirmData] = useState<{item: ProductCost, calc: any} | null>(null);
 
@@ -51,9 +49,53 @@ function MaliyetView() {
       return data;
     }
   });
-  const [isPanoramikOpen, setIsPanoramikOpen] = useState(false);
-  const [isBaskiOpen, setIsBaskiOpen] = useState(false);
-  const [isDigerOpen, setIsDigerOpen] = useState(false);
+  
+  
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState<string>("");
+
+  const getCategory = (c: ProductCost) => {
+    if (c.kategori) return c.kategori;
+    if (c.urun_adi.toLowerCase().includes('panoramik')) return 'Panoramik Albümler';
+    if (c.urun_adi.toLowerCase().includes('baskı') || c.urun_adi.toLowerCase().includes('baski')) return 'Baskı Ürünleri';
+    return 'Diğer Ürünler';
+  };
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ oldName, newName, itemIds }: { oldName: string, newName: string, itemIds: number[] }) => {
+      const { error } = await supabaseClient
+        .from("maliyetler")
+        .update({ kategori: newName })
+        .in("id", itemIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["maliyetler"] });
+      toast.success("Kategori adı güncellendi.");
+      setEditingCategory(null);
+    },
+    onError: (err: any) => {
+      toast.error(`Kategori güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const handleCategorySave = (oldName: string, items: ProductCost[]) => {
+    if (!newCategoryName.trim() || newCategoryName === oldName) {
+      setEditingCategory(null);
+      return;
+    }
+    
+    // Optimistic update
+    queryClient.setQueryData(["maliyetler"], (old: ProductCost[] | undefined) => {
+      if (!old) return old;
+      return old.map(c => getCategory(c) === oldName ? { ...c, kategori: newCategoryName } : c);
+    });
+
+    const itemIds = items.map(i => i.id);
+    updateCategoryMutation.mutate({ oldName, newName: newCategoryName, itemIds });
+  };
+
 
   const { data: products = [] } = useQuery({
     queryKey: ["products_inventory"],
@@ -217,57 +259,13 @@ function MaliyetView() {
     }
   };
 
-  const handleTopluZam = async () => {
-    const amountNum = Number(zamData.amount);
-    if (!amountNum || amountNum <= 0) return;
-    
-    setIsUpdatingBulk(true);
-    try {
-      // 1. Fetch current data
-      const { data: currentData, error: fetchError } = await supabaseClient.from('maliyetler').select('*');
-      if (fetchError) throw fetchError;
-
-      // 2. Calculate new values
-      const updatedData = currentData.map((row: any) => {
-        const oldVal = Number(row[zamData.column]) || 0;
-        let newVal = oldVal;
-        
-        if (zamData.type === 'percentage') {
-          // Percentage increase (e.g., +25% raw material cost)
-          newVal = oldVal + (oldVal * (amountNum / 100));
-        } else {
-          // Fixed TL increase (only apply if the item actually uses this material)
-          if (oldVal > 0) newVal = oldVal + amountNum;
-        }
-        
-        return {
-          ...row,
-          [zamData.column]: Math.round(newVal) // Round to nearest integer for clean UI
-        };
-      });
-
-      // 3. Bulk Update via Upsert
-      const { error: updateError } = await supabaseClient.from('maliyetler').upsert(updatedData);
-      if (updateError) throw updateError;
-
-      setIsZamModalOpen(false);
-      setZamData({ column: 'baski', type: 'percentage', amount: '' });
-      queryClient.invalidateQueries({ queryKey: ["maliyetler"] });
-      toast.success("Toplu zam başarıyla uygulandı.");
-    } catch (error) {
-      console.error('Bulk update error:', error);
-      toast.error("Toplu zam uygulanırken hata oluştu.");
-    } finally {
-      setIsUpdatingBulk(false);
-    }
-  };
-
+  
   
   const updateSiraMutation = useMutation({
-    mutationFn: async (updates: { id: number; sira: number }[]) => {
+    mutationFn: async (updates: { id: number; sira: number; kategori?: string }[]) => {
       // Use Promise.all to safely update only the 'sira' field without replacing other columns
       const updatePromises = updates.map(u => 
-        supabaseClient.from("maliyetler").update({ sira: u.sira }).eq("id", u.id)
+        supabaseClient.from("maliyetler").update({ sira: u.sira, ...(u.kategori !== undefined ? { kategori: u.kategori } : {}) }).eq("id", u.id)
       );
       const results = await Promise.all(updatePromises);
       const error = results.find(r => r.error)?.error;
@@ -281,55 +279,51 @@ function MaliyetView() {
     }
   });
 
+  
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     
     const { source, destination } = result;
+    const sourceCategory = source.droppableId;
+    const destinationCategory = destination.droppableId;
     
-    // Determine which list is which based on droppableId
-    const getList = (id: string) => {
-      if (id === "panoramik") return panoramikItems;
-      if (id === "baski") return baskiItems;
-      if (id === "diger") return otherItems;
-      return [];
-    };
+    const allItems = [...sortedTableCosts];
     
-    const sourceList = Array.from(getList(source.droppableId));
-    const destList = Array.from(getList(destination.droppableId));
+    const movedItemIndex = allItems.findIndex(c => c.id.toString() === result.draggableId);
+    if (movedItemIndex === -1) return;
     
-    const [movedItem] = sourceList.splice(source.index, 1);
+    const [movedItem] = allItems.splice(movedItemIndex, 1);
     
-    if (source.droppableId === destination.droppableId) {
-      sourceList.splice(destination.index, 0, movedItem);
-    } else {
-      destList.splice(destination.index, 0, movedItem);
+    if (sourceCategory !== destinationCategory) {
+      movedItem.kategori = destinationCategory;
     }
     
-    // Now we need to update the global order (sira)
-    // We can just reconstruct the full array based on the new order of these 3 lists
-    // Wait, if we just reconstruct it as [ ...panoramik, ...baski, ...other ] and assign sira = index,
-    // we need to make sure we use the newly modified lists.
+    const destItems = allItems.filter(c => getCategory(c) === destinationCategory);
+    const itemAfter = destItems[destination.index];
     
-    const newPanoramik = source.droppableId === "panoramik" ? sourceList : destination.droppableId === "panoramik" ? destList : panoramikItems;
-    const newBaski = source.droppableId === "baski" ? sourceList : destination.droppableId === "baski" ? destList : baskiItems;
-    const newOther = source.droppableId === "diger" ? sourceList : destination.droppableId === "diger" ? destList : otherItems;
+    let insertIndex = allItems.length;
+    if (itemAfter) {
+      insertIndex = allItems.findIndex(c => c.id === itemAfter.id);
+    } else if (destItems.length > 0) {
+      const lastItemInDest = destItems[destItems.length - 1];
+      insertIndex = allItems.findIndex(c => c.id === lastItemInDest.id) + 1;
+    }
     
-    const allItems = [...newPanoramik, ...newBaski, ...newOther];
+    allItems.splice(insertIndex, 0, movedItem);
     
-    // Optimistic UI update
     queryClient.setQueryData(["maliyetler"], allItems);
     
-    // Prepare DB updates
     const updates = allItems.map((item, index) => ({
       id: item.id,
-      sira: index
+      sira: index,
+      ...(sourceCategory !== destinationCategory ? { kategori: getCategory(item) } : {})
     }));
     
     updateSiraMutation.mutate(updates);
   };
 
-  const panoramikItems = sortedTableCosts.filter(c => c.urun_adi.toLowerCase().includes('panoramik'));
-  const baskiItems = sortedTableCosts.filter(c => c.urun_adi.toLowerCase().includes('baskı') || c.urun_adi.toLowerCase().includes('baski'));
+
+  
   const otherItems = sortedTableCosts.filter(c => !c.urun_adi.toLowerCase().includes('panoramik') && !c.urun_adi.toLowerCase().includes('baskı') && !c.urun_adi.toLowerCase().includes('baski'));
 
   const calculateFormula = (urunAdi: string, sayfaSayisi: number = 1) => {
@@ -486,71 +480,66 @@ function MaliyetView() {
                   </thead>
                   
                   <DragDropContext onDragEnd={onDragEnd}>
-                    {panoramikItems.length > 0 && (
-                      <Droppable droppableId="panoramik">
-                        {(provided) => (
-                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                            <tr 
-                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                              onClick={() => setIsPanoramikOpen(!isPanoramikOpen)}
-                            >
-                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                                <div className="flex items-center gap-2">
-                                  {isPanoramikOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                  Panoramik Albümler ({panoramikItems.length})
-                                </div>
-                              </td>
-                            </tr>
-                            {isPanoramikOpen && panoramikItems.map((item, index) => renderTableRow(item, index))}
-                            {provided.placeholder}
-                          </tbody>
-                        )}
-                      </Droppable>
-                    )}
-                    
-                    {baskiItems.length > 0 && (
-                      <Droppable droppableId="baski">
-                        {(provided) => (
-                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                            <tr 
-                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                              onClick={() => setIsBaskiOpen(!isBaskiOpen)}
-                            >
-                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                                <div className="flex items-center gap-2">
-                                  {isBaskiOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                  Baskı Ürünleri ({baskiItems.length})
-                                </div>
-                              </td>
-                            </tr>
-                            {isBaskiOpen && baskiItems.map((item, index) => renderTableRow(item, index))}
-                            {provided.placeholder}
-                          </tbody>
-                        )}
-                      </Droppable>
-                    )}
-
-                    {otherItems.length > 0 && (
-                      <Droppable droppableId="diger">
-                        {(provided) => (
-                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                            <tr 
-                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                              onClick={() => setIsDigerOpen(!isDigerOpen)}
-                            >
-                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                                <div className="flex items-center gap-2">
-                                  {isDigerOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                  Diğer Ürünler ({otherItems.length})
-                                </div>
-                              </td>
-                            </tr>
-                            {isDigerOpen && otherItems.map((item, index) => renderTableRow(item, index))}
-                            {provided.placeholder}
-                          </tbody>
-                        )}
-                      </Droppable>
-                    )}
+                    {Array.from(new Set(sortedTableCosts.map(getCategory))).map((categoryName) => {
+                      const items = sortedTableCosts.filter(c => getCategory(c) === categoryName);
+                      if (items.length === 0) return null;
+                      
+                      const isOpen = openCategories[categoryName] ?? false;
+                      
+                      return (
+                        <Droppable key={categoryName} droppableId={categoryName}>
+                          {(provided) => (
+                            <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                              <tr 
+                                className="bg-[#1a1a1e] border-b border-white/5 transition-colors"
+                              >
+                                <td colSpan={14} className="px-4 py-3 text-sm">
+                                  <div className="flex items-center gap-3">
+                                    <button 
+                                      className="text-[#A67C52] hover:text-[#A67C52]/80"
+                                      onClick={() => setOpenCategories(prev => ({ ...prev, [categoryName]: !isOpen }))}
+                                    >
+                                      {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                    </button>
+                                    
+                                    {editingCategory === categoryName ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          autoFocus
+                                          value={newCategoryName}
+                                          onChange={(e) => setNewCategoryName(e.target.value)}
+                                          onBlur={() => handleCategorySave(categoryName, items)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleCategorySave(categoryName, items);
+                                            if (e.key === 'Escape') setEditingCategory(null);
+                                          }}
+                                          className="h-8 w-64 bg-[#0A0A0A] border-[#1a1a1e] text-white"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 group/header">
+                                        <span className="font-bold text-[#A67C52]">{categoryName} ({items.length})</span>
+                                        <button 
+                                          onClick={() => {
+                                            setEditingCategory(categoryName);
+                                            setNewCategoryName(categoryName);
+                                          }}
+                                          className="opacity-0 group-hover/header:opacity-100 transition-opacity text-[#9E9696] hover:text-white"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                              {isOpen && items.map((item, index) => renderTableRow(item, index))}
+                              {provided.placeholder}
+                            </tbody>
+                          )}
+                        </Droppable>
+                      );
+                    })}
                   </DragDropContext>
 
                 </table>
@@ -559,12 +548,7 @@ function MaliyetView() {
             
             <div className="mt-6 flex justify-end gap-3">
 
-              <Button 
-                onClick={() => setIsZamModalOpen(true)}
-                className="bg-slate-800 hover:bg-slate-700 text-white gap-2 font-bold px-6 shadow-lg rounded-xl transition-colors"
-              >
-                <TrendingUp className="w-4 h-4" /> Toplu Zam Uygula
-              </Button>
+              
               <Button 
                 onClick={() => setIsAddingProduct(true)}
                 className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white gap-2 font-bold px-6 shadow-lg shadow-[#A67C52]/20 rounded-xl"
@@ -671,77 +655,7 @@ function MaliyetView() {
         </div>
       </div>
 
-      <Dialog open={isZamModalOpen} onOpenChange={(open) => !open && setIsZamModalOpen(false)}>
-        <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2"><TrendingUp className="w-5 h-5 text-blue-400" /> Toplu Zam Uygula</DialogTitle>
-            <DialogDescription className="text-[#9E9696]">
-              Tüm ürünlerde belirli bir maliyet kalemini toplu olarak artırın.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-6 space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-[#9E9696] mb-2">Maliyet Kalemi</label>
-              <Select value={zamData.column} onValueChange={(val) => setZamData({ ...zamData, column: val })}>
-                <SelectTrigger className="w-full bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus:ring-[#A67C52]">
-                  <SelectValue placeholder="Seçiniz" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#131316] border-[#1a1a1e] text-white">
-                  <SelectItem value="baski">Baskı</SelectItem>
-                  <SelectItem value="pvc">PVC</SelectItem>
-                  <SelectItem value="mdf_1_5">MDF 1.5mm</SelectItem>
-                  <SelectItem value="mdf_2_7">MDF 2.7mm</SelectItem>
-                  <SelectItem value="mdf_4">MDF 4mm</SelectItem>
-                  <SelectItem value="kumas">Kumaş</SelectItem>
-                  <SelectItem value="iscilik">İşçilik</SelectItem>
-                  <SelectItem value="lazer">Lazer</SelectItem>
-                  <SelectItem value="genel_giderler">Genel Giderler</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-[#9E9696] mb-2">Zam Tipi</label>
-              <Select value={zamData.type} onValueChange={(val) => setZamData({ ...zamData, type: val })}>
-                <SelectTrigger className="w-full bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus:ring-[#A67C52]">
-                  <SelectValue placeholder="Seçiniz" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#131316] border-[#1a1a1e] text-white">
-                  <SelectItem value="percentage">% Yüzde</SelectItem>
-                  <SelectItem value="fixed">₺ Sabit Tutar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-[#9E9696] mb-2">Zam Miktarı</label>
-              <Input 
-                type="number"
-                value={zamData.amount}
-                onChange={(e) => setZamData({ ...zamData, amount: e.target.value })}
-                placeholder={zamData.type === 'percentage' ? "Örn: 25 (Yüzde 25)" : "Örn: 50 (50 TL)"}
-                className="w-full bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus:ring-[#A67C52]"
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end gap-3 mt-2">
-            <Button variant="ghost" onClick={() => setIsZamModalOpen(false)} className="text-[#9E9696] hover:text-white">
-              İptal
-            </Button>
-            <Button 
-              onClick={handleTopluZam} 
-              disabled={isUpdatingBulk}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 rounded-xl"
-            >
-              {isUpdatingBulk ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uygulanıyor...</>
-              ) : "Uygula"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      
 
       <Dialog open={!!formulaConfirmData} onOpenChange={(open) => !open && setFormulaConfirmData(null)}>
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white sm:max-w-md">

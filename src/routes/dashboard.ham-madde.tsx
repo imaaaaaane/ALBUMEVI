@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
-import { Package, ScrollText, Zap, Layers } from "lucide-react";
+import { Package, ScrollText, Zap, Layers, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 export const Route = createFileRoute("/dashboard/ham-madde")({
   component: HamMaddeView,
@@ -14,9 +15,12 @@ export const Route = createFileRoute("/dashboard/ham-madde")({
 type HamMadde = {
   id: string | number;
   malzeme_adi: string;
+  sira?: number;
   plaka_en: number;
   plaka_boy: number;
   plaka_fiyat: number;
+  ilac_fiyati?: number;
+  adet?: number;
 };
 
 const PLAKA_NAMES = ['PVC', 'MDF 1.5', 'MDF 2.7', 'MDF 4', 'KUMAŞ'];
@@ -24,7 +28,7 @@ const RULO_NAMES = ['BASKI'];
 const SABIT_NAMES = ['İŞÇİLİK', 'LAZER', 'GENEL GİDERLER'];
 
 const defaultList: HamMadde[] = [
-  { id: '1', malzeme_adi: 'BASKI', plaka_en: 0, plaka_boy: 0, plaka_fiyat: 0 },
+  { id: '1', malzeme_adi: 'BASKI', plaka_en: 0, plaka_boy: 0, plaka_fiyat: 0, ilac_fiyati: 0, adet: 1 },
   { id: '2', malzeme_adi: 'PVC', plaka_en: 660, plaka_boy: 1070, plaka_fiyat: 0 },
   { id: '3', malzeme_adi: 'MDF 1.5', plaka_en: 2800, plaka_boy: 2100, plaka_fiyat: 0 },
   { id: '4', malzeme_adi: 'MDF 2.7', plaka_en: 2800, plaka_boy: 2100, plaka_fiyat: 0 },
@@ -46,7 +50,7 @@ function HamMaddeView() {
 
   const fetchHamMaddeler = async () => {
     try {
-      const { data, error } = await supabaseClient.from('ham_maddeler').select('*').order('malzeme_adi', { ascending: true });
+      const { data, error } = await supabaseClient.from('ham_maddeler').select('*').order('sira', { ascending: true }).order('malzeme_adi', { ascending: true });
       if (error) throw error;
       
       if (!data || data.length === 0) { 
@@ -106,14 +110,138 @@ function HamMaddeView() {
     enabled: selectedBaski !== 'none'
   });
 
+  const { data: selectedAlbumCosts } = useQuery({
+    queryKey: ['album_costs', selectedBaski],
+    queryFn: async () => {
+      if (!selectedBaski || selectedBaski === 'none') return null;
+      const { data, error } = await supabaseClient
+        .from('maliyetler')
+        .select('rulo_fiyati, ilac_fiyati')
+        .eq('urun_adi', selectedBaski)
+        .limit(1)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || { rulo_fiyati: 0, ilac_fiyati: 0 };
+    },
+    enabled: selectedBaski !== 'none'
+  });
+
+  const updateAlbumCostMutation = useMutation({
+    mutationFn: async (payload: { field: string, value: number }) => {
+      const { error } = await supabaseClient
+        .from('maliyetler')
+        .update({ [payload.field]: payload.value })
+        .eq('urun_adi', selectedBaski);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['album_costs', selectedBaski] });
+    }
+  });
+
+  const { data: globalMaliyetler } = useQuery({
+    queryKey: ['global_maliyetler'],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from('maliyetler')
+        .select('genel_giderler, iscilik, lazer')
+        .limit(1)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  const [yeniFiyatlar, setYeniFiyatlar] = useState<Record<string, string>>({});
+
+  const handleSabitGiderSubmit = async (hm: HamMadde) => {
+    const val = yeniFiyatlar[hm.id];
+    if (!val) return;
+    
+    const numericVal = Number(val);
+    
+    let maliyetColumn = null;
+    const name = hm.malzeme_adi.toUpperCase();
+    if (name === 'GENEL GİDERLER') maliyetColumn = 'genel_giderler';
+    if (name === 'İŞÇİLİK') maliyetColumn = 'iscilik';
+    if (name === 'LAZER') maliyetColumn = 'lazer';
+
+    if (maliyetColumn) {
+      const { error } = await supabaseClient
+        .from('maliyetler')
+        .update({ [maliyetColumn]: numericVal })
+        .not('id', 'is', null);
+        
+      if (error) {
+        toast.error("Maliyetler güncellenemedi.");
+        return;
+      }
+    }
+    
+    // Also sync ham_maddeler to be safe
+    updateMutation.mutate({
+      malzeme_adi: hm.malzeme_adi,
+      plaka_en: hm.plaka_en,
+      plaka_boy: hm.plaka_boy,
+      plaka_fiyat: numericVal
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['global_maliyetler'] });
+    setYeniFiyatlar(prev => ({...prev, [hm.id]: ''}));
+
+    toast.success(`${hm.malzeme_adi} maliyeti güncellendi.`);
+  };
+
+  const getEskiFiyat = (hm: HamMadde) => {
+    const name = hm.malzeme_adi.toUpperCase();
+    if (globalMaliyetler) {
+      if (name === 'GENEL GİDERLER') return globalMaliyetler.genel_giderler || 0;
+      if (name === 'İŞÇİLİK') return globalMaliyetler.iscilik || 0;
+      if (name === 'LAZER') return globalMaliyetler.lazer || 0;
+    }
+    return Number(hm.plaka_fiyat) || 0;
+  };
+
+  const [localRuloFiyat, setLocalRuloFiyat] = useState<string>('');
+  const [localIlacFiyat, setLocalIlacFiyat] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedBaski !== 'none' && selectedAlbumCosts) {
+      setLocalRuloFiyat(selectedAlbumCosts.rulo_fiyati?.toString() || '0');
+      setLocalIlacFiyat(selectedAlbumCosts.ilac_fiyati?.toString() || '0');
+    } else if (selectedBaski === 'none') {
+      const baskiHm = hamMaddeler.find(h => h.malzeme_adi === 'BASKI');
+      setLocalRuloFiyat(baskiHm?.plaka_fiyat?.toString() || '0');
+      setLocalIlacFiyat(baskiHm?.ilac_fiyati?.toString() || '0');
+    }
+  }, [selectedBaski, selectedAlbumCosts, hamMaddeler]);
+
+  const handleRuloBlur = (hm: HamMadde) => {
+    if (selectedBaski !== 'none') {
+      updateAlbumCostMutation.mutate({ field: 'rulo_fiyati', value: Number(localRuloFiyat) || 0 });
+    } else {
+      handleUpdate(hm, 'plaka_fiyat', localRuloFiyat);
+    }
+  };
+
+  const handleIlacBlur = (hm: HamMadde) => {
+    if (selectedBaski !== 'none') {
+      updateAlbumCostMutation.mutate({ field: 'ilac_fiyati', value: Number(localIlacFiyat) || 0 });
+    } else {
+      handleUpdate(hm, 'ilac_fiyati', localIlacFiyat);
+    }
+  };
+
   const updateMutation = useMutation({
-    mutationFn: async (payload: { malzeme_adi: string; plaka_en: number; plaka_boy: number; plaka_fiyat: number }) => {
+    mutationFn: async (payload: { malzeme_adi: string; plaka_en: number; plaka_boy: number; plaka_fiyat: number; ilac_fiyati?: number; adet?: number; }) => {
       const { data, error } = await supabaseClient
         .from("ham_maddeler")
         .update({
           plaka_en: payload.plaka_en,
           plaka_boy: payload.plaka_boy,
-          plaka_fiyat: payload.plaka_fiyat
+          plaka_fiyat: payload.plaka_fiyat,
+          ilac_fiyati: payload.ilac_fiyati,
+          adet: payload.adet
         })
         .eq("malzeme_adi", payload.malzeme_adi);
         
@@ -159,7 +287,7 @@ function HamMaddeView() {
     }
   });
 
-  const handleUpdate = (hm: HamMadde, field: 'plaka_en' | 'plaka_boy' | 'plaka_fiyat', val: string) => {
+  const handleUpdate = (hm: HamMadde, field: 'plaka_en' | 'plaka_boy' | 'plaka_fiyat' | 'ilac_fiyati' | 'adet', val: string) => {
     const numericVal = Number(val) || 0;
     
     updateMutation.mutate({
@@ -167,6 +295,8 @@ function HamMaddeView() {
       plaka_en: field === 'plaka_en' ? numericVal : hm.plaka_en,
       plaka_boy: field === 'plaka_boy' ? numericVal : hm.plaka_boy,
       plaka_fiyat: field === 'plaka_fiyat' ? numericVal : hm.plaka_fiyat,
+      ilac_fiyati: field === 'ilac_fiyati' ? numericVal : hm.ilac_fiyati,
+      adet: field === 'adet' ? numericVal : hm.adet,
     });
   };
 
@@ -222,9 +352,71 @@ function HamMaddeView() {
   const sabitGiderler = hamMaddeler.filter(m => SABIT_NAMES.includes(normalizeString(m.malzeme_adi)));
 
   const isPanoramikSelected = selectedPanoramik !== 'none';
+  
+  const updateSiraMutation = useMutation({
+    mutationFn: async (updates: { id: string | number; sira: number }[]) => {
+      const updatePromises = updates.map(u => 
+        supabaseClient.from("ham_maddeler").update({ sira: u.sira }).eq("id", u.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ham_maddeler"] });
+    },
+    onError: (err: any) => {
+      toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const { source, destination } = result;
+    if (source.droppableId !== destination.droppableId) return; // Only allow sorting within same table
+
+    const getList = (id: string) => {
+      if (id === "plaka") return plakaMaterials;
+      if (id === "rulo") return ruloMaterials;
+      if (id === "sabit") return sabitGiderler;
+      return [];
+    };
+
+    const list = Array.from(getList(source.droppableId));
+    const [moved] = list.splice(source.index, 1);
+    list.splice(destination.index, 0, moved);
+
+    // Reconstruct hamMaddeler with new order for this section
+    const newHamMaddeler = [...hamMaddeler];
+    
+    // We can map over list and update the items in newHamMaddeler
+    // Wait, since we are only reordering a sublist, we can extract the sorted indices
+    // To do this properly, we can just replace the items in newHamMaddeler that match
+    // But wait, if they are sorted by sira globally, we can just assign sira as the current index in the new total array.
+    // Or we can just re-map the sublist's sira values?
+    // Actually, if we just reconstruct:
+    const updatedOrder = [
+      ...(source.droppableId === "plaka" ? list : plakaMaterials),
+      ...(source.droppableId === "rulo" ? list : ruloMaterials),
+      ...(source.droppableId === "sabit" ? list : sabitGiderler),
+      ...hamMaddeler.filter(hm => !PLAKA_NAMES.includes(normalizeString(hm.malzeme_adi)) && !RULO_NAMES.includes(normalizeString(hm.malzeme_adi)) && !SABIT_NAMES.includes(normalizeString(hm.malzeme_adi)))
+    ];
+
+    setHamMaddeler(updatedOrder);
+
+    const updates = updatedOrder.map((item, index) => ({
+      id: item.id,
+      sira: index
+    }));
+    
+    updateSiraMutation.mutate(updates);
+  };
+
   const isBaskiSelected = selectedBaski !== 'none';
 
   return (
+    <DragDropContext onDragEnd={onDragEnd}>
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -264,7 +456,7 @@ function HamMaddeView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-[#9E9696] text-xs font-medium uppercase tracking-wider">
-                  <th className="px-6 py-4 whitespace-nowrap">Malzeme Adı</th>
+                  <th className="px-2 py-4 w-8"></th><th className="px-4 py-4 whitespace-nowrap">Malzeme Adı</th>
                   <th className="px-6 py-4">Plaka Eni (mm)</th>
                   <th className="px-6 py-4">Plaka Boyu (mm)</th>
                   <th className="px-6 py-4">Plaka Fiyatı (₺)</th>
@@ -276,14 +468,27 @@ function HamMaddeView() {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {plakaMaterials.map((hm) => {
+              <Droppable droppableId="plaka">
+                  {(provided) => (
+                    <tbody ref={provided.innerRef} {...provided.droppableProps} className="divide-y divide-white/5">
+                      {plakaMaterials.map((hm, index) => {
                   const adet = Number(isPanoramikSelected ? getYieldValue(hm.malzeme_adi, 'panoramik') : 0) || 0;
                   const fiyat = Number(hm.plaka_fiyat) || 0;
                   const birimMaliyet = adet > 0 ? (fiyat / adet) : 0;
                   return (
-                    <tr key={hm.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-6 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
+                    <Draggable key={hm.id} draggableId={hm.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <tr 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`hover:bg-white/[0.02] transition-colors group ${snapshot.isDragging ? 'bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+                          >
+                            <td className="px-2 py-4 text-center">
+                              <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex justify-center">
+                                <GripVertical className="w-4 h-4" />
+                              </div>
+                            </td>
+                      <td className="px-4 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
                       <td className="px-6 py-4 w-32">
                         <Input 
                           type="number" 
@@ -331,9 +536,14 @@ function HamMaddeView() {
                         </>
                       )}
                     </tr>
+                        )}
+                      </Draggable>
                   );
                 })}
+                {provided.placeholder}
               </tbody>
+            )}
+          </Droppable>
             </table>
           </div>
         </div>
@@ -363,8 +573,10 @@ function HamMaddeView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-[#9E9696] text-xs font-medium uppercase tracking-wider">
-                  <th className="px-6 py-4 whitespace-nowrap">Malzeme Adı</th>
+                  <th className="px-2 py-4 w-8"></th><th className="px-4 py-4 whitespace-nowrap">Malzeme Adı</th>
                   <th className="px-6 py-4">Rulo Fiyatı (₺)</th>
+                  <th className="px-6 py-4">İlaç Fiyatı (₺)</th>
+                  
                   {isBaskiSelected && (
                     <>
                       <th className="px-6 py-4 text-[#A67C52]">Çıkan Adet</th>
@@ -373,32 +585,60 @@ function HamMaddeView() {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {ruloMaterials.map((hm) => {
-                  const adet = Number(isBaskiSelected ? getYieldValue(hm.malzeme_adi, 'baski') : 0) || 0;
-                  const fiyat = Number(hm.plaka_fiyat) || 0;
-                  const birimMaliyet = adet > 0 ? (fiyat / adet) : 0;
+              <Droppable droppableId="rulo">
+                  {(provided) => (
+                    <tbody ref={provided.innerRef} {...provided.droppableProps} className="divide-y divide-white/5">
+                      {ruloMaterials.map((hm, index) => {
+                  const cikanAdet = Number(isBaskiSelected ? getYieldValue(hm.malzeme_adi, 'baski') : 0) || 0;
+                  const fiyat = Number(localRuloFiyat) || 0;
+                  const ilac = Number(localIlacFiyat) || 0;
+                  const toplamRulo = fiyat + ilac;
+                  const birimMaliyet = cikanAdet > 0 ? (toplamRulo / cikanAdet) : 0;
                   return (
-                    <tr key={hm.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-6 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
-                      <td className="px-6 py-4 w-48">
+                    <Draggable key={hm.id} draggableId={hm.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <tr 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`hover:bg-white/[0.02] transition-colors group ${snapshot.isDragging ? 'bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+                          >
+                            <td className="px-2 py-4 text-center">
+                              <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex justify-center">
+                                <GripVertical className="w-4 h-4" />
+                              </div>
+                            </td>
+                      <td className="px-4 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
+                      <td className="px-6 py-4 w-40">
                         <div className="flex items-center gap-2">
                           <Input 
                             type="number" 
-                            value={hm.plaka_fiyat || ''}
+                            value={localRuloFiyat}
                             className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-purple-500"
-                            onChange={(e) => handleLocalChange(hm.id, 'plaka_fiyat', e.target.value)}
-                            onBlur={(e) => handleUpdate(hm, 'plaka_fiyat', e.target.value)}
+                            onChange={(e) => setLocalRuloFiyat(e.target.value)}
+                            onBlur={() => handleRuloBlur(hm)}
                           />
                           <span className="text-[#9E9696]">₺</span>
                         </div>
                       </td>
+                      <td className="px-6 py-4 w-40">
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="number" 
+                            value={localIlacFiyat}
+                            className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-purple-500"
+                            onChange={(e) => setLocalIlacFiyat(e.target.value)}
+                            onBlur={() => handleIlacBlur(hm)}
+                          />
+                          <span className="text-[#9E9696]">₺</span>
+                        </div>
+                      </td>
+
                       {isBaskiSelected && (
                         <>
                           <td className="px-6 py-4 w-32">
                             <Input 
                               type="number" 
-                              value={adet || ''}
+                              value={cikanAdet || ''}
                               className="h-10 bg-[#A67C52]/10 border-[#A67C52]/30 text-center font-medium text-white focus-visible:ring-[#A67C52]"
                               onChange={(e) => handleLocalYieldChange(hm.malzeme_adi, e.target.value)}
                               onBlur={(e) => handleYieldUpdate(hm.malzeme_adi, e.target.value, 'baski')}
@@ -410,9 +650,14 @@ function HamMaddeView() {
                         </>
                       )}
                     </tr>
+                        )}
+                      </Draggable>
                   );
                 })}
+                {provided.placeholder}
               </tbody>
+            )}
+          </Droppable>
             </table>
           </div>
         </div>
@@ -427,41 +672,60 @@ function HamMaddeView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-[#9E9696] text-xs font-medium uppercase tracking-wider">
-                  <th className="px-6 py-4 w-1/3 whitespace-nowrap">İşlem Adı</th>
+                  <th className="px-2 py-4 w-8"></th><th className="px-4 py-4 w-1/3 whitespace-nowrap">İşlem Adı</th>
                   <th className="px-6 py-4 w-1/3">Eski Fiyat (₺)</th>
                   <th className="px-6 py-4 w-1/3">Yeni Fiyat (₺)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {sabitGiderler.map((hm) => {
-                  const fiyat = Number(hm.plaka_fiyat) || 0;
+              <Droppable droppableId="sabit">
+                  {(provided) => (
+                    <tbody ref={provided.innerRef} {...provided.droppableProps} className="divide-y divide-white/5">
+                      {sabitGiderler.map((hm, index) => {
+                  const eskiFiyat = getEskiFiyat(hm);
                   return (
-                  <tr key={hm.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
+                  <Draggable key={hm.id} draggableId={hm.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <tr 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`hover:bg-white/[0.02] transition-colors group ${snapshot.isDragging ? 'bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+                          >
+                            <td className="px-2 py-4 text-center">
+                              <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex justify-center">
+                                <GripVertical className="w-4 h-4" />
+                              </div>
+                            </td>
+                    <td className="px-4 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
                     <td className="px-6 py-4 text-[#9E9696] font-medium text-lg">
-                      {fiyat.toLocaleString('tr-TR')} ₺
+                      {eskiFiyat.toLocaleString('tr-TR')} ₺
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 max-w-[200px]">
                         <Input 
                           type="number" 
-                          value={hm.plaka_fiyat || ''}
+                          value={yeniFiyatlar[hm.id] || ''}
                           className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-yellow-500"
-                          onChange={(e) => handleLocalChange(hm.id, 'plaka_fiyat', e.target.value)}
-                          onBlur={(e) => handleUpdate(hm, 'plaka_fiyat', e.target.value)}
+                          onChange={(e) => setYeniFiyatlar(prev => ({...prev, [hm.id]: e.target.value}))}
+                          onBlur={() => handleSabitGiderSubmit(hm)}
                         />
                         <span className="text-[#9E9696]">₺</span>
                       </div>
                     </td>
                   </tr>
+                        )}
+                      </Draggable>
                   );
                 })}
+                {provided.placeholder}
               </tbody>
+            )}
+          </Droppable>
             </table>
           </div>
         </div>
 
       </div>
     </div>
+    </DragDropContext>
   );
 }

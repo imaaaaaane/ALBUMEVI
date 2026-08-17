@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ImagePlus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Package, DollarSign, Clock, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +57,106 @@ function StatCard({
   );
 }
 
+
+function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }: { p: any; onEdit: () => void; onDelete: () => void; onUploadImage: (file: File) => void; isUploading: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <motion.div 
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:border-[#A67C52]/50 hover:bg-white/10 relative cursor-grab active:cursor-grabbing h-full"
+    >
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20" onPointerDown={(e) => e.stopPropagation()}>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept="image/*" 
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              onUploadImage(file);
+            }
+          }}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-1 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-md"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          <ImagePlus className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 p-1 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-md"
+          onClick={onEdit}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-6 w-6 p-1 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-md"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      {p.image_url ? (
+        <div className="h-28 w-full bg-black/40 overflow-hidden relative border-b border-white/5">
+           <img src={p.image_url} alt={p.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+           <h3 className="absolute bottom-2 left-0 w-full text-xs font-bold text-center truncate px-2 text-white">
+             {p.name}
+           </h3>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-3 h-28 bg-black/20 border-b border-white/5 relative">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-1.5">
+            <Package className="h-4 w-4" />
+          </div>
+          <h3 className="text-xs font-bold text-center truncate w-full px-1">
+            {p.name}
+          </h3>
+        </div>
+      )}
+      
+      <div className="flex flex-col p-3 bg-white/5 flex-1 pointer-events-none">
+        <div className="text-[10px] opacity-70 mb-0.5">Varsayılan Fiyat</div>
+        <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.base_price).toLocaleString()} ₺</div>
+        
+        <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5">
+          <div>
+            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Satılan</span>
+            <span className="font-medium text-[#A67C52] text-[10px]">{p.sold_count || 0} Adet</span>
+          </div>
+          <div>
+            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Gelir</span>
+            <span className="font-medium text-[#A67C52] text-[10px]">{Number(p.total_revenue || 0).toLocaleString()} ₺</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function Inventory() {
   const { teamId } = useAuth();
   const qc = useQueryClient();
@@ -60,7 +164,7 @@ function Inventory() {
   const [form, setForm] = useState({ name: "", base_price: "" });
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ id: "", name: "", base_price: "" });
+  const [editForm, setEditForm] = useState<{ id: string; name: string; base_price: string; image_url: string | null; file: File | null; }>({ id: "", name: "", base_price: "", image_url: null, file: null });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -74,7 +178,7 @@ function Inventory() {
         { data: albumeviSales, error: aError },
         { data: ordersData, error: oError }
       ] = await Promise.all([
-        (supabase as any).from("products").select("id, name, base_price, created_at").order("created_at", { ascending: true }),
+        (supabase as any).from("products").select("id, name, base_price, created_at, image_url, sira").order("sira", { ascending: true }).order("created_at", { ascending: true }),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price").order("id", { ascending: true }),
         (supabase as any).from("students").select("id, class_id, selection").not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id"),
@@ -149,6 +253,37 @@ function Inventory() {
         p.total_revenue = (p.sold_count || 0) * (p.base_price || 0);
       });
 
+      
+      // Intelligent Dimension Sorting
+      productsWithStats.sort((a: any, b: any) => {
+        const siraA = a.sira || 0;
+        const siraB = b.sira || 0;
+        
+        // If either has been manually reordered
+        if (siraA > 0 || siraB > 0) {
+           return (siraA === 0 ? 99999 : siraA) - (siraB === 0 ? 99999 : siraB);
+        }
+
+        // Both sira 0 -> sort by parsed dimensions
+        const extractDim = (name: string) => {
+           if (!name) return 0;
+           const match = name.match(/(\d+)\s*[xX*]\s*(\d+)/);
+           if (match) {
+               return parseInt(match[1]) * parseInt(match[2]);
+           }
+           return 0;
+        };
+
+        const dimA = extractDim(a.name);
+        const dimB = extractDim(b.name);
+
+        if (dimA && dimB && dimA !== dimB) {
+           return dimA - dimB;
+        }
+        
+        return (a.name || "").localeCompare(b.name || "");
+      });
+      
       return productsWithStats;
     },
   });
@@ -178,25 +313,44 @@ function Inventory() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (input: { id: string; base_price: number }) => {
+    mutationFn: async (input: { id: string; base_price: number; image_url: string | null; file: File | null }) => {
       await supabase.auth.getSession();
+      
+      let finalImageUrl = input.image_url;
+      
+      if (input.file) {
+        const fileExt = input.file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await (supabase as any).storage
+          .from('urun-resimleri')
+          .upload(fileName, input.file);
+          
+        if (uploadError) throw new Error(`Resim yüklenemedi: ${uploadError.message}`);
+        
+        const { data: { publicUrl } } = (supabase as any).storage
+          .from('urun-resimleri')
+          .getPublicUrl(fileName);
+          
+        finalImageUrl = publicUrl;
+      }
       
       const { data, error } = await (supabase as any)
         .from("products")
-        .update({ base_price: input.base_price })
+        .update({ base_price: input.base_price, image_url: finalImageUrl })
         .eq("id", input.id)
         .select()
         .single();
       
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(`Güncelleme başarısız: ${error.message}`);
       return data;
     },
     onSuccess: () => {
-      toast.success("Ürün fiyatı güncellendi");
+      toast.success("Ürün başarıyla güncellendi");
       qc.invalidateQueries({ queryKey: ["products"] });
       setEditOpen(false);
     },
-    onError: (e: Error) => toast.error(e.message || "Fiyat güncellenemedi"),
+    onError: (e: Error) => toast.error(e.message || "Güncellenemedi"),
   });
 
   const deleteMutation = useMutation({
@@ -210,6 +364,93 @@ function Inventory() {
     },
     onError: (e: Error) => toast.error(e.message || "Ürün silinemedi"),
   });
+
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}-${Math.random()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('urun-resimleri')
+        .upload(fileName, file);
+        
+      if (uploadError) throw new Error(`Resim yüklenemedi: ${uploadError.message}`);
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('urun-resimleri')
+        .getPublicUrl(fileName);
+        
+      const { error: updateError } = await (supabase as any)
+        .from('products')
+        .update({ image_url: publicUrl })
+        .eq('id', id);
+        
+      if (updateError) throw new Error(`Veritabanı güncellenemedi: ${updateError.message}`);
+      
+      return publicUrl;
+    },
+    onSuccess: () => {
+      toast.success("Resim başarıyla yüklendi");
+      qc.invalidateQueries({ queryKey: ["products"] });
+      setUploadingImageId(null);
+    },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setUploadingImageId(null);
+    }
+  });
+
+  const updateSiraMutation = useMutation({
+    mutationFn: async (updates: { id: string; sira: number }[]) => {
+      const updatePromises = updates.map(u => 
+        (supabase as any).from("products").update({ sira: u.sira }).eq("id", u.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: (err: any) => {
+      toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = products.findIndex((p: any) => p.id === active.id);
+      const newIndex = products.findIndex((p: any) => p.id === over.id);
+      
+      const newArray = arrayMove(products, oldIndex, newIndex);
+      
+      // Update cache optimistically
+      qc.setQueryData(["products"], newArray);
+      
+      const updates = newArray.map((item: any, index: number) => ({
+        id: item.id,
+        sira: index + 1
+      }));
+      
+      updateSiraMutation.mutate(updates);
+    }
+  };
 
   const totalProducts = products.length;
   
@@ -237,7 +478,7 @@ function Inventory() {
       toast.error("Lütfen geçerli bir fiyat girin");
       return;
     }
-    updateMutation.mutate({ id: editForm.id, base_price: price });
+    updateMutation.mutate({ id: editForm.id, base_price: price, image_url: editForm.image_url, file: editForm.file });
   };
 
   return (
@@ -272,66 +513,31 @@ function Inventory() {
           </div>
         ) : (
           <>
-            {products.map((p: any) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={p.id} 
-                className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:border-[#A67C52]/50 hover:bg-white/10 relative"
-              >
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 p-1 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-md"
-                    onClick={() => {
-                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0" });
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={products.map((p: any) => p.id)} strategy={rectSortingStrategy}>
+                {products.map((p: any) => (
+                  <SortableProductCard 
+                    key={p.id} 
+                    p={p} 
+                    onEdit={() => {
+                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0", image_url: p.image_url || null, file: null });
                       setEditOpen(true);
                     }}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-5 w-5 p-1 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-md"
-                    onClick={() => {
+                    onDelete={() => {
                       if (confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
                         deleteMutation.mutate(p.id);
                       }
                     }}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-                
-                <div className="flex flex-col items-center justify-center p-3 bg-black/20 border-b border-white/5 mt-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-1.5">
-                    <Package className="h-4 w-4" />
-                  </div>
-                  <h3 className="text-xs font-bold text-center truncate w-full px-1">
-                    {p.name}
-                  </h3>
-                </div>
-                
-                <div className="flex flex-col p-3 bg-white/5 flex-1">
-                  <div className="text-[10px] opacity-70 mb-0.5">Varsayılan Fiyat</div>
-                  <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.base_price).toLocaleString()} ₺</div>
-                  
-                  <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5">
-                    <div>
-                      <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Satılan</span>
-                      <span className="font-medium text-[#A67C52] text-[10px]">{p.sold_count || 0} Adet</span>
-                    </div>
-                    <div>
-                      <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Gelir</span>
-                      <span className="font-medium text-[#A67C52] text-[10px]">{Number(p.total_revenue || 0).toLocaleString()} ₺</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-            
+                    onUploadImage={(file) => {
+                      setUploadingImageId(p.id);
+                      uploadImageMutation.mutate({ id: p.id, file });
+                    }}
+                    isUploading={uploadingImageId === p.id}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -405,10 +611,56 @@ function Inventory() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="border-white/10 bg-[#131316] text-white max-w-sm rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Fiyatı Düzenle</DialogTitle>
-            <DialogDescription className="text-white/50">{editForm.name} için fiyat güncelleyin.</DialogDescription>
+            <DialogTitle className="text-xl font-bold">Ürünü Düzenle</DialogTitle>
+            <DialogDescription className="text-white/50">{editForm.name} için fiyat ve resim güncelleyin.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-5 mt-4">
+            
+            <div className="space-y-2">
+              <Label className="text-white/70">Ürün Resmi</Label>
+              <div className="flex items-center gap-4">
+                {editForm.image_url || editForm.file ? (
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
+                    <img 
+                      src={editForm.file ? URL.createObjectURL(editForm.file) : editForm.image_url!} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, image_url: null, file: null })}
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity text-white text-xs"
+                    >
+                      Kaldır
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex-1">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditForm({ ...editForm, file: e.target.files[0] });
+                        }
+                      }}
+                      className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52] pt-2.5"
+                    />
+                  </div>
+                )}
+                {(editForm.image_url || editForm.file) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditForm({ ...editForm, image_url: null, file: null })}
+                    className="h-12 px-4 rounded-xl border-white/10 bg-white/5 text-white/70 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
+                  >
+                    Resmi Kaldır
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
               <Input
