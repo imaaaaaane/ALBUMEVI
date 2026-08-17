@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
-import { Calculator, Loader2, Edit2, TrendingUp, Plus, Trash2, Minus } from "lucide-react";
+import { Calculator, Loader2, Edit2, TrendingUp, Plus, Trash2, Minus, GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/dashboard/maliyet")({
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/dashboard/maliyet")({
 type ProductCost = {
   id: number;
   urun_adi: string;
+  sira?: number;
   sayfa_sayisi: number;
   baski: number;
   pvc: number;
@@ -111,6 +113,7 @@ function MaliyetView() {
       const { data, error } = await supabaseClient
         .from("maliyetler")
         .select("*")
+        .order("sira", { ascending: true })
         .order("id", { ascending: true });
       
       if (error) throw error;
@@ -198,24 +201,7 @@ function MaliyetView() {
   const sortedCosts = [...costs].sort((a, b) => calculateUnitCost(b) - calculateUnitCost(a));
   const maxCost = sortedCosts.length > 0 ? calculateUnitCost(sortedCosts[0]) : 0;
 
-  const sortedTableCosts = [...costs].sort((a, b) => {
-    const aPan = a.urun_adi.toLowerCase().includes('panoramik');
-    const bPan = b.urun_adi.toLowerCase().includes('panoramik');
-
-    if (aPan && !bPan) return -1;
-    if (!aPan && bPan) return 1;
-
-    const parseDimensions = (name: string) => {
-      const match = name.match(/(\d+)x(\d+)/i);
-      return match ? { w: parseInt(match[1]), h: parseInt(match[2]) } : { w: 0, h: 0 };
-    };
-
-    const aDim = parseDimensions(a.urun_adi);
-    const bDim = parseDimensions(b.urun_adi);
-
-    if (aDim.w !== bDim.w) return aDim.w - bDim.w;
-    return aDim.h - bDim.h;
-  });
+  const sortedTableCosts = [...costs]; // Data is already sorted by 'sira' from Supabase
 
   const handleEditChange = (field: keyof ProductCost, value: string) => {
     if (!editingProduct) return;
@@ -276,6 +262,72 @@ function MaliyetView() {
     }
   };
 
+  
+  const updateSiraMutation = useMutation({
+    mutationFn: async (updates: { id: number; sira: number }[]) => {
+      // Use Promise.all to safely update only the 'sira' field without replacing other columns
+      const updatePromises = updates.map(u => 
+        supabaseClient.from("maliyetler").update({ sira: u.sira }).eq("id", u.id)
+      );
+      const results = await Promise.all(updatePromises);
+      const error = results.find(r => r.error)?.error;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["maliyetler"] });
+    },
+    onError: (err: any) => {
+      toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
+    }
+  });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const { source, destination } = result;
+    
+    // Determine which list is which based on droppableId
+    const getList = (id: string) => {
+      if (id === "panoramik") return panoramikItems;
+      if (id === "baski") return baskiItems;
+      if (id === "diger") return otherItems;
+      return [];
+    };
+    
+    const sourceList = Array.from(getList(source.droppableId));
+    const destList = Array.from(getList(destination.droppableId));
+    
+    const [movedItem] = sourceList.splice(source.index, 1);
+    
+    if (source.droppableId === destination.droppableId) {
+      sourceList.splice(destination.index, 0, movedItem);
+    } else {
+      destList.splice(destination.index, 0, movedItem);
+    }
+    
+    // Now we need to update the global order (sira)
+    // We can just reconstruct the full array based on the new order of these 3 lists
+    // Wait, if we just reconstruct it as [ ...panoramik, ...baski, ...other ] and assign sira = index,
+    // we need to make sure we use the newly modified lists.
+    
+    const newPanoramik = source.droppableId === "panoramik" ? sourceList : destination.droppableId === "panoramik" ? destList : panoramikItems;
+    const newBaski = source.droppableId === "baski" ? sourceList : destination.droppableId === "baski" ? destList : baskiItems;
+    const newOther = source.droppableId === "diger" ? sourceList : destination.droppableId === "diger" ? destList : otherItems;
+    
+    const allItems = [...newPanoramik, ...newBaski, ...newOther];
+    
+    // Optimistic UI update
+    queryClient.setQueryData(["maliyetler"], allItems);
+    
+    // Prepare DB updates
+    const updates = allItems.map((item, index) => ({
+      id: item.id,
+      sira: index
+    }));
+    
+    updateSiraMutation.mutate(updates);
+  };
+
   const panoramikItems = sortedTableCosts.filter(c => c.urun_adi.toLowerCase().includes('panoramik'));
   const baskiItems = sortedTableCosts.filter(c => c.urun_adi.toLowerCase().includes('baskı') || c.urun_adi.toLowerCase().includes('baski'));
   const otherItems = sortedTableCosts.filter(c => !c.urun_adi.toLowerCase().includes('panoramik') && !c.urun_adi.toLowerCase().includes('baskı') && !c.urun_adi.toLowerCase().includes('baski'));
@@ -328,58 +380,70 @@ function MaliyetView() {
     setFormulaConfirmData(null);
   };
 
-  const renderTableRow = (item: ProductCost) => (
-    <tr 
-      key={item.id} 
-      className="border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer"
-      onClick={() => setEditingProduct(item)}
-    >
-      <td className="px-2 py-2 text-xs font-medium text-white whitespace-nowrap">{item.urun_adi}</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.baski} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.pvc} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.mdf_1_5} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.mdf_2_7} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.mdf_4} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.kumas} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.iscilik} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.lazer} ₺</td>
-      <td className="px-2 py-2 text-xs text-white/80">{item.genel_giderler} ₺</td>
-      <td className="px-2 py-2 text-xs">
-        <Input 
-          type="number" 
-          min="1"
-          value={item.sayfa_sayisi ?? 1} 
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => {
-            const val = Number(e.target.value) || 1;
-            queryClient.setQueryData(["maliyetler"], (old: ProductCost[] | undefined) => {
-              if (!old) return old;
-              return old.map(c => c.id === item.id ? { ...c, sayfa_sayisi: val } : c);
-            });
-          }}
-          onBlur={(e) => {
-            const val = Number(e.target.value) || 1;
-            updateMutation.mutate({ ...item, sayfa_sayisi: val });
-          }}
-          className="w-14 bg-[#0A0A0A] border-[#1a1a1e] h-7 text-xs text-center p-0.5 text-white"
-        />
-      </td>
-      <td className="px-2 py-2 text-xs whitespace-nowrap font-bold text-[#A67C52]">{calculateUnitCost(item).toLocaleString()} ₺</td>
-      <td className="px-2 py-2 text-xs text-right whitespace-nowrap">
-        <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10" onClick={(e) => { e.stopPropagation(); handleApplyFormula(item); }} title="Reçete Hesapla">
-            <Calculator className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-[#9E9696] hover:text-[#A67C52]" onClick={(e) => { e.stopPropagation(); setEditingProduct(item); }}>
-            <Edit2 className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </td>
-    </tr>
+  
+  const renderTableRow = (item: ProductCost, index: number) => (
+    <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+      {(provided, snapshot) => (
+        <tr 
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={`border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer ${snapshot.isDragging ? 'bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+          onClick={() => setEditingProduct(item)}
+        >
+          <td className="px-2 py-2 w-8 text-center" onClick={(e) => e.stopPropagation()}>
+            <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex items-center justify-center h-full w-full">
+              <GripVertical className="w-4 h-4" />
+            </div>
+          </td>
+          <td className="px-2 py-2 text-xs font-medium text-white whitespace-nowrap">{item.urun_adi}</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.baski} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.pvc} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.mdf_1_5} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.mdf_2_7} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.mdf_4} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.kumas} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.iscilik} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.lazer} ₺</td>
+          <td className="px-2 py-2 text-xs text-white/80">{item.genel_giderler} ₺</td>
+          <td className="px-2 py-2 text-xs">
+            <Input 
+              type="number" 
+              min="1"
+              value={item.sayfa_sayisi ?? 1} 
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                const val = Number(e.target.value) || 1;
+                queryClient.setQueryData(["maliyetler"], (old: ProductCost[] | undefined) => {
+                  if (!old) return old;
+                  return old.map(c => c.id === item.id ? { ...c, sayfa_sayisi: val } : c);
+                });
+              }}
+              onBlur={(e) => {
+                const val = Number(e.target.value) || 1;
+                updateMutation.mutate({ ...item, sayfa_sayisi: val });
+              }}
+              className="w-14 bg-[#0A0A0A] border-[#1a1a1e] h-7 text-xs text-center p-0.5 text-white"
+            />
+          </td>
+          <td className="px-2 py-2 text-xs whitespace-nowrap font-bold text-[#A67C52]">{calculateUnitCost(item).toLocaleString()} ₺</td>
+          <td className="px-2 py-2 text-xs text-right whitespace-nowrap">
+            <div className="flex justify-end gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10" onClick={(e) => { e.stopPropagation(); handleApplyFormula(item); }} title="Reçete Hesapla">
+                <Calculator className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#9E9696] hover:text-[#A67C52]" onClick={(e) => { e.stopPropagation(); setEditingProduct(item); }}>
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Draggable>
   );
+
 
   return (
     <div className="p-4 md:p-8 space-y-8 w-full mx-auto">
@@ -404,7 +468,8 @@ function MaliyetView() {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-[#9E9696] uppercase bg-white/5">
                     <tr>
-                      <th className="px-2 py-2 text-[11px] whitespace-nowrap rounded-tl-lg min-w-[150px]">Ürün Adı</th>
+                      <th className="px-2 py-2 w-8 rounded-tl-lg"></th>
+                      <th className="px-2 py-2 text-[11px] whitespace-nowrap min-w-[150px]">Ürün Adı</th>
                       <th className="px-2 py-2 text-[11px]">Baskı</th>
                       <th className="px-2 py-2 text-[11px]">PVC</th>
                       <th className="px-2 py-2 text-[11px] whitespace-nowrap">MDF 1.5</th>
@@ -419,58 +484,75 @@ function MaliyetView() {
                       <th className="px-2 py-2 text-[11px] whitespace-nowrap rounded-tr-lg text-right">İşlem</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  
+                  <DragDropContext onDragEnd={onDragEnd}>
                     {panoramikItems.length > 0 && (
-                      <React.Fragment>
-                        <tr 
-                          className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                          onClick={() => setIsPanoramikOpen(!isPanoramikOpen)}
-                        >
-                          <td colSpan={13} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                            <div className="flex items-center gap-2">
-                              {isPanoramikOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                              Panoramik Albümler ({panoramikItems.length})
-                            </div>
-                          </td>
-                        </tr>
-                        {isPanoramikOpen && panoramikItems.map(renderTableRow)}
-                      </React.Fragment>
+                      <Droppable droppableId="panoramik">
+                        {(provided) => (
+                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                            <tr 
+                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
+                              onClick={() => setIsPanoramikOpen(!isPanoramikOpen)}
+                            >
+                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
+                                <div className="flex items-center gap-2">
+                                  {isPanoramikOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                  Panoramik Albümler ({panoramikItems.length})
+                                </div>
+                              </td>
+                            </tr>
+                            {isPanoramikOpen && panoramikItems.map((item, index) => renderTableRow(item, index))}
+                            {provided.placeholder}
+                          </tbody>
+                        )}
+                      </Droppable>
                     )}
                     
                     {baskiItems.length > 0 && (
-                      <React.Fragment>
-                        <tr 
-                          className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                          onClick={() => setIsBaskiOpen(!isBaskiOpen)}
-                        >
-                          <td colSpan={13} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                            <div className="flex items-center gap-2">
-                              {isBaskiOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                              Baskı Ürünleri ({baskiItems.length})
-                            </div>
-                          </td>
-                        </tr>
-                        {isBaskiOpen && baskiItems.map(renderTableRow)}
-                      </React.Fragment>
+                      <Droppable droppableId="baski">
+                        {(provided) => (
+                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                            <tr 
+                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
+                              onClick={() => setIsBaskiOpen(!isBaskiOpen)}
+                            >
+                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
+                                <div className="flex items-center gap-2">
+                                  {isBaskiOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                  Baskı Ürünleri ({baskiItems.length})
+                                </div>
+                              </td>
+                            </tr>
+                            {isBaskiOpen && baskiItems.map((item, index) => renderTableRow(item, index))}
+                            {provided.placeholder}
+                          </tbody>
+                        )}
+                      </Droppable>
                     )}
 
                     {otherItems.length > 0 && (
-                      <React.Fragment>
-                        <tr 
-                          className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
-                          onClick={() => setIsDigerOpen(!isDigerOpen)}
-                        >
-                          <td colSpan={13} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
-                            <div className="flex items-center gap-2">
-                              {isDigerOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                              Diğer Ürünler ({otherItems.length})
-                            </div>
-                          </td>
-                        </tr>
-                        {isDigerOpen && otherItems.map(renderTableRow)}
-                      </React.Fragment>
+                      <Droppable droppableId="diger">
+                        {(provided) => (
+                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                            <tr 
+                              className="bg-[#1a1a1e] border-b border-white/5 cursor-pointer hover:bg-[#1a1a1e]/80 transition-colors"
+                              onClick={() => setIsDigerOpen(!isDigerOpen)}
+                            >
+                              <td colSpan={14} className="px-4 py-3 font-bold text-[#A67C52] text-sm">
+                                <div className="flex items-center gap-2">
+                                  {isDigerOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                  Diğer Ürünler ({otherItems.length})
+                                </div>
+                              </td>
+                            </tr>
+                            {isDigerOpen && otherItems.map((item, index) => renderTableRow(item, index))}
+                            {provided.placeholder}
+                          </tbody>
+                        )}
+                      </Droppable>
                     )}
-                  </tbody>
+                  </DragDropContext>
+
                 </table>
               </div>
             )}
@@ -707,6 +789,7 @@ function MaliyetView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       <Dialog open={isAddingProduct} onOpenChange={(open) => !open && setIsAddingProduct(false)}>
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white sm:max-w-md">
