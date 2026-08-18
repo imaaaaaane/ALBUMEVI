@@ -330,8 +330,8 @@ function MaliyetView() {
     const match = urunAdi.match(/(\d+)x(\d+)/);
     if (!match) return null;
     
-    const w = parseInt(match[1]);
-    const h = parseInt(match[2]);
+    const w = parseFloat(match[1]);
+    const h = parseFloat(match[2]);
     const area = (w * h) / 10000; // Convert cm² to m²
     
     const getPrice = (adi: string) => hamMaddeler.find(h => h.malzeme_adi === adi)?.fiyat || 0;
@@ -401,7 +401,7 @@ function MaliyetView() {
           <td className="px-2 py-2 text-xs text-white/80">{item.genel_giderler} ₺</td>
           <td className="px-2 py-2 text-xs">
             <Input 
-              type="number" 
+              type="number"  
               min="1"
               value={item.sayfa_sayisi ?? 1} 
               onClick={(e) => e.stopPropagation()}
@@ -587,7 +587,7 @@ function MaliyetView() {
               <div>
                 <label className="block text-sm font-medium text-[#9E9696] mb-1">Adet</label>
                 <Input 
-                  type="number" 
+                  type="number" step="any" 
                   min="1" 
                   value={quantity} 
                   onChange={(e) => setQuantity(Number(e.target.value) || 1)} 
@@ -728,7 +728,7 @@ function MaliyetView() {
 
             <label className="block text-sm font-bold text-[#9E9696] mb-3 mt-4">Sayfa Sayısı</label>
             <Input 
-              type="number" 
+              type="number"  
               min="1"
               value={newSayfaSayisi} 
               onChange={(e) => setNewSayfaSayisi(Number(e.target.value) || 1)} 
@@ -763,7 +763,7 @@ function MaliyetView() {
                 <div>
                   <span className="block text-[10px] text-[#9E9696] mb-1">Adet</span>
                   <Input 
-                    type="number" 
+                    type="number"  
                     value={editingProduct.sayfa_sayisi ?? 1} 
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0;
@@ -793,7 +793,7 @@ function MaliyetView() {
                     <div>
                       <span className="block text-[10px] text-[#9E9696] mb-1">Birim Fiyat (₺)</span>
                       <Input 
-                        type="number" 
+                        type="number"  
                         value={editingProduct[item.field as keyof ProductCost] ?? 0} 
                         onChange={(e) => handleEditChange(item.field as keyof ProductCost, e.target.value)} 
                         className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]" 
@@ -803,7 +803,7 @@ function MaliyetView() {
                       <div>
                         <span className="block text-[10px] text-[#9E9696] mb-1">Adet (Otomatik)</span>
                         <Input 
-                          type="number" 
+                          type="number" step="any" 
                           readOnly
                           value={item.field === 'baski' ? (editingProduct.sayfa_sayisi ?? 1) : ((editingProduct.sayfa_sayisi ?? 1) + 1)} 
                           className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] opacity-50 cursor-not-allowed" 

@@ -642,7 +642,7 @@ function ManageSchools() {
                 <div className="space-y-2">
                   <Label className="text-white/70">Paket 1 Fiyatı (₺)</Label>
                   <Input
-                    type="number"
+                    type="number" 
                     value={form.package1_price}
                     onChange={(e) => setForm({ ...form, package1_price: e.target.value })}
                     placeholder="150"
@@ -674,7 +674,7 @@ function ManageSchools() {
                 <div className="space-y-2">
                   <Label className="text-white/70">Paket 2 Fiyatı (₺)</Label>
                   <Input
-                    type="number"
+                    type="number" step="any"
                     value={form.package2_price}
                     onChange={(e) => setForm({ ...form, package2_price: e.target.value })}
                     placeholder="250"

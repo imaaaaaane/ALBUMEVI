@@ -542,7 +542,7 @@ function EbatlamaView() {
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Bıçak Payı (mm)</label>
                 <Input
-                  type="number"
+                  type="number" 
                   min="0"
                   value={bicakPayi}
                   onChange={(e) => { setBicakPayi(e.target.value); updateSettingsMutation.mutate({ bicak_payi: e.target.value }); }}
@@ -552,11 +552,17 @@ function EbatlamaView() {
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-[#9E9696] mb-2">Otomatik Yönlendirme</label>
                 <button
-                  disabled
-                  className="h-14 px-4 w-full rounded-xl flex items-center justify-between font-bold border transition-colors bg-red-500/10 text-red-500 border-red-500/50 opacity-50 cursor-not-allowed"
+                  onClick={() => setAutoRotate(!autoRotate)}
+                  className={`h-14 px-4 w-full rounded-xl flex items-center justify-between font-bold border transition-colors ${
+                    autoRotate 
+                      ? 'bg-green-500/10 text-green-500 border-green-500/50' 
+                      : 'bg-red-500/10 text-red-500 border-red-500/50'
+                  }`}
                 >
-                  Kapalı
-                  <div className="w-4 h-4 rounded-full transition-colors bg-red-500" />
+                  {autoRotate ? 'Açık' : 'Kapalı'}
+                  <div className={`w-4 h-4 rounded-full transition-colors ${
+                    autoRotate ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
                 </button>
               </div>
             </div>
@@ -620,7 +626,7 @@ function EbatlamaView() {
                         </td>
                         <td className="px-4 py-3">
                           <Input
-                            type="number"
+                            type="number" step="any"
                             min="0"
                             value={item.boy}
                             onChange={(e) => handleItemChange(item.id, "boy", e.target.value)}
@@ -642,7 +648,7 @@ function EbatlamaView() {
                         </td>
                         <td className="px-4 py-3">
                           <Input
-                            type="number"
+                            type="number" 
                             min="0"
                             value={item.en}
                             onChange={(e) => handleItemChange(item.id, "en", e.target.value)}
@@ -653,7 +659,7 @@ function EbatlamaView() {
                         </td>
                         <td className="px-4 py-3">
                           <Input
-                            type="number"
+                            type="number" 
                             min="1"
                             value={item.adet}
                             onChange={(e) => handleItemChange(item.id, "adet", e.target.value)}

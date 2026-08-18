@@ -491,7 +491,7 @@ function HamMaddeView() {
                       <td className="px-4 py-4 text-white font-bold whitespace-nowrap">{hm.malzeme_adi}</td>
                       <td className="px-6 py-4 w-32">
                         <Input 
-                          type="number" 
+                          type="number"  
                           value={hm.plaka_en || ''}
                           className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-center font-medium text-white focus-visible:ring-blue-500"
                           onChange={(e) => handleLocalChange(hm.id, 'plaka_en', e.target.value)}
@@ -500,7 +500,7 @@ function HamMaddeView() {
                       </td>
                       <td className="px-6 py-4 w-32">
                         <Input 
-                          type="number" 
+                          type="number" step="any" 
                           value={hm.plaka_boy || ''}
                           className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-center font-medium text-white focus-visible:ring-blue-500"
                           onChange={(e) => handleLocalChange(hm.id, 'plaka_boy', e.target.value)}
@@ -510,7 +510,7 @@ function HamMaddeView() {
                       <td className="px-6 py-4 w-40">
                         <div className="flex items-center gap-2">
                           <Input 
-                            type="number" 
+                            type="number"  
                             value={hm.plaka_fiyat || ''}
                             className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-blue-500"
                             onChange={(e) => handleLocalChange(hm.id, 'plaka_fiyat', e.target.value)}
@@ -523,7 +523,7 @@ function HamMaddeView() {
                         <>
                           <td className="px-6 py-4 w-32">
                             <Input 
-                              type="number" 
+                              type="number"  
                               value={adet || ''}
                               className="h-10 bg-[#A67C52]/10 border-[#A67C52]/30 text-center font-medium text-white focus-visible:ring-[#A67C52]"
                               onChange={(e) => handleLocalYieldChange(hm.malzeme_adi, e.target.value)}
@@ -592,8 +592,7 @@ function HamMaddeView() {
                   const cikanAdet = Number(isBaskiSelected ? getYieldValue(hm.malzeme_adi, 'baski') : 0) || 0;
                   const fiyat = Number(localRuloFiyat) || 0;
                   const ilac = Number(localIlacFiyat) || 0;
-                  const toplamRulo = fiyat + ilac;
-                  const birimMaliyet = cikanAdet > 0 ? (toplamRulo / cikanAdet) : 0;
+                  const birimMaliyet = cikanAdet > 0 ? (fiyat / cikanAdet) + ilac : 0;
                   return (
                     <Draggable key={hm.id} draggableId={hm.id.toString()} index={index}>
                         {(provided, snapshot) => (
@@ -611,7 +610,7 @@ function HamMaddeView() {
                       <td className="px-6 py-4 w-40">
                         <div className="flex items-center gap-2">
                           <Input 
-                            type="number" 
+                            type="number"  
                             value={localRuloFiyat}
                             className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-purple-500"
                             onChange={(e) => setLocalRuloFiyat(e.target.value)}
@@ -623,7 +622,7 @@ function HamMaddeView() {
                       <td className="px-6 py-4 w-40">
                         <div className="flex items-center gap-2">
                           <Input 
-                            type="number" 
+                            type="number" step="any" 
                             value={localIlacFiyat}
                             className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-purple-500"
                             onChange={(e) => setLocalIlacFiyat(e.target.value)}
@@ -637,7 +636,7 @@ function HamMaddeView() {
                         <>
                           <td className="px-6 py-4 w-32">
                             <Input 
-                              type="number" 
+                              type="number"  
                               value={cikanAdet || ''}
                               className="h-10 bg-[#A67C52]/10 border-[#A67C52]/30 text-center font-medium text-white focus-visible:ring-[#A67C52]"
                               onChange={(e) => handleLocalYieldChange(hm.malzeme_adi, e.target.value)}
@@ -702,7 +701,7 @@ function HamMaddeView() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 max-w-[200px]">
                         <Input 
-                          type="number" 
+                          type="number"  
                           value={yeniFiyatlar[hm.id] || ''}
                           className="h-10 bg-[#0A0A0A] border-[#1a1a1e] text-right font-medium text-white focus-visible:ring-yellow-500"
                           onChange={(e) => setYeniFiyatlar(prev => ({...prev, [hm.id]: e.target.value}))}

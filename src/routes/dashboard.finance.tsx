@@ -1245,7 +1245,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tutar</Label>
                     <div className="flex gap-2">
-                      <Input required type="number" min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)}  className="h-11 border-white/10 text-white rounded-xl flex-1 font-mono bg-white/5" />
+                      <Input required type="number"  min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)}  className="h-11 border-white/10 text-white rounded-xl flex-1 font-mono bg-white/5" />
                       <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR" | "USD") => setNewTxCurrency(v as any)}>
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
@@ -1426,11 +1426,11 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newSupplierRest} onChange={(e) => setNewSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newSupplierRest} onChange={(e) => setNewSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newSupplierTaken} onChange={(e) => setNewSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newSupplierTaken} onChange={(e) => setNewSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -1461,11 +1461,11 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
-                <Input type="number" min="0" value={editSupplierRest} onChange={(e) => setEditSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" value={editSupplierRest} onChange={(e) => setEditSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
-                <Input type="number" min="0" value={editSupplierTaken} onChange={(e) => setEditSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number" step="any" min="0" value={editSupplierTaken} onChange={(e) => setEditSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -1886,8 +1886,8 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                           </div>
                           <div className="w-20">
                             <Input
-                              type="number" min="1" value={item.quantity}
-                              onChange={(e) => updateLineItem(item.id, "quantity", parseInt(e.target.value) || 1)}
+                              type="number"  min="1" value={item.quantity}
+                              onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 1)}
                               className="bg-white/5 border-white/10 rounded-xl h-11 text-white text-center px-1"
                             />
                           </div>
@@ -1909,7 +1909,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tutar</Label>
                     <div className="flex gap-2">
-                      <Input required type="number" min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} readOnly={newTxType === "debt"} className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`} />
+                      <Input required type="number"  min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} readOnly={newTxType === "debt"} className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`} />
                       <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}>
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
@@ -2091,11 +2091,11 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newFirmCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newFirmRest} onChange={(e) => setNewFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newFirmRest} onChange={(e) => setNewFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newFirmCurrency)}</Label>
-                <Input type="number" min="0" placeholder="0" value={newFirmTaken} onChange={(e) => setNewFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newFirmTaken} onChange={(e) => setNewFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -2126,11 +2126,11 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editFirmCurrency)}</Label>
-                <Input type="number" min="0" value={editFirmRest} onChange={(e) => setEditFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" value={editFirmRest} onChange={(e) => setEditFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editFirmCurrency)}</Label>
-                <Input type="number" min="0" value={editFirmTaken} onChange={(e) => setEditFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number" step="any" min="0" value={editFirmTaken} onChange={(e) => setEditFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -2466,11 +2466,11 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) ₺</Label>
-                <Input type="number" min="0" placeholder="0" value={newEmployeeRest} onChange={(e) => setNewEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newEmployeeRest} onChange={(e) => setNewEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Maaş Tanımlama (İlk) ₺</Label>
-                <Input type="number" min="0" placeholder="0" value={newEmployeeTaken} onChange={(e) => setNewEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newEmployeeTaken} onChange={(e) => setNewEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -2492,11 +2492,11 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) ₺</Label>
-                <Input type="number" min="0" value={editEmployeeRest} onChange={(e) => setEditEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" value={editEmployeeRest} onChange={(e) => setEditEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Maaş Tanımlama (Toplam) ₺</Label>
-                <Input type="number" min="0" value={editEmployeeTaken} onChange={(e) => setEditEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number" step="any" min="0" value={editEmployeeTaken} onChange={(e) => setEditEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -2579,7 +2579,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number" min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
+              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number"  min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
             </div>
             <div className="space-y-2">
@@ -2603,7 +2603,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
-              <Input type="number" min="1" placeholder="Örn: 5000" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
+              <Input type="number"  min="1" placeholder="Örn: 5000" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
             </div>
           </div>
           <DialogFooter>
@@ -2907,11 +2907,11 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) ₺</Label>
-                <Input type="number" min="0" placeholder="0" value={newExpenseRest} onChange={(e) => setNewExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" placeholder="0" value={newExpenseRest} onChange={(e) => setNewExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borç Kaydı (İlk) ₺</Label>
-                <Input type="number" min="0" placeholder="0" value={newExpenseTaken} onChange={(e) => setNewExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number" step="any" min="0" placeholder="0" value={newExpenseTaken} onChange={(e) => setNewExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -2933,11 +2933,11 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen ₺</Label>
-                <Input type="number" min="0" value={editExpenseRest} onChange={(e) => setEditExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" value={editExpenseRest} onChange={(e) => setEditExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Toplam Gider (Borç) ₺</Label>
-                <Input type="number" min="0" value={editExpenseTaken} onChange={(e) => setEditExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input type="number"  min="0" value={editExpenseTaken} onChange={(e) => setEditExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -3241,7 +3241,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
-              <Input type="number" min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input type="number"  min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAddSchoolOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
@@ -3270,7 +3270,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
-              <Input type="number" min="0" value={editSchoolRest} onChange={(e) => setEditSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input type="number" step="any" min="0" value={editSchoolRest} onChange={(e) => setEditSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setEditSchoolId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
@@ -3342,7 +3342,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number" min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
+              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number"  min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
             </div>
             <div className="space-y-2">
@@ -3415,7 +3415,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           id: t.id,
           date: new Date(t.created_at).toISOString().split("T")[0],
           product: match ? match[1].trim() : "-",
-          quantity: match ? parseInt(match[2], 10) : "-",
+          quantity: match ? parseFloat(match[2]) : "-",
           desc: match ? (match[3] ? match[3].trim() : "-") : (t.description || "-"),
           amount: t.amount,
           paidAmount: t.paid_amount || 0,
@@ -3646,7 +3646,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             <div className="grid gap-2">
               <Label>Adet</Label>
               <Input
-                type="number"
+                type="number" 
                 min="1"
                 value={baskiQuantity}
                 onChange={(e) => setBaskiQuantity(e.target.value)}
@@ -3667,7 +3667,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Ödenen Tutar (₺)</Label>
                 <Input
-                  type="number"
+                  type="number" 
                   min="0"
                   value={baskiPaidAmount}
                   onChange={(e) => setBaskiPaidAmount(e.target.value)}
@@ -3677,7 +3677,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Kalan Borç (₺)</Label>
                 <Input
-                  type="number"
+                  type="number" step="any"
                   min="0"
                   value={baskiRemainingAmount}
                   onChange={(e) => setBaskiRemainingAmount(e.target.value)}
@@ -3691,7 +3691,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <span className="font-bold text-[#D0A36D] text-lg">
                   {(
                     (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || 0) *
-                    (parseInt(baskiQuantity) || 0)
+                    (parseFloat(baskiQuantity) || 0)
                   ).toLocaleString("tr-TR")} ₺
                 </span>
               </div>
@@ -3699,12 +3699,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           </div>
           <DialogFooter>
             <Button
-              disabled={!baskiSelectedProduct || addBaskiExpenseMutation.isPending || parseInt(baskiQuantity) < 1 || !baskiAciklama.trim()}
+              disabled={!baskiSelectedProduct || addBaskiExpenseMutation.isPending || parseFloat(baskiQuantity) < 1 || !baskiAciklama.trim()}
               onClick={() => {
                 const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                 if (p) {
-                  const total = p.base_price * (parseInt(baskiQuantity) || 0);
-                  const desc = `${p.name} (${parseInt(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
+                  const total = p.base_price * (parseFloat(baskiQuantity) || 0);
+                  const desc = `${p.name} (${parseFloat(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
                   addBaskiExpenseMutation.mutate({ amount: total, desc, paid: parseFloat(baskiPaidAmount) || 0, remaining: parseFloat(baskiRemainingAmount) || 0 });
                 }
               }}
@@ -3735,7 +3735,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Toplam Tutar (₺)</Label>
                 <Input
-                  type="number"
+                  type="number" 
                   min="0"
                   value={baskiEditAmount}
                   onChange={(e) => setBaskiEditAmount(e.target.value)}
@@ -3745,7 +3745,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Ödenen Tutar (₺)</Label>
                 <Input
-                  type="number"
+                  type="number" 
                   min="0"
                   value={baskiEditPaid}
                   onChange={(e) => setBaskiEditPaid(e.target.value)}

@@ -269,7 +269,7 @@ function Inventory() {
            if (!name) return 0;
            const match = name.match(/(\d+)\s*[xX*]\s*(\d+)/);
            if (match) {
-               return parseInt(match[1]) * parseInt(match[2]);
+               return parseFloat(match[1]) * parseFloat(match[2]);
            }
            return 0;
         };
@@ -577,7 +577,7 @@ function Inventory() {
             <div className="space-y-2">
               <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
               <Input
-                type="number"
+                type="number" 
                 step="0.01"
                 min="0"
                 placeholder="250"
@@ -664,7 +664,7 @@ function Inventory() {
             <div className="space-y-2">
               <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
               <Input
-                type="number"
+                type="number" 
                 step="0.01"
                 min="0"
                 placeholder="250"
