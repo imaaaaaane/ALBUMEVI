@@ -59,7 +59,7 @@ function SchoolPortal() {
   const [step, setStep] = useState<2 | 3 | 4 | 5>(() => {
     if (typeof window !== "undefined") {
       const savedStep = sessionStorage.getItem(`portal_step_${schoolId}`);
-      if (savedStep && parseInt(savedStep) > 1) return parseInt(savedStep) as any;
+      if (savedStep && parseFloat(savedStep) > 1) return parseFloat(savedStep) as any;
     }
     return 2;
   });
@@ -374,7 +374,7 @@ function SchoolPortal() {
     for (const cell in ws) {
       if (cell[0] === '!') continue;
       
-      const row = parseInt(cell.replace(/\D/g, '')) - 1;
+      const row = parseFloat(cell.replace(/\D/g, '')) - 1;
       
       if (!ws[cell].s) ws[cell].s = {};
       

@@ -61,6 +61,7 @@ function StatCard({
 function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }: { p: any; onEdit: () => void; onDelete: () => void; onUploadImage: (file: File) => void; isUploading: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPreviewPage, setSelectedPreviewPage] = useState("1");
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -138,11 +139,23 @@ function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }
         </div>
       )}
       
-      <div className="flex flex-col p-3 bg-white/5 flex-1 pointer-events-none">
-        <div className="text-[10px] opacity-70 mb-0.5">Varsayılan Fiyat</div>
-        <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.base_price).toLocaleString()} ₺</div>
+      <div className="flex flex-col p-3 bg-white/5 flex-1">
+        <div className="flex items-center justify-between mb-0.5">
+          <div className="text-[10px] opacity-70">Sayfa Fiyatı</div>
+          <select 
+            value={selectedPreviewPage} 
+            onChange={(e) => setSelectedPreviewPage(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="bg-black/40 border border-white/10 text-white rounded text-[9px] px-1 py-0.5 outline-none focus:ring-1 focus:ring-[#A67C52] cursor-pointer"
+          >
+            {[...Array(10)].map((_, i) => (
+              <option key={i+1} value={String(i+1)} className="bg-[#131316]">{i+1} Sayfa</option>
+            ))}
+          </select>
+        </div>
+        <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.sayfa_fiyatlari?.[selectedPreviewPage] || p.base_price || 0).toLocaleString()} ₺</div>
         
-        <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5">
+        <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
           <div>
             <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Satılan</span>
             <span className="font-medium text-[#A67C52] text-[10px]">{p.sold_count || 0} Adet</span>
@@ -161,10 +174,11 @@ function Inventory() {
   const { teamId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", base_price: "" });
+  const initialFiyatlari: Record<string, string> = {"1":"0","2":"0","3":"0","4":"0","5":"0","6":"0","7":"0","8":"0","9":"0","10":"0"};
+  const [form, setForm] = useState({ name: "", base_price: "", sayfa_fiyatlari: initialFiyatlari });
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<{ id: string; name: string; base_price: string; image_url: string | null; file: File | null; }>({ id: "", name: "", base_price: "", image_url: null, file: null });
+  const [editForm, setEditForm] = useState<{ id: string; name: string; base_price: string; image_url: string | null; file: File | null; sayfa_fiyatlari: Record<string, string> }>({ id: "", name: "", base_price: "", image_url: null, file: null, sayfa_fiyatlari: initialFiyatlari });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -178,7 +192,7 @@ function Inventory() {
         { data: albumeviSales, error: aError },
         { data: ordersData, error: oError }
       ] = await Promise.all([
-        (supabase as any).from("products").select("id, name, base_price, created_at, image_url, sira").order("sira", { ascending: true }).order("created_at", { ascending: true }),
+        (supabase as any).from("products").select("id, name, base_price, created_at, image_url, sira, sayfa_fiyatlari").order("sira", { ascending: true }).order("created_at", { ascending: true }),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price").order("id", { ascending: true }),
         (supabase as any).from("students").select("id, class_id, selection").not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id"),
@@ -289,12 +303,13 @@ function Inventory() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async (input: { name: string; base_price: number }) => {
+    mutationFn: async (input: { name: string; base_price: number; sayfa_fiyatlari: Record<string, string> }) => {
       const { data, error } = await (supabase as any)
         .from("products")
         .insert({
           name: input.name,
           base_price: input.base_price,
+          sayfa_fiyatlari: input.sayfa_fiyatlari,
           team_id: teamId === "all" ? null : teamId,
         })
         .select()
@@ -307,13 +322,13 @@ function Inventory() {
       toast.success("Ürün başarıyla eklendi");
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
-      setForm({ name: "", base_price: "" });
+      setForm({ name: "", base_price: "", sayfa_fiyatlari: initialFiyatlari });
     },
     onError: (e: Error) => toast.error(e.message || "Ürün eklenemedi"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (input: { id: string; base_price: number; image_url: string | null; file: File | null }) => {
+    mutationFn: async (input: { id: string; name: string; base_price: number; image_url: string | null; file: File | null; sayfa_fiyatlari: Record<string, string> }) => {
       await supabase.auth.getSession();
       
       let finalImageUrl = input.image_url;
@@ -337,7 +352,7 @@ function Inventory() {
       
       const { data, error } = await (supabase as any)
         .from("products")
-        .update({ base_price: input.base_price, image_url: finalImageUrl })
+        .update({ name: input.name, base_price: input.base_price, image_url: finalImageUrl, sayfa_fiyatlari: input.sayfa_fiyatlari })
         .eq("id", input.id)
         .select()
         .single();
@@ -468,17 +483,17 @@ function Inventory() {
       toast.error("Lütfen isim ve fiyat alanlarını doldurun");
       return;
     }
-    addMutation.mutate({ name: form.name.trim(), base_price: price });
+    addMutation.mutate({ name: form.name.trim(), base_price: price, sayfa_fiyatlari: form.sayfa_fiyatlari });
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const price = parseFloat(editForm.base_price);
-    if (Number.isNaN(price)) {
-      toast.error("Lütfen geçerli bir fiyat girin");
+    if (!editForm.name.trim() || Number.isNaN(price)) {
+      toast.error("Lütfen isim ve geçerli bir fiyat girin");
       return;
     }
-    updateMutation.mutate({ id: editForm.id, base_price: price, image_url: editForm.image_url, file: editForm.file });
+    updateMutation.mutate({ id: editForm.id, name: editForm.name.trim(), base_price: price, image_url: editForm.image_url, file: editForm.file, sayfa_fiyatlari: editForm.sayfa_fiyatlari });
   };
 
   return (
@@ -520,7 +535,7 @@ function Inventory() {
                     key={p.id} 
                     p={p} 
                     onEdit={() => {
-                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0", image_url: p.image_url || null, file: null });
+                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0", image_url: p.image_url || null, file: null, sayfa_fiyatlari: p.sayfa_fiyatlari || {"1":"0","2":"0","3":"0","4":"0","5":"0","6":"0","7":"0","8":"0","9":"0","10":"0"} });
                       setEditOpen(true);
                     }}
                     onDelete={() => {
@@ -586,6 +601,27 @@ function Inventory() {
                 className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
               />
             </div>
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i + 1} className="space-y-2">
+                    <Label className="text-white/70">{i + 1} Sayfa Fiyatı (₺)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.sayfa_fiyatlari[String(i + 1)] || "0"}
+                      onChange={(e) => setForm({ 
+                        ...form, 
+                        sayfa_fiyatlari: { ...form.sayfa_fiyatlari, [String(i + 1)]: e.target.value } 
+                      })}
+                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
             <DialogFooter className="mt-8">
               <Button 
                 type="button" 
@@ -616,6 +652,37 @@ function Inventory() {
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-5 mt-4">
             
+            <div className="space-y-2">
+              <Label className="text-white/70">Ürün Adı</Label>
+              <Input
+                placeholder="Örn: Albüm Paketi"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
+              />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i + 1} className="space-y-2">
+                    <Label className="text-white/70">{i + 1} Sayfa Fiyatı (₺)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editForm.sayfa_fiyatlari[String(i + 1)] || "0"}
+                      onChange={(e) => setEditForm({ 
+                        ...editForm, 
+                        sayfa_fiyatlari: { ...editForm.sayfa_fiyatlari, [String(i + 1)]: e.target.value } 
+                      })}
+                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label className="text-white/70">Ürün Resmi</Label>
               <div className="flex items-center gap-4">

@@ -1526,7 +1526,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
-  const [lineItems, setLineItems] = useState<{ id: string, productId: string, quantity: number, price: number }[]>([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+  const [lineItems, setLineItems] = useState<{ id: string, productId: string, quantity: number, price: number, sayfa_sayisi?: string }[]>([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
@@ -1721,16 +1721,22 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     }
   };
 
-  const addLineItem = () => setLineItems([...lineItems, { id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+  const addLineItem = () => setLineItems([...lineItems, { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
   const removeLineItem = (id: string) => setLineItems(lineItems.filter(item => item.id !== id));
   
-  const updateLineItem = (id: string, field: "productId" | "quantity", value: any) => {
+  const updateLineItem = (id: string, field: "productId" | "quantity" | "sayfa_sayisi", value: any) => {
     setLineItems(lineItems.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
-        if (field === "productId") {
-          const prod = products.find((p: any) => p.id === value);
-          updated.price = prod ? prod.base_price : 0;
+        if (field === "productId" || field === "sayfa_sayisi") {
+          const prod = products.find((p: any) => p.id === updated.productId);
+          if (prod) {
+            const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "1"];
+            const p = customPrice ? parseFloat(customPrice) : prod.base_price;
+            updated.price = isNaN(p) || p === 0 ? prod.base_price : p;
+          } else {
+            updated.price = 0;
+          }
         }
         return updated;
       }
@@ -1850,7 +1856,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("debt"); setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]); setNewTxDesc(""); }}
+                      onClick={() => { setNewTxType("debt"); setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]); setNewTxDesc(""); }}
                     >
                       Satış / Borç
                     </button>
@@ -1890,6 +1896,20 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                               onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 1)}
                               className="bg-white/5 border-white/10 rounded-xl h-11 text-white text-center px-1"
                             />
+                          </div>
+                          <div className="w-20">
+                            <Select value={item.sayfa_sayisi || "1"} onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}>
+                              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11 px-2">
+                                <SelectValue placeholder="Sayfa" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#111111] text-white border-white/10 min-w-[80px]">
+                                {[...Array(10)].map((_, i) => (
+                                  <SelectItem key={i + 1} value={String(i + 1)}>
+                                    {i + 1}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           {lineItems.length > 1 && (
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="h-11 w-11 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-xl shrink-0">
@@ -3387,7 +3407,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("products")
-        .select("id, name, base_price")
+        .select("id, name, base_price, sayfa_fiyatlari")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
