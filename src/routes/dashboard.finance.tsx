@@ -25,6 +25,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   TrendingUp,
   TrendingDown,
   Plus,
@@ -41,8 +54,11 @@ import {
   Lock,
   Wallet,
   GripVertical,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/finance")({
   component: AccountingDashboard,
@@ -1877,18 +1893,49 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                       {lineItems.map((item) => (
                         <div key={item.id} className="flex gap-2 items-start">
                           <div className="flex-1">
-                            <Select value={item.productId} onValueChange={(v) => updateLineItem(item.id, "productId", v)}>
-                              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11">
-                                <SelectValue placeholder="Ürün Seç" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#111111] text-white border-white/10">
-                                {products.map((p: any) => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {p.name} ({p.base_price} ₺)
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white"
+                                >
+                                  {item.productId
+                                    ? products.find((p: any) => p.id === item.productId)?.name || "Ürün Seç..."
+                                    : "Ürün Seç..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0 bg-[#111111] border-white/10 text-white">
+                                <Command className="bg-[#111111]">
+                                  <CommandInput placeholder="Ürün ara..." className="text-white border-none focus:ring-0" />
+                                  <CommandList>
+                                    <CommandEmpty>Ürün bulunamadı.</CommandEmpty>
+                                    <CommandGroup>
+                                      {products.map((p: any) => (
+                                        <CommandItem
+                                          key={p.id}
+                                          value={p.name + " " + p.id}
+                                          onSelect={() => {
+                                            updateLineItem(item.id, "productId", p.id);
+                                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                          }}
+                                          className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4 text-[#A67C52]",
+                                              item.productId === p.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          {p.name} ({p.base_price} ₺)
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                           <div className="w-20">
                             <Input
@@ -3648,20 +3695,51 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Ürün (Baskı Boyutu)</Label>
-              <Select value={baskiSelectedProduct} onValueChange={setBaskiSelectedProduct}>
-                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Ürün seçin..." />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111111] border-white/10 text-white">
-                  {productsForBaski
-                    .filter((p: any) => /^\d+x\d+$/i.test(p.name.trim()))
-                    .map((p: any) => (
-                      <SelectItem key={p.id} value={p.id} className="hover:bg-white/10 focus:bg-white/10 focus:text-white">
-                        {p.name} ({p.base_price} ₺)
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 hover:text-white"
+                  >
+                    {baskiSelectedProduct
+                      ? productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.name || "Ürün seçin..."
+                      : "Ürün seçin..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[380px] p-0 bg-[#111111] border-white/10 text-white">
+                  <Command className="bg-[#111111]">
+                    <CommandInput placeholder="Baskı boyutu ara..." className="text-white border-none focus:ring-0" />
+                    <CommandList>
+                      <CommandEmpty>Baskı boyutu bulunamadı.</CommandEmpty>
+                      <CommandGroup>
+                        {productsForBaski
+                          .filter((p: any) => /^\d+x\d+$/i.test(p.name.trim()))
+                          .map((p: any) => (
+                            <CommandItem
+                              key={p.id}
+                              value={p.name + " " + p.id}
+                              onSelect={() => {
+                                setBaskiSelectedProduct(p.id);
+                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                              }}
+                              className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4 text-[#A67C52]",
+                                  baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {p.name} ({p.base_price} ₺)
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid gap-2">
               <Label>Adet</Label>
