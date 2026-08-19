@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
-import { Calculator, Loader2, Edit2, TrendingUp, Plus, Trash2, Minus, GripVertical } from "lucide-react";
+import { Calculator, Loader2, Edit2, TrendingUp, Plus, Trash2, Minus, GripVertical, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { exportToPDF } from "../lib/pdf-export";
 
 export const Route = createFileRoute("/dashboard/maliyet")({
   component: MaliyetView,
@@ -217,9 +218,39 @@ function MaliyetView() {
   });
 
   const handleDelete = (id: number) => {
-    if (window.confirm("Bu ürün maliyetini silmek istediğinize emin misiniz?")) {
+    if (window.confirm("Seçili maliyet silinecektir. Emin misiniz?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleExportMaliyetPDF = () => {
+    if (!costs) return;
+    const columns = [
+      "Ürün Adı", "Sayfa", "Baskı", "PVC", "MDF 1.5", "MDF 2.7", "MDF 4",
+      "Kumaş", "İşçilik", "Lazer", "Gen. Gider", "Toplam"
+    ];
+    let grandTotal = 0;
+    const data = costs.map(p => {
+      const rowTotal = (Number(p.baski) + Number(p.pvc) + Number(p.mdf_1_5) + Number(p.mdf_2_7) + Number(p.mdf_4) + Number(p.kumas) + Number(p.iscilik) + Number(p.lazer) + Number(p.genel_giderler));
+      grandTotal += rowTotal;
+      return [
+        p.urun_adi, p.sayfa_sayisi, 
+        `${p.baski} ₺`, `${p.pvc} ₺`, `${p.mdf_1_5} ₺`, `${p.mdf_2_7} ₺`, `${p.mdf_4} ₺`,
+        `${p.kumas} ₺`, `${p.iscilik} ₺`, `${p.lazer} ₺`, `${p.genel_giderler} ₺`,
+        `${rowTotal} ₺`
+      ];
+    });
+
+    exportToPDF({
+      title: "Maliyet Tablosu",
+      subtitle: "Tüm Ürünlerin Birim Maliyetleri",
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Maliyet", value: `${grandTotal} ₺` }
+      ],
+      filename: "Maliyet_Tablosu.pdf"
+    });
   };
 
   const calculateUnitCost = (c: ProductCost) => {
@@ -451,7 +482,12 @@ function MaliyetView() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-9">
           <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl relative min-h-[400px]">
-            <h3 className="text-lg font-bold text-white mb-4">Maliyet Tablosu</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">Maliyet Tablosu</h3>
+              <Button onClick={handleExportMaliyetPDF} size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold h-8 rounded-lg px-3">
+                <Download className="w-3.5 h-3.5 mr-1" /> PDF İndir
+              </Button>
+            </div>
             
             {isLoading ? (
               <div className="absolute inset-0 flex items-center justify-center">

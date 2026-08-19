@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { exportToPDF } from "../lib/pdf-export";
 
 export const Route = createFileRoute("/dashboard/ebatlama")({
   component: EbatlamaView,
@@ -299,6 +300,32 @@ function EbatlamaView() {
     document.documentElement.classList.toggle("dark");
     setIsDark(!isDark);
   };
+  const handleExportEbatlamaPDF = () => {
+    const columns = ["Parça Adı", "Boy (mm)", "En (mm)", "Adet", "Plaka Tipi"];
+    let totalPieces = 0;
+    const data = items.map(item => {
+      totalPieces += parseInt(item.adet || "0");
+      return [
+        item.parcaAdi,
+        item.boy,
+        item.en,
+        item.adet,
+        item.plaka_tipi || "Bilinmiyor"
+      ];
+    });
+    
+    exportToPDF({
+      title: "Kesim Listesi",
+      subtitle: "Ebatlama Makinesi Parça Planı",
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Kesim Adedi", value: totalPieces }
+      ],
+      filename: "Ebatlama_Kesim_Listesi.pdf"
+    });
+  };
+
 
   const handleAddItem = () => {
     const newItem = { id: Date.now().toString(), sira: items.length + 1, parcaAdi: "", boy: "", en: "", adet: "0", plaka_tipi: plateSize };
@@ -570,11 +597,17 @@ function EbatlamaView() {
 
           {/* Ebatlama Listesi */}
           <div className="bg-white dark:bg-[#131316] border border-gray-200 dark:border-white/5 rounded-3xl p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-[#A67C52]/20 flex items-center justify-center">
-                <LayoutGrid className="w-6 h-6 text-[#A67C52]" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#A67C52]/20 flex items-center justify-center">
+                  <LayoutGrid className="w-6 h-6 text-[#A67C52]" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ebatlama Listesi</h2>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ebatlama Listesi</h2>
+              
+              <Button onClick={handleExportEbatlamaPDF} className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4">
+                <Download className="w-4 h-4 mr-2 text-[#A67C52]" /> PDF İndir
+              </Button>
             </div>
 
             <DragDropContext onDragEnd={onDragEnd}>

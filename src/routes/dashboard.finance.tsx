@@ -56,7 +56,9 @@ import {
   GripVertical,
   Check,
   ChevronsUpDown,
+  Download,
 } from "lucide-react";
+import { exportToPDF } from "../lib/pdf-export";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -1539,6 +1541,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
   const [newTxAmount, setNewTxAmount] = useState("");
+  const [newTxDiscount, setNewTxDiscount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
@@ -1637,7 +1640,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem kaydedildi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount("");
       setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
       setEditTxId(null);
     },
@@ -1652,7 +1655,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem güncellendi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount("");
       setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
       setEditTxId(null);
     },
@@ -1699,7 +1702,8 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     if (newTxType === "debt" && lineItems.length > 0) {
       const validItems = lineItems.filter(item => item.productId !== "");
       if (validItems.length > 0) {
-        finalAmount = validItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discountVal = parseFloat(newTxDiscount) || 0;
+        finalAmount = Math.max(0, validItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) - discountVal);
         
         const productsSummary = validItems.map(item => {
           const pName = products.find((p: any) => p.id === item.productId)?.name || "Bilinmeyen Ürün";
@@ -1707,6 +1711,9 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
         }).join(", ");
         
         finalDesc = finalDesc ? `${productsSummary} - ${finalDesc}` : productsSummary;
+        if (discountVal > 0) {
+          finalDesc += ` (İndirim: ${discountVal} ₺)`;
+        }
       }
     }
 
@@ -1763,11 +1770,46 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   useEffect(() => {
     if (newTxType === "debt") {
       const sum = lineItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-      setNewTxAmount(sum.toString());
+      const discount = parseFloat(newTxDiscount) || 0;
+      const total = Math.max(0, sum - discount);
+      setNewTxAmount(total.toString());
     }
-  }, [lineItems, newTxType]);
+  }, [lineItems, newTxType, newTxDiscount]);
 
   const selectedFirm = firms.find((f) => f.id === selectedFirmId);
+
+  const handleExportFirmPDF = () => {
+    if (!selectedFirm) return;
+    const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
+    const data = selectedFirm.transactions.map(tx => {
+      const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
+      const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency)}`;
+      return [
+        new Date(tx.date).toLocaleDateString("tr-TR"),
+        typeStr,
+        tx.desc || "",
+        amountStr
+      ];
+    });
+    
+    const paid = getFirmPaid(selectedFirm, exchangeRates);
+    const taken = getFirmDebt(selectedFirm, exchangeRates);
+    const remaining = taken - paid;
+
+    exportToPDF({
+      title: "İşlem Geçmişi",
+      subtitle: selectedFirm.name,
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Borçlandırma", value: `${taken.toLocaleString()} ₺` },
+        { label: "Toplam Ödenen", value: `${paid.toLocaleString()} ₺` },
+        { label: "Kalan Bakiye", value: `${remaining.toLocaleString()} ₺` }
+      ],
+      filename: `${selectedFirm.name.replace(/ /g, "_")}_Islem_Gecmisi.pdf`
+    });
+  };
+
   const filteredFirms = firms
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
@@ -1805,9 +1847,14 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
         <div className="flex-1 p-6 space-y-4">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
-            <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
-              <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleExportFirmPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10">
+                <Download className="w-4 h-4 mr-2 text-[#A67C52]" /> PDF İndir
+              </Button>
+              <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+                <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
+              </Button>
+            </div>
           </div>
           
           <div className="space-y-3">
@@ -1854,6 +1901,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
           if (!open) {
             setEditTxId(null);
             setNewTxAmount("");
+            setNewTxDiscount("");
             setNewTxDesc("");
             setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
           }
@@ -1879,7 +1927,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); }}
+                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount(""); }}
                     >
                       Ödeme / Tahsilat
                     </button>
@@ -1969,6 +2017,13 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                     <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl h-9 mt-1 border-dashed">
                       <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
                     </Button>
+                  </div>
+                )}
+
+                {newTxType === "debt" && (
+                  <div className="space-y-1.5 pb-2">
+                    <Label className="text-xs text-[#9E9696]">İndirim (₺)</Label>
+                    <Input type="number" min="0" step="0.01" placeholder="0" value={newTxDiscount} onChange={(e) => setNewTxDiscount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl font-mono" />
                   </div>
                 )}
 
