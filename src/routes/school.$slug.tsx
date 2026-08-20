@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/school/$slug")({
   component: SchoolPortal,
@@ -48,13 +49,14 @@ function SchoolPortal() {
   const { slug } = Route.useParams();
   const { t, dir } = useI18n();
   const qc = useQueryClient();
+  const { role, isLoading: authLoading } = useAuth();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading: dataLoading, error } = useQuery({
     queryKey: ["school", slug],
     queryFn: async () => {
       const { data: school, error } = await supabase
         .from("schools")
-        .select("id, name, city, unique_link_slug")
+        .select("id, name, city, unique_link_slug, is_active")
         .eq("unique_link_slug", slug)
         .maybeSingle();
       if (error) throw new Error(error.message);
@@ -167,7 +169,7 @@ function SchoolPortal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) {
+  if (dataLoading || authLoading) {
     return (
       <div
         dir={dir}
@@ -193,6 +195,26 @@ function SchoolPortal() {
   }
 
   const { school, orders, finance } = data;
+
+  if (school.is_active === false && role !== "admin") {
+    return (
+      <div
+        dir={dir}
+        className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground text-center"
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 mb-2">
+          <X className="h-8 w-8" />
+        </div>
+        <h1 className="text-2xl font-bold text-red-500">Erişim Engellendi</h1>
+        <p className="text-sm text-muted-foreground max-w-md">
+          Bu okulun portal erişimi durdurulmuş veya süresi dolmuştur. Lütfen sistem yöneticisi ile iletişime geçin.
+        </p>
+        <Link to="/" className="text-primary underline mt-4">
+          Ana sayfaya dön
+        </Link>
+      </div>
+    );
+  }
   const selectedItems = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
   const totalQty = selectedItems.reduce((s, i) => s + selection[i.id], 0);
   const totalPrice = selectedItems.reduce((s, i) => s + selection[i.id] * i.price, 0);
