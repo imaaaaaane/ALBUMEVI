@@ -444,26 +444,38 @@ function EbatlamaView() {
         ph = temp;
       }
 
+      // Explicitly filter empty or invalid items before processing
+      const validItems = items.filter(item => {
+        if (!item) return false;
+        const b = parseNumber(item.boy);
+        const e = parseNumber(item.en);
+        const adet = parseNumber(item.adet);
+        return b > 0 && e > 0 && adet > 0;
+      });
+
+      if (validItems.length === 0) {
+        setOptimizationResults(null);
+        return;
+      }
+
       const reqPieces: { w: number, h: number, name?: string }[] = [];
 
-      items.forEach(item => {
+      validItems.forEach(item => {
         const b = parseNumber(item.boy);
         const e = parseNumber(item.en);
         const adet = parseNumber(item.adet);
         
-        if (b > 0 && e > 0 && adet > 0) {
-          // Silent Size Validation: skip pieces larger than the Plaka
-          let canFit = false;
-          if (autoRotate) {
-             canFit = (b <= pw && e <= ph) || (b <= ph && e <= pw);
-          } else {
-             canFit = (b <= pw && e <= ph);
-          }
+        let canFit = false;
+        if (autoRotate) {
+           canFit = (b <= pw && e <= ph) || (b <= ph && e <= pw);
+        } else {
+           canFit = (b <= pw && e <= ph);
+        }
 
-          if (canFit) {
-            for (let i = 0; i < adet; i++) {
-              reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" }); // Do NOT sort here, let AutoRotate logic handle it
-            }
+        if (canFit) {
+          const loopCount = Math.floor(adet);
+          for (let i = 0; i < loopCount; i++) {
+            reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" });
           }
         }
       });
