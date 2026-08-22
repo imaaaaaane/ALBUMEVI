@@ -111,6 +111,12 @@ const packPiecesMaxRects = (reqPieces: any[], pw: number, ph: number, bicak: num
         unplaced.push(p);
       }
     }
+
+    if (placedRects.length === 0) {
+      // Prevent infinite loop if no pieces can fit on a fresh plate
+      break; 
+    }
+
     plates.push({ w: pw, h: ph, shelves: [{ rects: placedRects }] });
     pieces = unplaced;
   }
@@ -438,12 +444,6 @@ function EbatlamaView() {
         return;
       }
 
-      if (ph > pw) {
-        const temp = pw;
-        pw = ph;
-        ph = temp;
-      }
-
       // Explicitly filter empty or invalid items before processing
       const validItems = items.filter(item => {
         if (!item) return false;
@@ -465,18 +465,9 @@ function EbatlamaView() {
         const e = parseNumber(item.en);
         const adet = parseNumber(item.adet);
         
-        let canFit = false;
-        if (autoRotate) {
-           canFit = (b <= pw && e <= ph) || (b <= ph && e <= pw);
-        } else {
-           canFit = (b <= pw && e <= ph);
-        }
-
-        if (canFit) {
-          const loopCount = Math.floor(adet);
-          for (let i = 0; i < loopCount; i++) {
-            reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" });
-          }
+        const loopCount = Math.floor(adet);
+        for (let i = 0; i < loopCount; i++) {
+          reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" });
         }
       });
 
