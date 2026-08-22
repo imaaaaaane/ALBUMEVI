@@ -47,7 +47,7 @@ interface SchoolDetails {
 
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
-  
+
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window !== "undefined") {
       const hasSeenGuide = localStorage.getItem(`portal_has_seen_guide_${schoolId}`);
@@ -70,6 +70,7 @@ function SchoolPortal() {
 
   const [schoolDetails, setSchoolDetails] = useState<SchoolDetails | null>(null);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [actualSchoolId, setActualSchoolId] = useState<string | null>(null);
 
   // Auth State
   const [username, setUsername] = useState("");
@@ -131,24 +132,31 @@ function SchoolPortal() {
   useEffect(() => {
     const checkExpiration = async () => {
       try {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
+        const queryColumn = isUUID ? 'id' : 'unique_link_slug';
+
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("is_active, name")
-          .eq("id", schoolId)
-          .single();
-          
+          .select("id, is_active, status, name")
+          .eq(queryColumn, schoolId)
+          .maybeSingle();
+
         if (error || !school) {
           setIsExpired(true);
           return;
         }
 
+        setActualSchoolId(school.id);
         setSchoolName(school.name);
 
-        if (!school.is_active) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            setIsExpired(true);
-          }
+        const isActive =
+          school.is_active === true ||
+          String(school.is_active).toLowerCase() === 'true' ||
+          String(school.status).toLowerCase() === 'aktif' ||
+          school.status === true;
+
+        if (!isActive) {
+          setIsExpired(true);
         }
       } catch (err) {
         setIsExpired(true);
@@ -177,21 +185,21 @@ function SchoolPortal() {
         });
       }
     }
-    
+
     // Fetch classes and students from Supabase
     const fetchClasses = async () => {
       try {
         const { data: dbClasses, error } = await (supabase as any)
           .from("classes")
           .select("id, name, students(id, name, image_url, selection)")
-          .eq("school_id", schoolId)
+          .eq("school_id", actualSchoolId)
           .order("created_at", { ascending: true });
-          
+
         if (error) throw error;
-        
+
         let hasSelections = false;
         const initialSelections: Record<string, string[]> = {};
-        
+
         if (dbClasses) {
           const mappedClasses = dbClasses.map((c: any) => ({
             id: c.id,
@@ -223,11 +231,11 @@ function SchoolPortal() {
         toast.error("Sınıflar yüklenirken hata oluştu.");
       }
     };
-    
-    if (schoolId) {
+
+    if (actualSchoolId) {
       fetchClasses();
     }
-  }, [schoolId]);
+  }, [actualSchoolId]);
 
   // Persist classes to local storage on change
   const persistClasses = (updatedClasses: SchoolClass[]) => {
@@ -247,15 +255,23 @@ function SchoolPortal() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    setUsername("");
+    setPassword("");
+    setStep(2);
+  };
+
   const handleStudentSelectionChange = (studentId: string, selection: string) => {
     setSelections(prev => {
       const current = prev[studentId] || [];
       if (current.includes(selection)) {
         const updated = current.filter(id => id !== selection);
         if (updated.length === 0) {
-           const copy = {...prev};
-           delete copy[studentId];
-           return copy;
+          const copy = { ...prev };
+          delete copy[studentId];
+          return copy;
         }
         return { ...prev, [studentId]: updated };
       } else {
@@ -266,23 +282,23 @@ function SchoolPortal() {
 
   const saveClassSelections = async () => {
     if (!selectedClass) return;
-    
+
     // Update Supabase
     try {
-       const updates = selectedClass.students
-         .map(async s => {
-            const selectionArr = selections[s.id] || [];
-            const { error } = await (supabase as any)
-              .from("students")
-              .update({ selection: selectionArr.join(',') })
-              .eq("id", s.id);
-            if (error) throw error;
-         });
-       await Promise.all(updates);
-       toast.success(`${selectedClass.className} sınıfı seçimleri kaydedildi.`);
-       setStep(5);
+      const updates = selectedClass.students
+        .map(async s => {
+          const selectionArr = selections[s.id] || [];
+          const { error } = await (supabase as any)
+            .from("students")
+            .update({ selection: selectionArr.join(',') })
+            .eq("id", s.id);
+          if (error) throw error;
+        });
+      await Promise.all(updates);
+      toast.success(`${selectedClass.className} sınıfı seçimleri kaydedildi.`);
+      setStep(5);
     } catch (e) {
-       toast.error("Seçimler kaydedilirken bir hata oluştu.");
+      toast.error("Seçimler kaydedilirken bir hata oluştu.");
     }
   };
 
@@ -324,19 +340,19 @@ function SchoolPortal() {
 
     // ROW 1: Prices
     dataMatrix.push(['', '', `${p1Price} ₺`, `${p2Price} ₺`, '', '']);
-    
+
     // ROW 2: Headers
     dataMatrix.push(['SIRA NO', 'SINIF/ŞUBE', p1Name, p2Name, 'TOPLAM SATIŞ', 'TOPLAM TUTAR']);
-    
+
     // DATA ROWS
     let totalQtyP1 = 0;
     let totalQtyP2 = 0;
-    
+
     summary.rowData.forEach((row, index) => {
       const totalQty = row.p1 + row.p2;
       totalQtyP1 += row.p1;
       totalQtyP2 += row.p2;
-      
+
       dataMatrix.push([
         index + 1,
         row.className,
@@ -346,20 +362,20 @@ function SchoolPortal() {
         `${row.classTotal} ₺`
       ]);
     });
-    
+
     // BOTTOM ROW
     const grandTotalQty = totalQtyP1 + totalQtyP2;
     dataMatrix.push([
-      '', 
-      'GENEL TOPLAM', 
-      totalQtyP1, 
-      totalQtyP2, 
-      grandTotalQty, 
+      '',
+      'GENEL TOPLAM',
+      totalQtyP1,
+      totalQtyP2,
+      grandTotalQty,
       `${summary.totalTRY} ₺`
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(dataMatrix);
-    
+
     // Set Column Widths
     ws['!cols'] = [
       { wpx: 60 },
@@ -373,25 +389,25 @@ function SchoolPortal() {
     // Apply Styles
     for (const cell in ws) {
       if (cell[0] === '!') continue;
-      
+
       const row = parseFloat(cell.replace(/\D/g, '')) - 1;
-      
+
       if (!ws[cell].s) ws[cell].s = {};
-      
+
       if (row === 0) {
         // Price Row (Row 1)
         ws[cell].s = { font: { bold: true }, alignment: { horizontal: "center" } };
       } else if (row === 1) {
         // Header Row (Row 2)
-        ws[cell].s = { 
-          font: { bold: true, color: { rgb: "FFFFFF" } }, 
-          fill: { fgColor: { rgb: "4F4F4F" } }, 
-          alignment: { horizontal: "center" } 
+        ws[cell].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "4F4F4F" } },
+          alignment: { horizontal: "center" }
         };
       } else if (row === dataMatrix.length - 1) {
         // Grand Total Row (Bottom Row)
-        ws[cell].s = { 
-          font: { bold: true }, 
+        ws[cell].s = {
+          font: { bold: true },
           fill: { fgColor: { rgb: "E5E7EB" } }
         };
       } else {
@@ -399,7 +415,7 @@ function SchoolPortal() {
         ws[cell].s = { alignment: { horizontal: "center" } };
         // Left align Class names
         if (cell.startsWith('B')) {
-           ws[cell].s = { alignment: { horizontal: "left" } };
+          ws[cell].s = { alignment: { horizontal: "left" } };
         }
       }
     }
@@ -407,7 +423,7 @@ function SchoolPortal() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Okul Siparişleri");
     XLSX.writeFile(wb, "Okul_Siparis_Ozeti.xlsx");
-    
+
     toast.success("Özet dosyası (.xlsx) başarıyla indirildi.");
   };
 
@@ -446,7 +462,7 @@ function SchoolPortal() {
             <div className="max-w-lg w-full bg-black/40 backdrop-blur-lg border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#A67C52]/20 blur-[100px] rounded-full" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#A67C52]/20 blur-[100px] rounded-full" />
-              
+
               <div className="relative z-10 text-center">
                 <div className="mx-auto w-16 h-16 bg-[#A67C52]/20 rounded-full flex items-center justify-center mb-6">
                   <Info className="w-8 h-8 text-[#A67C52]" />
@@ -455,7 +471,7 @@ function SchoolPortal() {
                 <p className="text-white/60 mb-8 leading-relaxed">
                   ALBÜMEVİ okul fotoğrafçılığı portalına hoş geldiniz. Bu portal üzerinden, öğrencilerinizin paket seçimlerini hızlı ve kolay bir şekilde yönetebilirsiniz. Lütfen size verilen kullanıcı adı ve şifre ile giriş yapın.
                 </p>
-                
+
                 <div className="space-y-4 mb-8 text-left">
                   <div className="flex gap-3 text-sm text-white/80">
                     <CheckCircle2 className="w-5 h-5 text-[#A67C52] shrink-0" />
@@ -471,7 +487,7 @@ function SchoolPortal() {
                   </div>
                 </div>
 
-                <Button 
+                <Button
                   onClick={() => {
                     setShowGuide(false);
                     localStorage.setItem(`portal_has_seen_guide_${schoolId}`, "true");
@@ -504,35 +520,38 @@ function SchoolPortal() {
                 <h2 className="text-xl font-bold text-white">Öğretmen Girişi</h2>
                 <p className="text-white/50 text-sm mt-2 text-center">Size verilen bilgileri girin.</p>
               </div>
-              
+
               <form onSubmit={handleLogin}>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-white/70">Kullanıcı Adı</Label>
-                    <Input 
-                      value={username} 
-                      onChange={(e) => setUsername(e.target.value)} 
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                       autoFocus
-                      className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]" 
+                      autoComplete="off"
+                      className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-white/70">Şifre</Label>
-                    <Input 
-                      type="password" 
-                      value={password} 
-                      onChange={(e) => setPassword(e.target.value)} 
-                      className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]" 
+                    <Input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      name="new-password"
+                      autoComplete="new-password"
+                      className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]"
                     />
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full mt-2"
                   >
                     Giriş Yap
                   </Button>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="ghost"
                     onClick={() => setShowGuide(true)}
                     className="w-full text-white/50 hover:text-white mt-2"
@@ -563,7 +582,7 @@ function SchoolPortal() {
                     <Info className="w-4 h-4 mr-1" />
                     Kılavuz
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="text-white/50 hover:text-white">
+                  <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/50 hover:text-white">
                     <LogOut className="w-5 h-5" />
                   </Button>
                 </div>
@@ -576,7 +595,7 @@ function SchoolPortal() {
                   <Info className="w-4 h-4 mr-2" />
                   Kılavuz
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="text-white/50 hover:text-white">
+                <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/50 hover:text-white">
                   <LogOut className="w-5 h-5" />
                 </Button>
               </div>
@@ -626,12 +645,12 @@ function SchoolPortal() {
                 ))}
               </div>
             )}
-            
+
             {/* View Summary Button */}
             <div className="mt-12 text-center">
-               <Button onClick={() => setStep(5)} variant="outline" className="border-white/10 hover:bg-white/5 hover:text-white bg-transparent h-12 px-8 rounded-xl">
-                 <FileSpreadsheet className="w-5 h-5 mr-2" /> Genel Özeti Görüntüle
-               </Button>
+              <Button onClick={() => setStep(5)} variant="outline" className="border-white/10 hover:bg-white/5 hover:text-white bg-transparent h-12 px-8 rounded-xl">
+                <FileSpreadsheet className="w-5 h-5 mr-2" /> Genel Özeti Görüntüle
+              </Button>
             </div>
           </motion.div>
         )}
@@ -668,14 +687,14 @@ function SchoolPortal() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket1') ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
-                      <input 
-                        type="checkbox" 
-                        name={`package_${s.id}_paket1`} 
+                      <input
+                        type="checkbox"
+                        name={`package_${s.id}_paket1`}
                         value="paket1"
-                        className="hidden" 
+                        className="hidden"
                         checked={selections[s.id]?.includes('paket1') || false}
                         onChange={() => handleStudentSelectionChange(s.id, 'paket1')}
                       />
@@ -686,11 +705,11 @@ function SchoolPortal() {
                     </label>
 
                     <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket2') ? 'bg-white/10 border-white text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
-                      <input 
-                        type="checkbox" 
-                        name={`package_${s.id}_paket2`} 
+                      <input
+                        type="checkbox"
+                        name={`package_${s.id}_paket2`}
                         value="paket2"
-                        className="hidden" 
+                        className="hidden"
                         checked={selections[s.id]?.includes('paket2') || false}
                         onChange={() => handleStudentSelectionChange(s.id, 'paket2')}
                       />
@@ -744,17 +763,17 @@ function SchoolPortal() {
 
             <div className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-xl shadow-xl overflow-hidden text-white mb-8">
               <div className="bg-black/20 border-b border-white/10 text-white p-4 flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                   <FileSpreadsheet className="w-5 h-5 text-[#A67C52]" />
-                   <span className="font-semibold text-sm">Okul_Siparis_Ozeti.xlsx</span>
-                 </div>
-                 <Button 
-                   size="sm" 
-                   onClick={downloadExcel}
-                   className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white border-none h-8"
-                 >
-                   Excel'e Aktar
-                 </Button>
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-[#A67C52]" />
+                  <span className="font-semibold text-sm">Okul_Siparis_Ozeti.xlsx</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={downloadExcel}
+                  className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white border-none h-8"
+                >
+                  Excel'e Aktar
+                </Button>
               </div>
               <Table>
                 <TableHeader className="bg-white/5">
@@ -783,13 +802,13 @@ function SchoolPortal() {
                 </TableBody>
               </Table>
               <div className="bg-black/20 p-6 flex justify-end">
-                 <div className="text-right">
-                   <div className="text-sm text-white/50 mb-1">Hesaplanan Toplam Tutar</div>
-                   <div className="text-4xl font-black text-[#A67C52]">{getSummary().totalTRY.toLocaleString()} ₺</div>
-                 </div>
+                <div className="text-right">
+                  <div className="text-sm text-white/50 mb-1">Hesaplanan Toplam Tutar</div>
+                  <div className="text-4xl font-black text-[#A67C52]">{getSummary().totalTRY.toLocaleString()} ₺</div>
+                </div>
               </div>
             </div>
-            
+
             <div className="text-center">
               <Button onClick={() => setStep(3)} variant="ghost" className="text-white/50 hover:text-white">
                 Sınıflara Dön

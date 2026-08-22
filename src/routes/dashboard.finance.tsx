@@ -3131,7 +3131,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     mutationFn: async (input: { name: string; currency: string; rest: number; desc: string }) => {
       const { data: school, error: sErr } = await supabaseClient
         .from("schools")
-        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0 })
+        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0, is_active: true, status: 'Aktif' })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;

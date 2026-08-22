@@ -28,6 +28,16 @@ type CutItem = {
 type Rect = { w: number, h: number, x: number, y: number, effW: number, effH: number, name?: string };
 type Plate = { w: number, h: number, shelves: { rects: Rect[] }[] };
 
+type OptimizationResult = {
+  plates: Plate[];
+  gerekenPlaka: number;
+  toplamParca: number;
+  verimlilik: number;
+  fire: number;
+  pw: number;
+  ph: number;
+};
+
 const packPiecesMaxRects = (reqPieces: any[], pw: number, ph: number, bicak: number, autoRotate: boolean) => {
   let pieces = [...reqPieces].sort((a, b) => (b.w * b.h) - (a.w * a.h));
   let plates = [];
@@ -385,8 +395,9 @@ function EbatlamaView() {
     if (updatedItem) upsertItemMutation.mutate(updatedItem);
   };
 
-  const parseNumber = (val: string) => {
-    const num = parseFloat(val);
+  const parseNumber = (val: string | number) => {
+    if (val === null || val === undefined) return 0;
+    const num = parseFloat(String(val).replace(',', '.'));
     return isNaN(num) ? 0 : num;
   };
 
@@ -404,50 +415,80 @@ function EbatlamaView() {
   // -------------------------
   // EXACT OPTIMIZATION ALGORITHM
   // -------------------------
-  const optimizationResults = useMemo(() => {
-    if (!plateSize) return null;
-    const parts = plateSize.split("x");
-    if (parts.length !== 2) return null;
+  const [optimizationResults, setOptimizationResults] = useState<OptimizationResult | null>(null);
 
-    let pw = parseNumber(parts[0]);
-    let ph = parseNumber(parts[1]);
-    const bp = parseNumber(bicakPayi);
-    if (!pw || !ph) return null;
-
-    if (ph > pw) {
-      const temp = pw;
-      pw = ph;
-      ph = temp;
-    }
-
-    const reqPieces: { w: number, h: number, name?: string }[] = [];
-
-    items.forEach(item => {
-      const b = parseNumber(item.boy);
-      const e = parseNumber(item.en);
-      const adet = parseNumber(item.adet);
-      if (b > 0 && e > 0 && adet > 0) {
-        for (let i = 0; i < adet; i++) {
-          reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" }); // Do NOT sort here, let AutoRotate logic handle it
-        }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!plateSize) {
+        setOptimizationResults(null);
+        return;
       }
-    });
+      const parts = plateSize.split("x");
+      if (parts.length !== 2) {
+        setOptimizationResults(null);
+        return;
+      }
 
-    if (reqPieces.length === 0) return null;
+      let pw = parseNumber(parts[0]);
+      let ph = parseNumber(parts[1]);
+      const bp = parseNumber(bicakPayi);
+      
+      if (!pw || !ph) {
+        setOptimizationResults(null);
+        return;
+      }
 
-    const plates = packPiecesMaxRects(reqPieces, pw, ph, bp, autoRotate);
+      if (ph > pw) {
+        const temp = pw;
+        pw = ph;
+        ph = temp;
+      }
 
-    const gerekenPlaka = plates.length;
-    const toplamParca = reqPieces.length;
+      const reqPieces: { w: number, h: number, name?: string }[] = [];
 
-    // Verimlilik calculates pure wood area vs total plate area
-    const totalPackedArea = reqPieces.reduce((sum, p) => sum + (p.w * p.h), 0);
-    const totalPlatesArea = gerekenPlaka * pw * ph;
+      items.forEach(item => {
+        const b = parseNumber(item.boy);
+        const e = parseNumber(item.en);
+        const adet = parseNumber(item.adet);
+        
+        if (b > 0 && e > 0 && adet > 0) {
+          // Silent Size Validation: skip pieces larger than the Plaka
+          let canFit = false;
+          if (autoRotate) {
+             canFit = (b <= pw && e <= ph) || (b <= ph && e <= pw);
+          } else {
+             canFit = (b <= pw && e <= ph);
+          }
 
-    const verimlilik = totalPlatesArea > 0 ? (totalPackedArea / totalPlatesArea) * 100 : 0;
-    const fire = 100 - verimlilik;
+          if (canFit) {
+            for (let i = 0; i < adet; i++) {
+              reqPieces.push({ w: b, h: e, name: item.parcaAdi || "" }); // Do NOT sort here, let AutoRotate logic handle it
+            }
+          }
+        }
+      });
 
-    return { plates, gerekenPlaka, toplamParca, verimlilik, fire, pw, ph };
+      if (reqPieces.length === 0) {
+        setOptimizationResults(null);
+        return;
+      }
+
+      const plates = packPiecesMaxRects(reqPieces, pw, ph, bp, autoRotate);
+
+      const gerekenPlaka = plates.length;
+      const toplamParca = reqPieces.length;
+
+      // Verimlilik calculates pure wood area vs total plate area
+      const totalPackedArea = reqPieces.reduce((sum, p) => sum + (p.w * p.h), 0);
+      const totalPlatesArea = gerekenPlaka * pw * ph;
+
+      const verimlilik = totalPlatesArea > 0 ? (totalPackedArea / totalPlatesArea) * 100 : 0;
+      const fire = 100 - verimlilik;
+
+      setOptimizationResults({ plates, gerekenPlaka, toplamParca, verimlilik, fire, pw, ph });
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [items, plateSize, bicakPayi, autoRotate]);
 
   const handleDownload = () => {

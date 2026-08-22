@@ -266,7 +266,7 @@ function ManageSchools() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("schools")
-        .select("*, is_active")
+        .select("*, status")
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -419,7 +419,8 @@ function ManageSchools() {
   const [form, setForm] = useState({ 
     name: "", city: "", login_username: "", password: "",
     package1_id: "", package1_price: "",
-    package2_id: "", package2_price: ""
+    package2_id: "", package2_price: "",
+    status: "Aktif"
   });
 
   useEffect(() => {
@@ -444,6 +445,8 @@ function ManageSchools() {
           login_username: data.login_username,
           login_password: data.password,
           team_id: teamId,
+          status: data.status || 'Aktif',
+          is_active: true,
         } as any)
         .select("id, name, city, login_username, created_at")
         .single();
@@ -484,15 +487,15 @@ function ManageSchools() {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["finance"] });
       setOpen(false);
-      setForm({ name: "", city: "", login_username: "", password: "", package1_id: "", package1_price: "", package2_id: "", package2_price: "" });
+      setForm({ name: "", city: "", login_username: "", password: "", package1_id: "", package1_price: "", package2_id: "", package2_price: "", status: "Aktif" });
       toast.success(lang === "TR" ? "Okul başarıyla eklendi" : "School added successfully");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const toggleActiveStatus = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await (supabase as any).from("schools").update({ is_active }).eq("id", id);
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await (supabase as any).from("schools").update({ status }).eq("id", id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -702,6 +705,18 @@ function ManageSchools() {
                     className={modalInputClasses}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white/70">Durum</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger className={modalInputClasses}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#131316] border-white/10 text-white">
+                    <SelectItem value="Aktif" className="text-emerald-500">Aktif</SelectItem>
+                    <SelectItem value="Pasif" className="text-red-500">Pasif</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
@@ -914,14 +929,14 @@ function ManageSchools() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={s.is_active ? "true" : "false"}
+                        value={s.status === "Aktif" ? "Aktif" : "Pasif"}
                         onValueChange={(val) => {
-                          toggleActiveStatus.mutate({ id: s.id, is_active: val === "true" });
+                          toggleActiveStatus.mutate({ id: s.id, status: val });
                         }}
                       >
                         <SelectTrigger 
                           className={`w-[100px] h-8 text-xs border-transparent focus:ring-0 ${
-                            s.is_active 
+                            String(s.status).toLowerCase() === "aktif"
                               ? "bg-emerald-500/15 text-emerald-400" 
                               : "bg-red-500/15 text-red-400"
                           }`}
@@ -929,8 +944,8 @@ function ManageSchools() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="true" className="text-emerald-500">Aktif</SelectItem>
-                          <SelectItem value="false" className="text-red-500">Pasif</SelectItem>
+                          <SelectItem value="Aktif" className="text-emerald-500">Aktif</SelectItem>
+                          <SelectItem value="Pasif" className="text-red-500">Pasif</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>

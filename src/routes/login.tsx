@@ -43,7 +43,7 @@ function SchoolLogin() {
       if (typeof window !== "undefined") {
         localStorage.setItem("albumevi_school", JSON.stringify(school));
       }
-      navigate({ to: "/school/$slug", params: { slug: school.unique_link_slug } });
+      navigate({ to: "/portal/$schoolId", params: { schoolId: school.id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
