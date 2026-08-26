@@ -39,20 +39,13 @@ export const getSchoolBySlug = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!school) throw new Error("School not found");
 
-    const [{ data: orders }, { data: finance }] = await Promise.all([
-      supabaseAdmin
-        .from("orders")
-        .select("id, package_name, quantity, total_price, order_status, created_at")
-        .eq("school_id", school.id)
-        .order("created_at", { ascending: false }),
-      supabaseAdmin
-        .from("finances")
-        .select("total_revenue, amount_paid, balance_due, invoice_url")
-        .eq("school_id", school.id)
-        .maybeSingle(),
-    ]);
+    const { data: orders } = await supabaseAdmin
+      .from("orders")
+      .select("id, package_name, quantity, total_price, order_status, created_at")
+      .eq("school_id", school.id)
+      .order("created_at", { ascending: false });
 
-    return { school, orders: orders ?? [], finance: finance ?? null };
+    return { school, orders: orders ?? [] };
   });
 
 export const createSchoolOrder = createServerFn({ method: "POST" })
@@ -83,29 +76,6 @@ export const createSchoolOrder = createServerFn({ method: "POST" })
       order_status: "Pending",
     });
     if (error) throw new Error(error.message);
-
-    // Bump finance totals so Accounting reflects the new pending invoice
-    const { data: fin } = await supabaseAdmin
-      .from("finances")
-      .select("id, total_revenue, amount_paid")
-      .eq("school_id", school.id)
-      .maybeSingle();
-
-    if (fin) {
-      const newRevenue = Number(fin.total_revenue ?? 0) + total;
-      const paid = Number(fin.amount_paid ?? 0);
-      await supabaseAdmin
-        .from("finances")
-        .update({ total_revenue: newRevenue, balance_due: newRevenue - paid })
-        .eq("id", fin.id);
-    } else {
-      await supabaseAdmin.from("finances").insert({
-        school_id: school.id,
-        total_revenue: total,
-        amount_paid: 0,
-        balance_due: total,
-      });
-    }
 
     return { ok: true };
   });

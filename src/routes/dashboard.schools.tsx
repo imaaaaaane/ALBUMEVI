@@ -366,12 +366,12 @@ function ManageSchools() {
   const { data: finance } = useQuery({
     queryKey: ["finance"],
     queryFn: async () => {
-      const [{ data: rawStudents, error: oErr }, { data: finances, error: fErr }] = await Promise.all([
+      const [{ data: rawStudents, error: oErr }, { data: txs, error: fErr }] = await Promise.all([
         (supabase as any).from("students").select(`
           selection,
           classes!inner(schools!inner(package1_price, package2_price))
         `).not("selection", "is", null),
-        supabase.from("finances").select("id, school_id, total_revenue, amount_paid, balance_due, invoice_url, schools(name)"),
+        (supabase as any).from("school_transactions").select("amount, type"),
       ]);
       if (oErr) throw new Error(oErr.message);
       if (fErr) throw new Error(fErr.message);
@@ -384,7 +384,7 @@ function ManageSchools() {
         return s;
       }, 0);
 
-      const totalPaid = (finances ?? []).reduce((s: number, f: any) => s + Number(f.amount_paid ?? 0), 0);
+      const totalPaid = (txs ?? []).reduce((s: number, t: any) => s + (t.type === 'payment' ? Number(t.amount ?? 0) : 0), 0);
       const balanceDue = totalRevenue - totalPaid;
       const pendingOrders = (rawStudents ?? []).length; // treating all as pending for now
 
@@ -393,15 +393,7 @@ function ManageSchools() {
         totalPaid,
         balanceDue,
         pendingOrders,
-        invoices: (finances ?? []).map((f: any) => ({
-          id: f.id,
-          school_id: f.school_id,
-          school_name: f.schools?.name ?? "—",
-          total_revenue: Number(f.total_revenue ?? 0),
-          amount_paid: Number(f.amount_paid ?? 0),
-          balance_due: Number(f.balance_due ?? 0),
-          invoice_url: f.invoice_url,
-        })),
+        invoices: [],
       };
     },
   });
@@ -453,8 +445,6 @@ function ManageSchools() {
       if (error) throw new Error(error.message);
 
       const newSchoolId = row.id;
-
-      await supabase.from("finances").insert({ school_id: newSchoolId, team_id: teamId } as any);
 
       const schoolProducts = [];
       if (data.package1_id && data.package1_price) {
@@ -558,7 +548,7 @@ function ManageSchools() {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const activeOrders = orders.filter((o: any) => o.order_status !== "Completed").length;
-  const pendingInvoices = (finance?.invoices ?? []).filter((i) => i.balance_due > 0).length;
+  const pendingInvoices = 0; // Removed finance dependency
 
   const stats = [
     {

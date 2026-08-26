@@ -59,20 +59,13 @@ function SchoolPortal() {
       if (error) throw new Error(error.message);
       if (!school) throw new Error("School not found");
 
-      const [{ data: orders }, { data: finance }] = await Promise.all([
-        (supabase as any)
-          .from("orders")
-          .select("id, package_name, quantity, total_price, order_status, created_at")
-          .eq("school_id", school.id)
-          .order("created_at", { ascending: false }),
-        (supabase as any)
-          .from("finances")
-          .select("total_revenue, amount_paid, balance_due, invoice_url")
-          .eq("school_id", school.id)
-          .maybeSingle(),
-      ]);
+      const { data: orders } = await (supabase as any)
+        .from("orders")
+        .select("id, package_name, quantity, total_price, order_status, created_at")
+        .eq("school_id", school.id)
+        .order("created_at", { ascending: false });
 
-      return { school, orders: orders ?? [], finance: finance ?? null };
+      return { school, orders: orders ?? [] };
     },
   });
 
@@ -130,27 +123,6 @@ function SchoolPortal() {
         });
         if (error) throw new Error(error.message);
 
-        const { data: fin } = await (supabase as any)
-          .from("finances")
-          .select("id, total_revenue, amount_paid")
-          .eq("school_id", school.id)
-          .maybeSingle();
-
-        if (fin) {
-          const newRevenue = Number(fin.total_revenue ?? 0) + itemTotal;
-          const paid = Number(fin.amount_paid ?? 0);
-          await (supabase as any)
-            .from("finances")
-            .update({ total_revenue: newRevenue, balance_due: newRevenue - paid })
-            .eq("id", fin.id);
-        } else {
-          await (supabase as any).from("finances").insert({
-            school_id: school.id,
-            total_revenue: itemTotal,
-            amount_paid: 0,
-            balance_due: itemTotal,
-          });
-        }
         total += itemTotal;
       }
       return { items: items.length, total };
@@ -158,7 +130,6 @@ function SchoolPortal() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["school", slug] });
       qc.invalidateQueries({ queryKey: ["orders"] });
-      qc.invalidateQueries({ queryKey: ["finance"] });
       setSelection({});
       setOrderNote("");
       setTray(false);
@@ -184,7 +155,7 @@ function SchoolPortal() {
     );
   }
 
-  const { school, orders, finance } = data;
+  const { school, orders } = data;
 
   // Hna k-n-verifiw is_active
   const isSchoolActive = school.is_active === true;
@@ -207,7 +178,6 @@ function SchoolPortal() {
   const selectedItems = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
   const totalQty = selectedItems.reduce((s, i) => s + selection[i.id], 0);
   const totalPrice = selectedItems.reduce((s, i) => s + selection[i.id] * i.price, 0);
-  const pendingInvoice = finance && Number(finance.balance_due) > 0;
 
   const latestOrder = orders[0];
   const currentStatus = latestOrder?.order_status || "None";
@@ -382,27 +352,6 @@ function SchoolPortal() {
             </ul>
           )}
         </section>
-
-        {pendingInvoice && (
-          <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-semibold">Bekleyen fatura</h2>
-            <div className="mt-3 flex items-center justify-between rounded-md border border-border bg-background/60 p-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Ödenecek bakiye</div>
-                <div className="text-xl font-bold">${Number(finance!.balance_due).toLocaleString()}</div>
-              </div>
-              {finance?.invoice_url ? (
-                <Button asChild variant="outline" className="border-border bg-card">
-                  <a href={finance.invoice_url} download><FileDown className="mr-2 h-4 w-4" /> Faturayı indir</a>
-                </Button>
-              ) : (
-                <Button variant="outline" disabled className="border-border bg-card">
-                  <FileDown className="mr-2 h-4 w-4" /> Fatura bekleniyor
-                </Button>
-              )}
-            </div>
-          </section>
-        )}
       </main>
 
       {totalQty > 0 && !tray && (

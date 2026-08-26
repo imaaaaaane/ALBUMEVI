@@ -57,9 +57,6 @@ export const addSchool = createServerFn({ method: "POST" })
       .select("id, name, city, login_username, unique_link_slug, created_at")
       .single();
     if (error) throw new Error(error.message);
-
-    // Create empty finance row for the school
-    await supabaseAdmin.from("finances").insert({ school_id: row.id });
     return row;
   });
 
@@ -140,17 +137,15 @@ export const addInventory = createServerFn({ method: "POST" })
 
 // ───────── Finance ─────────
 export const getFinanceSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const [{ data: orders, error: oErr }, { data: finances, error: fErr }] = await Promise.all([
+  const [{ data: orders, error: oErr }, { data: txs, error: fErr }] = await Promise.all([
     supabaseAdmin.from("orders").select("total_price, order_status"),
-    supabaseAdmin
-      .from("finances")
-      .select("id, school_id, total_revenue, amount_paid, balance_due, invoice_url, schools(name)"),
+    (supabaseAdmin as any).from("school_transactions").select("amount, type"),
   ]);
   if (oErr) throw new Error(oErr.message);
   if (fErr) throw new Error(fErr.message);
 
-  const totalRevenue = (orders ?? []).reduce((s, o: any) => s + Number(o.total_price ?? 0), 0);
-  const totalPaid = (finances ?? []).reduce((s, f: any) => s + Number(f.amount_paid ?? 0), 0);
+  const totalRevenue = (orders ?? []).reduce((s: number, o: any) => s + Number(o.total_price ?? 0), 0);
+  const totalPaid = (txs ?? []).reduce((s: number, t: any) => s + (t.type === 'payment' ? Number(t.amount ?? 0) : 0), 0);
   const balanceDue = totalRevenue - totalPaid;
   const pendingOrders = (orders ?? []).filter((o: any) => o.order_status !== "Completed").length;
 
@@ -159,14 +154,6 @@ export const getFinanceSummary = createServerFn({ method: "GET" }).handler(async
     totalPaid,
     balanceDue,
     pendingOrders,
-    invoices: (finances ?? []).map((f: any) => ({
-      id: f.id,
-      school_id: f.school_id,
-      school_name: f.schools?.name ?? "—",
-      total_revenue: Number(f.total_revenue ?? 0),
-      amount_paid: Number(f.amount_paid ?? 0),
-      balance_due: Number(f.balance_due ?? 0),
-      invoice_url: f.invoice_url,
-    })),
+    invoices: [],
   };
 });

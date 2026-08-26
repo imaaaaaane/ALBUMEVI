@@ -156,6 +156,9 @@ interface School {
   currency?: "TRY" | "EUR" | "USD";
   paid_amount: number;
   remaining_amount: number;
+  contribution_per_student?: number;
+  total_contribution?: number;
+  total_orders?: number;
   transactions: SchoolTransaction[];
 }
 // --- Helper Functions for Calculations ---
@@ -168,7 +171,7 @@ const getConvertedAmount = (amount: number, currency?: string, rates?: Record<st
 
 const getFirmPaid = (f: Firm, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
 const getFirmDebt = (f: Firm, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getFirmRemaining = (f: Firm, rates?: Record<string, number>) => Math.max(0, getFirmDebt(f, rates) - getFirmPaid(f, rates));
+const getFirmRemaining = (f: Firm, rates?: Record<string, number>) => getFirmDebt(f, rates) - getFirmPaid(f, rates);
 
 const getEmployeeSalary = (f: Employee) => Number(f.total_debt || 0);
 const getEmployeePaid = (f: Employee) => Number(f.total_paid || 0);
@@ -176,11 +179,11 @@ const getEmployeeRemaining = (f: Employee) => getEmployeeSalary(f) - getEmployee
 
 const getExpensePaid = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_paid, f.currency, rates);
 const getExpenseDebt = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_debt, f.currency, rates);
-const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) => Math.max(0, getExpenseDebt(f, rates) - getExpensePaid(f, rates));
+const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) => getExpenseDebt(f, rates) - getExpensePaid(f, rates);
 
-const getSchoolPaid = (f: School, rates?: Record<string, number>) => getConvertedAmount(f.paid_amount || 0, f.currency, rates);
+const getSchoolPaid = (f: School, rates?: Record<string, number>) => getConvertedAmount((f.paid_amount || 0) + (f.total_contribution || 0), f.currency, rates);
 const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getSchoolRemaining = (f: School, rates?: Record<string, number>) => getConvertedAmount(f.remaining_amount || 0, f.currency, rates);
+const getSchoolRemaining = (f: School, rates?: Record<string, number>) => getSchoolDebt(f, rates) - getSchoolPaid(f, rates);
 
 function AccountingDashboard() {
   const navigate = useNavigate();
@@ -366,9 +369,11 @@ function AccountingDashboard() {
 
       const { data: transactions, error: tErr } = await supabaseClient
         .from("salary_transactions")
-        .select("id, employee_id, transaction_type, amount, description, created_at")
+        .select("*")
         .order("created_at", { ascending: true });
-      if (tErr) return employees.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
+      if (tErr) {
+        console.error("Salary transactions error:", tErr);
+      }
 
       console.log("Employees Raw:", employees);
       console.log("Employee Transactions Raw:", transactions);
@@ -379,8 +384,8 @@ function AccountingDashboard() {
         currency: s.currency as any,
         total_debt: Number(s.total_debt || 0),
         total_paid: Number(s.total_paid || 0),
-        transactions: transactions
-          .filter((t) => String(t.employee_id) === String(s.id))
+        transactions: (transactions || [])
+          .filter((t) => String(t.employee_id || t.personel_id || t.profile_id) === String(s.id))
           .map((t) => ({
             id: t.id,
             date: new Date(t.created_at).toISOString().split("T")[0],
@@ -422,7 +427,7 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: schools, error: sErr } = await supabaseClient
         .from("schools")
-        .select("id, name, currency, created_at, paid_amount, remaining_amount")
+        .select("id, name, currency, created_at, paid_amount, remaining_amount, contribution_per_student")
         .order("created_at", { ascending: false });
       if (sErr) return [];
 
@@ -430,16 +435,28 @@ function AccountingDashboard() {
         .from("school_transactions")
         .select("id, school_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: true });
-      if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, paid_amount: Number(s.paid_amount) || 0, remaining_amount: Number(s.remaining_amount) || 0, transactions: [] }));
 
-      return schools.map((s) => ({
-        id: s.id,
-        name: s.name,
-        currency: s.currency as any,
-        paid_amount: Number(s.paid_amount) || 0,
-        remaining_amount: Number(s.remaining_amount) || 0,
-        transactions: transactions
-          .filter((t) => String(t.school_id) === String(s.id))
+      const { data: ordersData, error: oErr } = await supabaseClient
+        .from("orders")
+        .select("id, school_id, order_status");
+
+      if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, paid_amount: Number(s.paid_amount) || 0, remaining_amount: Number(s.remaining_amount) || 0, contribution_per_student: 0, total_contribution: 0, total_orders: 0, transactions: [] }));
+
+      return schools.map((s) => {
+        const schoolOrders = (ordersData || []).filter((o: any) => o.school_id === s.id && o.order_status !== 'Cancelled');
+        const contribution = (Number(s.contribution_per_student) || 0) * schoolOrders.length;
+        
+        return {
+          id: s.id,
+          name: s.name,
+          currency: s.currency as any,
+          paid_amount: Number(s.paid_amount) || 0,
+          remaining_amount: Number(s.remaining_amount) || 0,
+          contribution_per_student: Number(s.contribution_per_student) || 0,
+          total_contribution: contribution,
+          total_orders: schoolOrders.length,
+          transactions: transactions
+            .filter((t) => String(t.school_id) === String(s.id))
           .map((t) => ({
             id: t.id,
             date: new Date(t.created_at).toISOString().split("T")[0],
@@ -448,7 +465,8 @@ function AccountingDashboard() {
             desc: t.description ?? "",
             createdAt: t.created_at,
           })),
-      }));
+        };
+      });
     }
   });
 
@@ -456,10 +474,11 @@ function AccountingDashboard() {
     queryKey: ["print_expenses_overview", teamId],
     enabled: !!teamId,
     queryFn: async () => {
-      const { data, error } = await supabaseClient
-        .from("print_expenses")
-        .select("amount")
-        .eq("team_id", teamId);
+      let q = supabaseClient.from("print_expenses").select("amount");
+      if (teamId !== "all") {
+        q = q.eq("team_id", teamId);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     }
@@ -957,7 +976,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       if (tx.type === "debt") totals[cur].debt += Number(tx.amount);
     });
     Object.keys(totals).forEach(cur => {
-      totals[cur].remaining = Math.max(0, totals[cur].debt - totals[cur].paid);
+      totals[cur].remaining = totals[cur].debt - totals[cur].paid;
     });
     return totals;
   };
@@ -975,6 +994,39 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
         ))}
       </div>
     );
+  };
+
+  const handleExportListPDF = () => {
+    const columns = ["Tedarikçi Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
+    
+    let sumPaid = 0;
+    let sumRemaining = 0;
+
+    const data = suppliers.map((s) => {
+      const paid = getFirmPaid(s, exchangeRates);
+      const rem = getFirmRemaining(s, exchangeRates);
+      sumPaid += paid;
+      sumRemaining += rem;
+
+      return [
+        s.name,
+        `${paid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+        `${rem.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Tedarikçi (Sarf) Genel Raporu",
+      columns,
+      data,
+      filename: `Sarf_Malzemeler_Genel_Raporu.pdf`
+    });
   };
 
   const totalPaid = suppliers.reduce((sum, f) => sum + getFirmPaid(f, exchangeRates), 0);
@@ -1138,6 +1190,38 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     }
   };
 
+  const handleExportSupplierPDF = () => {
+    if (!selectedSupplier) return;
+    const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
+    const data = selectedSupplier.transactions.map((tx: any) => {
+      const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
+      const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedSupplier.currency)}`;
+      return [
+        new Date(tx.date).toLocaleDateString("tr-TR"),
+        typeStr,
+        tx.desc || "",
+        amountStr
+      ];
+    });
+    
+    const paid = getFirmPaid(selectedSupplier, exchangeRates);
+    const taken = getFirmDebt(selectedSupplier, exchangeRates);
+    const remaining = getFirmRemaining(selectedSupplier, exchangeRates);
+
+    exportToPDF({
+      title: "İşlem Geçmişi",
+      subtitle: selectedSupplier.name,
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
+        { label: "Toplam Ödenen", value: `${paid.toLocaleString()} ₺` },
+        { label: "Kalan Borç Bakiye", value: `${remaining.toLocaleString()} ₺` }
+      ],
+      filename: `${selectedSupplier.name.replace(/ /g, "_")}_Tedarikci_Islem_Gecmisi.pdf`
+    });
+  };
+
   const selectedSupplier = suppliers.find((f) => f.id === selectedSupplierId);
   const filteredSuppliers = suppliers
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1167,18 +1251,48 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
             {renderGroupedAmounts(selectedSupplier, "debt", "text-white text-lg")}
           </div>
-          <div className="p-4 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç Bakiye</span>
-            {renderGroupedAmounts(selectedSupplier, "remaining", "text-[#A67C52] text-lg")}
-          </div>
+          {(() => {
+            const totals = getGroupedTotals(selectedSupplier);
+            const keys = Object.keys(totals);
+            return (
+              <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+                <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                  KALAN ÖDEME
+                </span>
+                {keys.length === 0 ? (
+                   <span className="font-mono text-sm font-bold block mt-1 text-white/70">0 ₺</span>
+                ) : (
+                  <div className="mt-1 space-y-0.5">
+                    {keys.map(cur => {
+                      const netBalance = -totals[cur].remaining;
+                      const isPositive = netBalance > 0;
+                      const isNegative = netBalance < 0;
+                      const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                      const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                      return (
+                        <span key={cur} className={`font-mono text-lg font-bold block ${color}`}>
+                          {sign}{Math.abs(netBalance).toLocaleString()} {getCurrencySymbol(cur)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         
         <div className="flex-1 p-6 space-y-4">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
-            <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
-              <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleExportSupplierPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10">
+                <Download className="w-4 h-4 mr-2 text-[#A67C52]" /> PDF İndir
+              </Button>
+              <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+                <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
+              </Button>
+            </div>
           </div>
           
           <div className="space-y-3">
@@ -1312,7 +1426,10 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Suppliera cari hesap borç ve ödeme bakiye takipleri.</p>
           </div>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex gap-3">
+          <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+            <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
+          </Button>
           <Button onClick={() => setIsAddSupplierOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
             <Plus className="mr-2 h-4 w-4" /> Suppliera Ekle
           </Button>
@@ -1358,8 +1475,35 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                         {renderGroupedAmounts(f, "paid", "text-[#12B76A]")}
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Borç</span>
-                        {renderGroupedAmounts(f, "remaining", "text-[#A67C52]")}
+                        {(() => {
+                          const totals = getGroupedTotals(f);
+                          const keys = Object.keys(totals);
+                          return (
+                            <>
+                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                KALAN ÖDEME
+                              </span>
+                              {keys.length === 0 ? (
+                                <span className="font-mono text-sm font-bold block mt-0.5 text-white/70">0 ₺</span>
+                              ) : (
+                                <div className="mt-0.5 space-y-0.5">
+                                  {keys.map(cur => {
+                                    const netBalance = -totals[cur].remaining;
+                                    const isPositive = netBalance > 0;
+                                    const isNegative = netBalance < 0;
+                                    const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                                    const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                                    return (
+                                      <span key={cur} className={`font-mono text-sm font-bold block ${color}`}>
+                                        {sign}{Math.abs(netBalance).toLocaleString()} {getCurrencySymbol(cur)}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex">
@@ -1390,10 +1534,21 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
               <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
             </div>
-            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
-              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{Math.round(totalRemaining).toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1498,8 +1653,6 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
   );
 }
-
-
 // ───────── Personel (Maaşlar) ListView Component ─────────
 
 interface EmployeesListViewProps {
@@ -1568,6 +1721,39 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   };
 
 
+
+  const handleExportListPDF = () => {
+    const columns = ["Firma Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
+    
+    let sumPaid = 0;
+    let sumRemaining = 0;
+
+    const data = firms.map((s) => {
+      const paid = getFirmPaid(s, exchangeRates);
+      const rem = getFirmRemaining(s, exchangeRates);
+      sumPaid += paid;
+      sumRemaining += rem;
+
+      return [
+        s.name,
+        `${paid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+        `${rem.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Firma (Cari Hesap) Genel Raporu",
+      columns,
+      data,
+      filename: `Firma_Genel_Raporu.pdf`
+    });
+  };
 
   const totalPaid = firms.reduce((sum, f) => sum + getFirmPaid(f, exchangeRates), 0);
 
@@ -1838,10 +2024,24 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
             <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
             <span className="font-mono text-lg font-bold text-white block mt-1">{getFirmDebt(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
           </div>
-          <div className="p-4 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç Bakiye</span>
-            <span className="font-mono text-lg font-bold text-[#A67C52] block mt-1">{getFirmRemaining(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
-          </div>
+          {(() => {
+            const rem = getFirmRemaining(selectedFirm, exchangeRates);
+            const netBalance = -rem;
+            const isPositive = netBalance > 0;
+            const isNegative = netBalance < 0;
+            const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+            const sign = isPositive ? "+ " : isNegative ? "- " : "";
+            return (
+              <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
+                <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                  KALAN ÖDEME
+                </span>
+                <span className={`font-mono text-lg font-bold block mt-1 ${color}`}>
+                  {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                </span>
+              </div>
+            );
+          })()}
         </div>
         
         <div className="flex-1 p-6 space-y-4">
@@ -2080,11 +2280,18 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
             <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Firma cari hesap borç ve ödeme bakiye takipleri.</p>
           </div>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={() => setIsAddFirmOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
-            <Plus className="mr-2 h-4 w-4" /> Firma Ekle
-          </Button>
-        </motion.div>
+        <div className="flex gap-3">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+              <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button onClick={() => setIsAddFirmOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+              <Plus className="mr-2 h-4 w-4" /> Firma Ekle
+            </Button>
+          </motion.div>
+        </div>
       </div>
 
       {isRatesError && (
@@ -2127,8 +2334,23 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                         <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Borç</span>
-                        <span className={`font-mono text-sm font-bold block mt-0.5 ${remaining > 0 ? "text-[#A67C52]" : "text-[#9E9696]"}`}>{remaining.toLocaleString()} ₺</span>
+                        {(() => {
+                          const netBalance = -remaining;
+                          const isPositive = netBalance > 0;
+                          const isNegative = netBalance < 0;
+                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                          return (
+                            <>
+                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                KALAN ÖDEME
+                              </span>
+                              <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex">
@@ -2159,10 +2381,21 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
               <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
             </div>
-            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
-              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{Math.round(totalRemaining).toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -2296,12 +2529,46 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const [paymentEmployeeId, setPaymentEmployeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("debt_addition");
+  const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("salary_payment");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
+  const [editTxId, setEditTxId] = useState<string | null>(null);
 
 
+
+  const handleExportListPDF = () => {
+    const columns = ["Personel Adı", "Ödenen Maaş (₺)", "Kalan Bakiye (₺)"];
+    
+    let sumPaid = 0;
+    let sumRemaining = 0;
+
+    const data = employees.map((s) => {
+      const paid = getEmployeePaid(s);
+      const rem = getEmployeeRemaining(s);
+      sumPaid += paid;
+      sumRemaining += rem;
+
+      return [
+        s.name,
+        `${paid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+        `${rem.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Personel Maaşları Genel Raporu",
+      columns,
+      data,
+      filename: `Personel_Maaslari_Genel_Raporu.pdf`
+    });
+  };
 
   const totalPaid = employees.reduce((sum, f) => sum + getEmployeePaid(f), 0);
   const totalRemaining = employees.reduce((sum, f) => sum + getEmployeeRemaining(f), 0);
@@ -2360,17 +2627,16 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseClient.from("salary_transactions").delete().eq("employee_id", id);
-      await supabaseClient.from("employees").delete().eq("id", id);
+      await supabaseClient.from("salary_transactions").delete().eq("employee_id", id).throwOnError();
+      await supabaseClient.from("employees").delete().eq("id", id).throwOnError();
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["employees_ledger"] }); toast.success("Personel silindi"); },
   });
 
   const addTxMutation = useMutation({
     mutationFn: async (input: { employee_id: string; type: string; amount: number; desc: string; date: string; currentSalary: number; currentPaid: number }) => {
-      await supabaseClient.from("salary_transactions").insert({
-        employee_id: input.employee_id, transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString()
-      });
+      const txData = { transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString() };
+      await supabaseClient.from("salary_transactions").insert({ ...txData, employee_id: input.employee_id }).throwOnError();
 
       let newSalary = input.currentSalary;
       let newPaid = input.currentPaid;
@@ -2384,12 +2650,52 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       await supabaseClient.from("employees").update({
         total_debt: newSalary,
         total_paid: newPaid
-      }).eq("id", input.employee_id);
+      }).eq("id", input.employee_id).throwOnError();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+    },
+  });
+
+  const editTxMutation = useMutation({
+    mutationFn: async (input: { id: string; employee_id: string; type: string; amount: number; desc: string; date: string; currentSalary: number; currentPaid: number; oldAmount: number; oldType: string }) => {
+      await supabaseClient.from("salary_transactions").update({
+        transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString()
+      }).eq("id", input.id).throwOnError();
+
+      let newSalary = input.currentSalary;
+      let newPaid = input.currentPaid;
+
+      if (input.oldType === "debt_addition") newSalary -= input.oldAmount;
+      else newPaid -= input.oldAmount;
+
+      if (input.type === "debt_addition") newSalary += input.amount;
+      else newPaid += input.amount;
+
+      await supabaseClient.from("employees").update({ total_debt: newSalary, total_paid: newPaid }).eq("id", input.employee_id).throwOnError();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees_ledger"] });
+      toast.success("İşlem güncellendi");
+      setIsAddTxOpen(false); setEditTxId(null); setNewTxAmount(""); setNewTxDesc("");
+    },
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: async (input: { id: string; employee_id: string; amount: number; type: string; currentSalary: number; currentPaid: number }) => {
+      const { error: txErr } = await supabaseClient.from("salary_transactions").delete().eq("id", input.id);
+      if (txErr) throw new Error("İşlem silinemedi: " + txErr.message);
+      let newSalary = input.currentSalary;
+      let newPaid = input.currentPaid;
+      if (input.type === "debt_addition") newSalary -= input.amount;
+      else newPaid -= input.amount;
+      await supabaseClient.from("employees").update({ total_debt: newSalary, total_paid: newPaid }).eq("id", input.employee_id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees_ledger"] });
+      toast.success("İşlem silindi");
     },
   });
 
@@ -2441,14 +2747,86 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     const employee = employees.find((f) => f.id === selectedEmployeeId);
     if (!employee) return;
 
-    addTxMutation.mutate({
-      employee_id: selectedEmployeeId,
-      type: newTxType,
-      amount: parseFloat(newTxAmount),
-      desc: newTxDesc.trim(),
-      date: newTxDate,
-      currentSalary: employee.total_debt || 0,
-      currentPaid: employee.total_paid || 0
+    if (editTxId) {
+      const tx = employee.transactions.find(t => t.id === editTxId);
+      if (!tx) return;
+      editTxMutation.mutate({
+        id: editTxId, employee_id: selectedEmployeeId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate,
+        currentSalary: employee.total_debt || 0, currentPaid: employee.total_paid || 0,
+        oldAmount: tx.amount, oldType: tx.type
+      });
+    } else {
+      addTxMutation.mutate({
+        employee_id: selectedEmployeeId,
+        type: newTxType,
+        amount: parseFloat(newTxAmount),
+        desc: newTxDesc.trim(),
+        date: newTxDate,
+        currentSalary: employee.total_debt || 0,
+        currentPaid: employee.total_paid || 0
+      });
+    }
+  };
+
+  const handleEditTransaction = (tx: any) => {
+    setEditTxId(tx.id);
+    setNewTxType(tx.type);
+    setNewTxAmount(tx.amount.toString());
+    setNewTxDesc(tx.desc);
+    if (tx.date) {
+      const parts = tx.date.split(".");
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        setNewTxDate(`${year}-${month}-${day}`);
+      } else {
+        setNewTxDate(new Date().toISOString().split("T")[0]);
+      }
+    }
+    setIsAddTxOpen(true);
+  };
+
+  const handleDeleteTransaction = (tx: any) => {
+    if (window.confirm("Bu işlemi silmek istediğinize emin misiniz?")) {
+      deleteTxMutation.mutate({
+        id: tx.id,
+        employee_id: selectedEmployeeId!,
+        amount: tx.amount,
+        type: tx.type,
+        currentSalary: employees.find(e => e.id === selectedEmployeeId)?.total_debt || 0,
+        currentPaid: employees.find(e => e.id === selectedEmployeeId)?.total_paid || 0
+      });
+    }
+  };
+
+  const handleExportEmployeePDF = () => {
+    if (!selectedEmployee) return;
+    const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
+    const data = selectedEmployee.transactions.map((tx: any) => {
+      const typeStr = tx.type === "debt_addition" ? "Maaş Tahakkuku (Yeni Borç)" : tx.type === "advance" ? "Avans" : "Maaş Ödemesi";
+      const amountStr = `${tx.amount.toLocaleString()} ₺`;
+      return [
+        new Date(tx.date).toLocaleDateString("tr-TR"),
+        typeStr,
+        tx.desc || "",
+        amountStr
+      ];
+    });
+    
+    const paid = getEmployeePaid(selectedEmployee);
+    const salary = getEmployeeSalary(selectedEmployee);
+    const remaining = getEmployeeRemaining(selectedEmployee);
+
+    exportToPDF({
+      title: "Personel İşlem Geçmişi",
+      subtitle: selectedEmployee.name,
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Maaş", value: `${salary.toLocaleString()} ₺` },
+        { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
+        { label: "Kalan Alacak", value: `${remaining.toLocaleString()} ₺` }
+      ],
+      filename: `${selectedEmployee.name.replace(/ /g, "_")}_Personel_Islem_Gecmisi.pdf`
     });
   };
 
@@ -2510,8 +2888,23 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                         <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Maaş (Borç)</span>
-                        <span className={`font-mono text-sm font-bold block mt-0.5 ${remaining > 0 ? "text-[#A67C52]" : "text-[#9E9696]"}`}>{remaining.toLocaleString()} ₺</span>
+                        {(() => {
+                          const netBalance = -remaining;
+                          const isPositive = netBalance > 0;
+                          const isNegative = netBalance < 0;
+                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                          return (
+                            <>
+                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                KALAN ÖDEME
+                              </span>
+                              <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex">
@@ -2547,10 +2940,21 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN MAAŞ</span>
               <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{totalPaid.toLocaleString()} ₺</h4>
             </div>
-            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN MAAŞ</span>
-              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{totalRemaining.toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -2648,34 +3052,69 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Maaş</span>
                   <span className="font-mono text-sm font-bold text-white block mt-0.5">{getEmployeeSalary(selectedEmployee).toLocaleString()} ₺</span>
                 </div>
-                <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Alacak</span>
-                  <span className="font-mono text-sm font-bold text-[#A67C52] block mt-0.5">{getEmployeeRemaining(selectedEmployee).toLocaleString()} ₺</span>
-                </div>
+                {(() => {
+                  const netBalance = -getEmployeeRemaining(selectedEmployee);
+                  const isPositive = netBalance > 0;
+                  const isNegative = netBalance < 0;
+                  const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                  const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                  return (
+                    <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                      <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                        KALAN ÖDEME
+                      </span>
+                      <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                        {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
-                  <Button size="sm" onClick={() => { setNewTxType("debt_addition"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
-                    <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleExportEmployeePDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                      <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
+                    </Button>
+                    <Button size="sm" onClick={() => { setNewTxType("debt_addition"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                      <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2.5">
+                  {selectedEmployee.transactions.length === 0 && (
+                    <div className="text-center p-8 text-sm text-[#9E9696] bg-white/5 rounded-xl border border-white/5">
+                      Bu personele ait henüz işlem bulunmuyor.
+                    </div>
+                  )}
                   {selectedEmployee.transactions.map((tx) => {
                     const isTaken = tx.type === "debt_addition";
                     const isAdvance = tx.type === "advance";
                     return (
-                      <div key={tx.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : isAdvance ? "bg-[#F79009]/10 text-[#F79009]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
-                            {isTaken ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                      <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
+                            <ArrowDownRight className="w-5 h-5" />
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-white block">{tx.desc}</span>
-                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5">{tx.date}</span>
+                            <span className="text-sm font-bold text-white block">{tx.desc}</span>
+                            <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
                           </div>
                         </div>
-                        <span className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : isAdvance ? "text-[#F79009]" : "text-[#12B76A]"}`}>{isTaken ? "+" : "-"}{tx.amount.toLocaleString()} ₺</span>
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-lg font-bold text-white">
+                            {tx.amount.toLocaleString()} ₺
+                          </span>
+                          <div className="flex gap-1 ml-4">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -2688,18 +3127,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-lg font-bold">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle></DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">İşlem Tipi</Label>
-              <div className="grid grid-cols-1 gap-2">
-                <button type="button" onClick={() => setNewTxType("debt_addition")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "debt_addition" ? "bg-[#A67C52]/10 border-[#A67C52] text-[#A67C52]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Maaş Tahakkuku (Yeni Borç)</button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setNewTxType("salary_payment")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "salary_payment" ? "bg-[#12B76A]/10 border-[#12B76A] text-[#12B76A]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Maaş Ödemesi</button>
-                  <button type="button" onClick={() => setNewTxType("advance")} className={`h-11 rounded-xl font-bold text-xs border ${newTxType === "advance" ? "bg-[#F79009]/10 border-[#F79009] text-[#F79009]" : "bg-white/5 border-white/5 text-[#9E9696]"}`}>Avans</button>
-                </div>
-              </div>
-            </div>
+            {/* İşlem Tipi seçimi kaldırıldı, basit form yapıldı */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number"  min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
               <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
@@ -2710,7 +3140,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
-              <Button type="submit" disabled={addTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Ekle</Button>
+              <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">{editTxId ? "Güncelle" : "Ekle"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2785,8 +3215,43 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     }
   }, [selectedExpenseId, selectedExpense]);
 
+  const handleExportListPDF = () => {
+    const columns = ["Gider Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
+    
+    let sumPaid = 0;
+    let sumRemaining = 0;
+
+    const data = expenses.map((s) => {
+      const paid = getExpensePaid(s, exchangeRates);
+      const rem = getExpenseRemaining(s, exchangeRates);
+      sumPaid += paid;
+      sumRemaining += rem;
+
+      return [
+        s.name,
+        `${paid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+        `${rem.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Ortak Giderler Genel Raporu",
+      columns,
+      data,
+      filename: `Ortak_Giderler_Genel_Raporu.pdf`
+    });
+  };
+
   const totalPaid = expenses.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
   const totalRemaining = expenses.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
+
+
 
   const addExpenseMutation = useMutation({
     mutationFn: async (input: { name: string; taken: number; rest: number; desc: string }) => {
@@ -2904,7 +3369,10 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
             <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Stüdyo ve operasyonel harcamaların takibi.</p>
           </div>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2">
+          <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+            <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
+          </Button>
           <Button onClick={() => setIsAddExpenseOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
             <Plus className="mr-2 h-4 w-4" /> Gider Merkezi Ekle
           </Button>
@@ -2957,8 +3425,23 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
                         <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Borç</span>
-                        <span className={`font-mono text-sm font-bold block mt-0.5 ${remaining > 0 ? "text-[#A67C52]" : "text-[#9E9696]"}`}>{remaining.toLocaleString()} ₺</span>
+                        {(() => {
+                          const netBalance = -remaining;
+                          const isPositive = netBalance > 0;
+                          const isNegative = netBalance < 0;
+                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                          return (
+                            <>
+                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                KALAN ÖDEME
+                              </span>
+                              <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex">
@@ -2988,10 +3471,21 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
               <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{totalPaid.toLocaleString()} ₺</h4>
             </div>
-            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
-              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{totalRemaining.toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -3092,12 +3586,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const [newSchoolDesc, setNewSchoolDesc] = useState("");
   const [newSchoolTaken, setNewSchoolTaken] = useState("");
   const [newSchoolRest, setNewSchoolRest] = useState("");
+  const [newSchoolContribution, setNewSchoolContribution] = useState("");
   const [newSchoolCurrency, setNewSchoolCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
   const [editSchoolId, setEditSchoolId] = useState<string | null>(null);
   const [editSchoolName, setEditSchoolName] = useState("");
   const [editSchoolTaken, setEditSchoolTaken] = useState("");
   const [editSchoolRest, setEditSchoolRest] = useState("");
+  const [editSchoolContribution, setEditSchoolContribution] = useState("");
   const [editSchoolCurrency, setEditSchoolCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
@@ -3124,14 +3620,49 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     return amount;
   };
 
+  const handleExportListPDF = () => {
+    const columns = ["Okul Adı", "Sipariş (Öğrenci)", "Ödenen (₺)", "Kalan Ödeme (₺)"];
+    
+    let sumPaid = 0;
+    let sumRemaining = 0;
+
+    const data = schools.map((s) => {
+      const paid = getSchoolPaid(s, exchangeRates);
+      const rem = getSchoolRemaining(s, exchangeRates);
+      sumPaid += paid;
+      sumRemaining += rem;
+
+      return [
+        s.name,
+        `${s.total_orders || 0} Sipariş`,
+        `${paid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+        `${rem.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      "",
+      `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Okullar Genel Raporu",
+      columns,
+      data,
+      filename: `Okullar_Genel_Raporu.pdf`
+    });
+  };
+
   const totalPaid = schools.reduce((sum, f) => sum + getSchoolPaid(f, exchangeRates), 0);
   const totalRemaining = schools.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
 
   const addSchoolMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; rest: number; desc: string }) => {
+    mutationFn: async (input: { name: string; currency: string; rest: number; desc: string; contribution: number }) => {
       const { data: school, error: sErr } = await supabaseClient
         .from("schools")
-        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0, is_active: true, status: 'Aktif' })
+        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0, contribution_per_student: input.contribution, is_active: true, status: 'Aktif' })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
@@ -3147,13 +3678,13 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("Okul eklendi");
       setIsAddSchoolOpen(false);
-      setNewSchoolName(""); setNewSchoolDesc(""); setNewSchoolTaken(""); setNewSchoolRest(""); setNewSchoolCurrency("TRY");
+      setNewSchoolName(""); setNewSchoolDesc(""); setNewSchoolTaken(""); setNewSchoolRest(""); setNewSchoolContribution(""); setNewSchoolCurrency("TRY");
     },
   });
 
   const editSchoolMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number; paid_amount: number }) => {
-      await supabaseClient.from("schools").update({ name: input.name, currency: input.currency, paid_amount: input.paid_amount }).eq("id", input.id);
+    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number; paid_amount: number; contribution: number }) => {
+      await supabaseClient.from("schools").update({ name: input.name, currency: input.currency, paid_amount: input.paid_amount, contribution_per_student: input.contribution }).eq("id", input.id);
 
       if (input.restDiff !== 0) {
         await supabaseClient.from("school_transactions").insert({
@@ -3192,7 +3723,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchoolName.trim()) return;
-    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0, desc: newSchoolDesc.trim() });
+    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0, desc: newSchoolDesc.trim(), contribution: parseFloat(newSchoolContribution) || 0 });
   };
 
   const handleEditSchool = (e: React.FormEvent) => {
@@ -3203,7 +3734,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     const oldPaid = school.paid_amount || 0;
     const newPaid = parseFloat(editSchoolRest) || 0;
     const diff = newPaid - oldPaid;
-    editSchoolMutation.mutate({ id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency, restDiff: diff, paid_amount: newPaid });
+    editSchoolMutation.mutate({ id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency, restDiff: diff, paid_amount: newPaid, contribution: parseFloat(editSchoolContribution) || 0 });
   };
 
   const handleAddTx = (e: React.FormEvent) => {
@@ -3211,6 +3742,38 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     if (!selectedSchoolId || !newTxAmount || !newTxDesc.trim()) return;
     const school = schools.find((f) => f.id === selectedSchoolId);
     addTxMutation.mutate({ school_id: selectedSchoolId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate, currency: school?.currency });
+  };
+
+  const handleExportSchoolPDF = () => {
+    if (!selectedSchool) return;
+    const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
+    const data = selectedSchool.transactions.map((tx: any) => {
+      const typeStr = tx.type === "debt" ? "Satış / Borç" : "Ödeme / Tahsilat";
+      const amountStr = `${getConvertedAmount(tx.amount, tx.currency || selectedSchool.currency, exchangeRates).toLocaleString()} ₺`;
+      return [
+        new Date(tx.date).toLocaleDateString("tr-TR"),
+        typeStr,
+        tx.desc || "",
+        amountStr
+      ];
+    });
+    
+    const paid = getSchoolPaid(selectedSchool, exchangeRates);
+    const taken = getSchoolDebt(selectedSchool, exchangeRates);
+    const remaining = getSchoolRemaining(selectedSchool, exchangeRates);
+
+    exportToPDF({
+      title: "Okul İşlem Geçmişi",
+      subtitle: selectedSchool.name,
+      columns,
+      data,
+      summary: [
+        { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
+        { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
+        { label: "Kalan Borç", value: `${remaining.toLocaleString()} ₺` }
+      ],
+      filename: `${selectedSchool.name.replace(/ /g, "_")}_Okul_Islem_Gecmisi.pdf`
+    });
   };
 
   const selectedSchool = schools.find((f) => f.id === selectedSchoolId);
@@ -3230,11 +3793,18 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Okul ödemeleri ve bakiye takipleri.</p>
           </div>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={() => setIsAddSchoolOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
-            <Plus className="mr-2 h-4 w-4" /> Okul Ekle
-          </Button>
-        </motion.div>
+        <div className="flex gap-3">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+              <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button onClick={() => setIsAddSchoolOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+              <Plus className="mr-2 h-4 w-4" /> Okul Ekle
+            </Button>
+          </motion.div>
+        </div>
       </div>
 
       {isRatesError && (
@@ -3277,8 +3847,23 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                         <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Kalan Borç</span>
-                        <span className={`font-mono text-sm font-bold block mt-0.5 ${remaining > 0 ? "text-[#A67C52]" : "text-[#9E9696]"}`}>{remaining.toLocaleString()} ₺</span>
+                        {(() => {
+                          const netBalance = -remaining;
+                          const isPositive = netBalance > 0;
+                          const isNegative = netBalance < 0;
+                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                          return (
+                            <>
+                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                KALAN ÖDEME
+                              </span>
+                              <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex">
@@ -3288,6 +3873,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                         setEditSchoolName(f.name);
                         setEditSchoolCurrency(f.currency as any || "TRY");
                         setEditSchoolRest(String(f.paid_amount || 0));
+                        setEditSchoolContribution(String(f.contribution_per_student || 0));
                         setEditSchoolTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
                       }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
                         <Edit2 className="w-4.5 h-4.5" />
@@ -3309,10 +3895,21 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
               <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
             </div>
-            <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 cursor-pointer hover:bg-[#A67C52]/15 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
-              <h4 className="font-mono text-2xl font-black text-[#A67C52] mt-1.5">{Math.round(totalRemaining).toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -3362,6 +3959,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </Select>
             </div>
             <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Öğrenci Başına Katkı (₺)</Label>
+              <Input type="number" min="0" placeholder="0" value={newSchoolContribution} onChange={(e) => setNewSchoolContribution(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
               <Input type="number"  min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
@@ -3389,6 +3990,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   <SelectItem value="TRY">TRY (₺)</SelectItem><SelectItem value="USD">USD ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Öğrenci Başına Katkı (₺)</Label>
+              <Input type="number" step="any" min="0" value={editSchoolContribution} onChange={(e) => setEditSchoolContribution(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
@@ -3421,17 +4026,36 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
                   <span className="font-mono text-sm font-bold text-white block mt-0.5">{getSchoolDebt(selectedSchool, exchangeRates).toLocaleString()} ₺</span>
                 </div>
-                <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/20 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#A67C52] uppercase tracking-wider block">Kalan Borç</span>
-                  <span className="font-mono text-sm font-bold text-[#A67C52] block mt-0.5">{getSchoolRemaining(selectedSchool, exchangeRates).toLocaleString()} ₺</span>
-                </div>
+                {(() => {
+                  const rem = getSchoolRemaining(selectedSchool, exchangeRates);
+                  const netBalance = -rem;
+                  const isPositive = netBalance > 0;
+                  const isNegative = netBalance < 0;
+                  const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                  const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                  return (
+                    <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                      <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                        KALAN ÖDEME
+                      </span>
+                      <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
+                        {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
-                  <Button size="sm" onClick={() => { setNewTxType("debt"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
-                    <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleExportSchoolPDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                      <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
+                    </Button>
+                    <Button size="sm" onClick={() => { setNewTxType("debt"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                      <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2.5">
                   {selectedSchool.transactions.map((tx) => {
@@ -3627,6 +4251,40 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
   const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
+  const handleExportBaskiPDF = () => {
+    const columns = ["Tarih", "Açıklama", "Ürün/Ölçü", "Adet", "Tutar", "Ödenen", "Kalan"];
+    const data = filteredBaskiTransactions.map((tx: any) => {
+      const remaining = tx.amount - tx.paidAmount;
+      return [
+        tx.date,
+        tx.desc,
+        tx.product,
+        tx.quantity.toString(),
+        `${tx.amount.toLocaleString()} ₺`,
+        `${tx.paidAmount.toLocaleString()} ₺`,
+        `${remaining.toLocaleString()} ₺`
+      ];
+    });
+
+    data.push([
+      "GENEL TOPLAM",
+      "",
+      "",
+      "",
+      `${genelToplam.toLocaleString()} ₺`,
+      `${totalBaskiPaid.toLocaleString()} ₺`,
+      `${totalBaskiRemaining.toLocaleString()} ₺`
+    ]);
+
+    exportToPDF({
+      title: "Baskı Giderleri",
+      subtitle: `${filteredBaskiTransactions.length} Baskı İşlemi`,
+      columns,
+      data,
+      filename: `Baski_Giderleri.pdf`
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-4">
@@ -3656,9 +4314,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
-            <Button size="sm" onClick={() => setBaskiModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
-              <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleExportBaskiPDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
+              </Button>
+              <Button size="sm" onClick={() => setBaskiModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -3718,8 +4381,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
                       {totalBaskiPaid.toLocaleString()} ₺
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-rose-400">
-                      {totalBaskiRemaining.toLocaleString()} ₺
+                    <td className={`px-4 py-4 text-right text-lg font-bold ${totalBaskiRemaining < 0 ? "text-[#12B76A]" : "text-rose-400"}`}>
+                      {Math.abs(totalBaskiRemaining).toLocaleString()} ₺
                     </td>
                     <td className="px-4 py-4 rounded-br-xl"></td>
                   </tr>
@@ -3734,10 +4397,23 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
               <h4 className="font-mono text-2xl font-black text-emerald-400 mt-1.5">{Math.round(totalBaskiPaid).toLocaleString()} ₺</h4>
             </div>
-            <div className="p-4 rounded-2xl bg-[#A67C52]/10 border border-[#A67C52]/20 transition-all">
-              <span className="text-xs font-semibold text-[#A67C52] uppercase tracking-wider block">TOPLAM KALAN BORÇ</span>
-              <h4 className="font-mono text-2xl font-black text-rose-400 mt-1.5">{Math.round(totalBaskiRemaining).toLocaleString()} ₺</h4>
-            </div>
+            {(() => {
+              const netBalance = -totalBaskiRemaining;
+              const isPositive = netBalance > 0;
+              const isNegative = netBalance < 0;
+              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              return (
+                <div className="p-4 rounded-2xl border border-white/5 bg-white/5 transition-all">
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
+                  <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
+                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                  </h4>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -3770,13 +4446,19 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                       <CommandEmpty>Baskı boyutu bulunamadı.</CommandEmpty>
                       <CommandGroup>
                         {productsForBaski
-                          .filter((p: any) => /^\d+x\d+$/i.test(p.name.trim()))
+                          .filter((p: any) => {
+                            const n = (p.name || "").toLowerCase();
+                            return n.includes("baskı") || n.includes("baski");
+                          })
                           .map((p: any) => (
                             <CommandItem
                               key={p.id}
                               value={p.name + " " + p.id}
                               onSelect={() => {
                                 setBaskiSelectedProduct(p.id);
+                                const total = p.base_price * (parseFloat(baskiQuantity) || 1);
+                                setBaskiRemainingAmount(total.toString());
+                                setBaskiPaidAmount("0");
                                 document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
                               }}
                               className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
@@ -3802,7 +4484,15 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 type="number" 
                 min="1"
                 value={baskiQuantity}
-                onChange={(e) => setBaskiQuantity(e.target.value)}
+                onChange={(e) => {
+                  setBaskiQuantity(e.target.value);
+                  const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
+                  if (p) {
+                    const total = p.base_price * (parseFloat(e.target.value) || 0);
+                    const paid = parseFloat(baskiPaidAmount) || 0;
+                    setBaskiRemainingAmount((total - paid).toString());
+                  }
+                }}
                 className="bg-white/5 border-white/10 text-white"
               />
             </div>
@@ -3823,7 +4513,15 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   type="number" 
                   min="0"
                   value={baskiPaidAmount}
-                  onChange={(e) => setBaskiPaidAmount(e.target.value)}
+                  onChange={(e) => {
+                    setBaskiPaidAmount(e.target.value);
+                    const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
+                    if (p) {
+                      const total = p.base_price * (parseFloat(baskiQuantity) || 0);
+                      const paid = parseFloat(e.target.value) || 0;
+                      setBaskiRemainingAmount((total - paid).toString());
+                    }
+                  }}
                   className="bg-white/5 border-white/10 text-white"
                 />
               </div>
