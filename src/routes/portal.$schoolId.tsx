@@ -135,14 +135,25 @@ function SchoolPortal() {
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
         const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
+        console.log(`[Portal] Okul verisi için Supabase sorgusu başlatılıyor... (Parametre: ${schoolId})`);
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("id, is_active, status, name")
+          .select("id, is_active, status, name, expires_at")
           .eq(queryColumn, schoolId)
           .maybeSingle();
+        console.log(`[Portal] Supabase sorgu sonucu:`, { school, error });
 
-        if (error || !school) {
+        if (error) {
+          console.error("[Portal] Portal veri çekme hatası (RLS olabilir):", error);
+          toast.error("Bağlantı hatası veya yetkisiz erişim. Sayfayı yenileyin veya yöneticiyle iletişime geçin.");
+          setIsCheckingExpiration(false);
+          return;
+        }
+
+        if (!school) {
+          console.warn("[Portal] HATA: Supabase başarılı bir şekilde yanıt verdi (network error YOK), ancak veri 'null' döndü. Bu, RLS (Row Level Security) politikalarının okuma izni vermediğini gösterir!");
           setIsExpired(true);
+          setIsCheckingExpiration(false);
           return;
         }
 
@@ -155,11 +166,20 @@ function SchoolPortal() {
           String(school.status).toLowerCase() === 'aktif' ||
           school.status === true;
 
-        if (!isActive) {
+        let hasExpiredDate = false;
+        if (school.expires_at) {
+          const expiresDate = new Date(school.expires_at);
+          if (expiresDate < new Date()) {
+            hasExpiredDate = true;
+          }
+        }
+
+        if (!isActive || hasExpiredDate) {
           setIsExpired(true);
         }
       } catch (err) {
-        setIsExpired(true);
+        console.error("Unexpected error:", err);
+        toast.error("Beklenmeyen bir hata oluştu.");
       } finally {
         setIsCheckingExpiration(false);
       }

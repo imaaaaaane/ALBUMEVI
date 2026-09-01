@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
+
 
 export const Route = createFileRoute("/school/$slug")({
   component: SchoolPortal,
@@ -41,7 +41,6 @@ function SchoolPortal() {
   const { slug } = Route.useParams();
   const { t, dir } = useI18n();
   const qc = useQueryClient();
-  const { role, isLoading: authLoading } = useAuth();
 
   const { data, isLoading: dataLoading, error } = useQuery({
     queryKey: ["school", slug],
@@ -138,10 +137,10 @@ function SchoolPortal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (dataLoading || authLoading) {
+  if (dataLoading) {
     return (
-      <div dir={dir} className="albumevi-dark flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -157,10 +156,9 @@ function SchoolPortal() {
 
   const { school, orders } = data;
 
-  // Hna k-n-verifiw is_active
   const isSchoolActive = school.is_active === true;
 
-  if (!isSchoolActive && role !== "admin") {
+  if (!isSchoolActive) {
     return (
       <div dir={dir} className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 mb-2">
