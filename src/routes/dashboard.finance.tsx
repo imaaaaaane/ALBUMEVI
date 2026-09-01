@@ -2529,6 +2529,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const [paymentEmployeeId, setPaymentEmployeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDesc, setPaymentDesc] = useState("");
   const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("salary_payment");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
@@ -2700,9 +2701,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   });
 
   const addPaymentMutation = useMutation({
-    mutationFn: async (input: { employee_id: string; amount: number; currentPaid: number }) => {
+    mutationFn: async (input: { employee_id: string; amount: number; currentPaid: number; description?: string }) => {
       await supabaseClient.from("salary_transactions").insert({
-        employee_id: input.employee_id, transaction_type: "salary_payment", amount: input.amount, description: "Hızlı Ödeme", created_at: new Date().toISOString()
+        employee_id: input.employee_id, transaction_type: "salary_payment", amount: input.amount, description: input.description || "Hızlı Ödeme", created_at: new Date().toISOString()
       });
       await supabaseClient.from("employees").update({
         total_paid: input.currentPaid + input.amount
@@ -2713,6 +2714,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       toast.success("Ödeme başarıyla eklendi");
       setPaymentEmployeeId(null);
       setPaymentAmount("");
+      setPaymentDesc("");
     },
   });
 
@@ -3157,6 +3159,10 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
               <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
               <Input type="number"  min="1" placeholder="Örn: 5000" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
+              <Input placeholder="Açıklama..." value={paymentDesc} onChange={(e) => setPaymentDesc(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setPaymentEmployeeId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
@@ -3167,7 +3173,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                 addPaymentMutation.mutate({
                   employee_id: paymentEmployeeId,
                   amount: parseFloat(paymentAmount),
-                  currentPaid: Number(emp.total_paid || 0)
+                  currentPaid: Number(emp.total_paid || 0),
+                  description: paymentDesc
                 });
               }
             }} className="h-11 bg-[#12B76A] hover:bg-[#12B76A]/90 text-white font-bold rounded-xl px-6">
