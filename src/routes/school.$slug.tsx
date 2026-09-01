@@ -49,13 +49,13 @@ function SchoolPortal() {
       const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
       // Hna rje3na l is_active li kayna f Supabase dyalk
-      const { data: school, error } = await (supabase as any)
+      const { data: school, error: schoolError } = await (supabase as any)
         .from("schools")
-        .select("id, name, city, unique_link_slug, is_active, status")
+        .select("id, name, city, unique_link_slug")
         .eq(queryColumn, slug)
         .maybeSingle();
 
-      if (error) throw new Error(error.message);
+      if (schoolError) throw new Error(schoolError.message);
       if (!school) throw new Error("School not found");
 
       const { data: orders } = await (supabase as any)
@@ -155,23 +155,6 @@ function SchoolPortal() {
   }
 
   const { school, orders } = data;
-
-  const isSchoolActive = school.is_active === true;
-
-  if (!isSchoolActive) {
-    return (
-      <div dir={dir} className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 mb-2">
-          <X className="h-8 w-8" />
-        </div>
-        <h1 className="text-2xl font-bold text-red-500">Erişim Engellendi</h1>
-        <p className="text-sm text-muted-foreground max-w-md">
-          Bu okulun portal erişimi durdurulmuş veya süresi dolmuştur. Lütfen sistem yöneticisi ile iletişime geçin.
-        </p>
-        <Link to="/" className="text-primary underline mt-4">Ana sayfaya dön</Link>
-      </div>
-    );
-  }
 
   const selectedItems = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
   const totalQty = selectedItems.reduce((s, i) => s + selection[i.id], 0);
