@@ -446,12 +446,16 @@ function ManageSchools() {
 
       const newSchoolId = row.id;
 
-      const schoolProducts = [];
+      const schoolProducts: any[] = [];
       if (data.package1_id && data.package1_price) {
         schoolProducts.push({ school_id: newSchoolId, product_id: data.package1_id, custom_price: Number(data.package1_price), team_id: teamId });
       }
       if (data.package2_id && data.package2_price) {
-        schoolProducts.push({ school_id: newSchoolId, product_id: data.package2_id, custom_price: Number(data.package2_price), team_id: teamId });
+        // Prevent unique constraint error if the user accidentally selects the same product for both packages
+        const exists = schoolProducts.some(p => p.product_id === data.package2_id);
+        if (!exists) {
+          schoolProducts.push({ school_id: newSchoolId, product_id: data.package2_id, custom_price: Number(data.package2_price), team_id: teamId });
+        }
       }
 
       if (schoolProducts.length > 0) {
@@ -546,7 +550,7 @@ function ManageSchools() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? (window.location.hostname === 'localhost' ? 'https://albumevi.com.tr' : window.location.origin) : "https://albumevi.com.tr";
   const activeOrders = orders.filter((o: any) => o.order_status !== "Completed").length;
   const pendingInvoices = 0; // Removed finance dependency
 
