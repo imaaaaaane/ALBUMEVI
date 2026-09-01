@@ -249,13 +249,15 @@ function SchoolPortal() {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
       const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
+      console.log('Login Payload:', { portalId: schoolId, username: trimmedUsername, password: trimmedPassword });
+
       // Pure unauthenticated DB query filtering by credentials in SQL
       const { data, error } = await (supabase as any)
         .from("schools")
         .select("*")
         .eq(queryColumn, schoolId)
         .ilike("login_username", trimmedUsername)
-        .eq("login_password", trimmedPassword)
+        .eq("password_hash", trimmedPassword)
         .maybeSingle();
 
       if (error) {
