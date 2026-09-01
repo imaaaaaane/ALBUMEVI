@@ -275,47 +275,26 @@ function SchoolPortal() {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
       const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
-      // Fetch the specific record using the ID from the URL
-      const { data: record, error } = await (supabase as any)
+      // Pure unauthenticated DB query filtering by credentials in SQL
+      const { data, error } = await (supabase as any)
         .from("schools")
-        .select("id, login_username, login_password")
+        .select("*")
         .eq(queryColumn, schoolId)
+        .ilike("login_username", trimmedUsername)
+        .eq("login_password", trimmedPassword)
         .maybeSingle();
 
-      // (A) Submitted username/password & (B) Fetched record & (C) Errors
-      console.log("[Portal Login] Submitted Credentials:", { username: trimmedUsername, password: trimmedPassword });
-      console.log("[Portal Login] Fetched DB Record:", record);
       if (error) {
-        console.error("[Portal Login] Supabase Query Error:", error);
-      }
-      if (!record && !error) {
-        console.warn("[Portal Login] WARNING: Supabase returned null with no error. This proves the row exists but Row Level Security (RLS) is filtering it out for the anonymous user. Please check your Postgres RLS policies for the 'schools' table.");
+        console.error("LOGIN_DB_ERROR:", error);
       }
 
-      // Verify the credentials on the frontend for robust matching
-      const isValidDbMatch = record && 
-                             record.login_username && 
-                             record.login_username.toLowerCase() === trimmedUsername.toLowerCase() &&
-                             record.login_password === trimmedPassword;
-
-      if (isValidDbMatch) {
+      if (data) {
         setStep(3);
       } else {
-        // Fallback to local schoolDetails check just in case
-        if (
-          schoolDetails &&
-          trimmedUsername.toLowerCase() === (schoolDetails.login_username || "").trim().toLowerCase() &&
-          trimmedPassword === (schoolDetails.password || "").trim()
-        ) {
-          setStep(3);
-        } else {
-          toast.error("Hatalı kullanıcı adı veya şifre.");
-          setPassword("");
-        }
+        console.warn("LOGIN_DB_ERROR: Supabase returned null. No matching row found, or RLS is blocking the query.");
       }
     } catch (err) {
-      console.error("Login error:", err);
-      toast.error("Giriş kontrolü sırasında bir hata oluştu.");
+      console.error("LOGIN_EXCEPTION:", err);
     }
   };
 
