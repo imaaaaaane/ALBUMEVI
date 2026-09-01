@@ -108,7 +108,7 @@ function SchoolPortal() {
     }
   }, [selectedClass, schoolId]);
 
-  // isExpired state removed
+  const [authError, setAuthError] = useState<{message: string, details?: string} | null>(null);
   const [isCheckingExpiration, setIsCheckingExpiration] = useState(true);
   const [schoolName, setSchoolName] = useState("");
   const [displayedText, setDisplayedText] = useState("");
@@ -135,35 +135,28 @@ function SchoolPortal() {
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
         const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
-        console.log(`[Portal] Okul verisi için Supabase sorgusu başlatılıyor... (Parametre: ${schoolId})`);
         const { data: school, error } = await (supabase as any)
           .from("schools")
           .select("id, name")
           .eq(queryColumn, schoolId)
-          .maybeSingle();
-        console.log(`[Portal] Supabase sorgu sonucu:`, { school, error });
+          .single();
 
         if (error) {
-          console.error("[Portal] Portal veri çekme hatası (RLS veya Bad Request olabilir):", error);
-          toast.error("Bağlantı hatası veya yetkisiz erişim. Sayfayı yenileyin veya yöneticiyle iletişime geçin.");
+          console.error("LOGIN_DB_ERROR (Initial Fetch):", error);
+          setAuthError({ message: error.message, details: error.details });
           setIsCheckingExpiration(false);
           return;
         }
 
-        if (!school) {
-          console.warn("[Portal] HATA: Supabase döndü ancak school verisi 'null'. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı. Login ekranına devam ediliyor.");
-          // We DO NOT set isExpired(true) here anymore, allowing the user to debug login.
-        } else {
+        if (school) {
           setActualSchoolId(school.id);
           setSchoolName(school.name);
         }
         
-        // Expiration logic removed since status, is_active, expires_at do not exist in the database
         setIsCheckingExpiration(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Unexpected error:", err);
-        toast.error("Beklenmeyen bir hata oluştu.");
-      } finally {
+        setAuthError({ message: err.message || "Bilinmeyen hata", details: err.toString() });
         setIsCheckingExpiration(false);
       }
     };
@@ -177,7 +170,6 @@ function SchoolPortal() {
       if (storedDetails) {
         setSchoolDetails(JSON.parse(storedDetails));
       } else {
-        // Fallback for missing details
         setSchoolDetails({
           package1_name: "Paket 1",
           package1_price: 150,
@@ -189,7 +181,6 @@ function SchoolPortal() {
       }
     }
 
-    // Fetch classes and students from Supabase
     const fetchClasses = async () => {
       try {
         const { data: dbClasses, error } = await (supabase as any)
@@ -463,7 +454,16 @@ function SchoolPortal() {
     return <div className="min-h-screen bg-[#131316] flex items-center justify-center text-white/50">Kontrol ediliyor...</div>;
   }
 
-  // isExpired block removed completely
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#131316] flex flex-col items-center justify-center text-red-500 font-mono p-4 text-center">
+        <FileWarning className="w-16 h-16 mb-4 opacity-80" />
+        <h1 className="text-2xl font-bold mb-2">ERROR</h1>
+        <p className="text-lg">{authError.message}</p>
+        {authError.details && <p className="text-sm opacity-80 mt-2">{authError.details}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
