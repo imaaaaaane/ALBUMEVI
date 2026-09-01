@@ -49,7 +49,6 @@ import {
 } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
-import { useTheme } from "@/lib/theme-provider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -73,7 +72,6 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { lang, setLang } = useI18n();
   const { user, role, teamId, fullName, avatarUrl, refreshProfile } = useAuth();
-  const { theme, setTheme } = useTheme();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(fullName || user?.email || "");
   const [editFile, setEditFile] = useState<File | null>(null);
@@ -306,18 +304,7 @@ export function AppSidebar() {
                 <span>Çıkış Yap</span>
               </motion.div>
             </SidebarMenuButton>
-            <SidebarMenuButton 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-              className="w-10 flex-none flex items-center justify-center p-0 h-auto"
-            >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center px-0 py-2.5 w-full text-xs font-semibold text-[#9E9696] hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer"
-              >
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </motion.div>
-            </SidebarMenuButton>
+            
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
