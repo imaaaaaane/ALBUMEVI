@@ -256,10 +256,10 @@ function SchoolPortal() {
 
       console.log('Login Payload:', { portalId: schoolId, username: trimmedUsername, password: trimmedPassword });
 
-      // Pure unauthenticated DB query filtering by credentials in SQL
+      // Fetch ONLY the id to verify match and avoid RLS column restrictions
       const { data, error } = await (supabase as any)
         .from("schools")
-        .select("*")
+        .select("id")
         .eq(queryColumn, schoolId)
         .ilike("login_username", trimmedUsername)
         .eq("login_password", trimmedPassword)
