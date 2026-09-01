@@ -148,10 +148,15 @@ function SchoolPortal() {
           return;
         }
 
-        if (school) {
-          setActualSchoolId(school.id);
-          setSchoolName(school.name);
+        if (!school) {
+          console.warn("[Portal] HATA: Supabase döndü ancak school verisi 'null'. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı.");
+          setAuthError({ message: "Portal not found or invalid credentials." });
+          setIsCheckingExpiration(false);
+          return;
         }
+
+        setActualSchoolId(school.id);
+        setSchoolName(school.name);
         
         setIsCheckingExpiration(false);
       } catch (err: any) {
@@ -458,11 +463,12 @@ function SchoolPortal() {
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-[#131316] flex flex-col items-center justify-center text-red-500 font-mono p-4 text-center">
-        <FileWarning className="w-16 h-16 mb-4 opacity-80" />
-        <h1 className="text-2xl font-bold mb-2">ERROR</h1>
-        <p className="text-lg">{authError.message}</p>
-        {authError.details && <p className="text-sm opacity-80 mt-2">{authError.details}</p>}
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="rounded-lg bg-red-50 p-6 text-center text-red-600 shadow-sm border border-red-100">
+          <FileWarning className="mx-auto mb-4 h-12 w-12 text-red-500" />
+          <h2 className="mb-2 text-xl font-bold">Portal not found or invalid credentials.</h2>
+          {authError.details && <p className="text-sm opacity-80 mt-2">{authError.details}</p>}
+        </div>
       </div>
     );
   }
