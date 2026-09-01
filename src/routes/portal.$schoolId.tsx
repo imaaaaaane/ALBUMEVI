@@ -262,7 +262,7 @@ function SchoolPortal() {
         .select("*")
         .eq(queryColumn, schoolId)
         .ilike("login_username", trimmedUsername)
-        .eq("password_hash", trimmedPassword)
+        .eq("login_password", trimmedPassword)
         .maybeSingle();
 
       if (error) {
