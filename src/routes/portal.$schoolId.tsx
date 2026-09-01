@@ -139,7 +139,7 @@ function SchoolPortal() {
           .from("schools")
           .select("id, name")
           .eq(queryColumn, schoolId)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("LOGIN_DB_ERROR (Initial Fetch):", error);
@@ -267,7 +267,7 @@ function SchoolPortal() {
       if (data) {
         setStep(3);
       } else {
-        console.warn("LOGIN_DB_ERROR: Supabase returned null. No matching row found, or RLS is blocking the query.");
+        toast.error("Hatalı kullanıcı adı veya şifre");
       }
     } catch (err) {
       console.error("LOGIN_EXCEPTION:", err);
