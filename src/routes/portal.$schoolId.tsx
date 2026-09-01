@@ -282,9 +282,15 @@ function SchoolPortal() {
         .eq(queryColumn, schoolId)
         .maybeSingle();
 
-      // (A) Submitted username/password & (B) Fetched record
+      // (A) Submitted username/password & (B) Fetched record & (C) Errors
       console.log("[Portal Login] Submitted Credentials:", { username: trimmedUsername, password: trimmedPassword });
       console.log("[Portal Login] Fetched DB Record:", record);
+      if (error) {
+        console.error("[Portal Login] Supabase Query Error:", error);
+      }
+      if (!record && !error) {
+        console.warn("[Portal Login] WARNING: Supabase returned null with no error. This proves the row exists but Row Level Security (RLS) is filtering it out for the anonymous user. Please check your Postgres RLS policies for the 'schools' table.");
+      }
 
       // Verify the credentials on the frontend for robust matching
       const isValidDbMatch = record && 
