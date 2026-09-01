@@ -275,17 +275,24 @@ function SchoolPortal() {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
       const queryColumn = isUUID ? 'id' : 'unique_link_slug';
 
-      // Use case-insensitive check (.ilike) for the username and exact match for password_hash
-      const { data, error } = await (supabase as any)
+      // Fetch the specific record using the ID from the URL
+      const { data: record, error } = await (supabase as any)
         .from("schools")
-        .select("id")
+        .select("id, login_username, login_password")
         .eq(queryColumn, schoolId)
-        .ilike("login_username", trimmedUsername)
-        // Some users might have stored plaintext passwords in password_hash temporarily
-        .eq("password_hash", trimmedPassword)
         .maybeSingle();
 
-      if (data) {
+      // (A) Submitted username/password & (B) Fetched record
+      console.log("[Portal Login] Submitted Credentials:", { username: trimmedUsername, password: trimmedPassword });
+      console.log("[Portal Login] Fetched DB Record:", record);
+
+      // Verify the credentials on the frontend for robust matching
+      const isValidDbMatch = record && 
+                             record.login_username && 
+                             record.login_username.toLowerCase() === trimmedUsername.toLowerCase() &&
+                             record.login_password === trimmedPassword;
+
+      if (isValidDbMatch) {
         setStep(3);
       } else {
         // Fallback to local schoolDetails check just in case
