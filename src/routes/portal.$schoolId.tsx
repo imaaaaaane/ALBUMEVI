@@ -108,7 +108,7 @@ function SchoolPortal() {
     }
   }, [selectedClass, schoolId]);
 
-  const [isExpired, setIsExpired] = useState(false);
+  // isExpired state removed
   const [isCheckingExpiration, setIsCheckingExpiration] = useState(true);
   const [schoolName, setSchoolName] = useState("");
   const [displayedText, setDisplayedText] = useState("");
@@ -151,14 +151,12 @@ function SchoolPortal() {
         }
 
         if (!school) {
-          console.warn("[Portal] HATA: Supabase başarılı bir şekilde yanıt verdi, ancak veri 'null' döndü. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı.");
-          setIsExpired(true);
-          setIsCheckingExpiration(false);
-          return;
+          console.warn("[Portal] HATA: Supabase döndü ancak school verisi 'null'. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı. Login ekranına devam ediliyor.");
+          // We DO NOT set isExpired(true) here anymore, allowing the user to debug login.
+        } else {
+          setActualSchoolId(school.id);
+          setSchoolName(school.name);
         }
-
-        setActualSchoolId(school.id);
-        setSchoolName(school.name);
         
         // Expiration logic removed since status, is_active, expires_at do not exist in the database
         setIsCheckingExpiration(false);
@@ -465,15 +463,7 @@ function SchoolPortal() {
     return <div className="min-h-screen bg-[#131316] flex items-center justify-center text-white/50">Kontrol ediliyor...</div>;
   }
 
-  if (isExpired) {
-    return (
-      <div className="min-h-screen bg-[#131316] flex items-center justify-center flex-col">
-        <FileWarning className="w-16 h-16 text-red-500 mb-4 opacity-80" />
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Erişim Engellendi</h1>
-        <p className="text-white/50 text-lg">Bu portalın süresi dolmuştur.</p>
-      </div>
-    );
-  }
+  // isExpired block removed completely
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
