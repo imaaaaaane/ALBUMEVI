@@ -138,20 +138,20 @@ function SchoolPortal() {
         console.log(`[Portal] Okul verisi için Supabase sorgusu başlatılıyor... (Parametre: ${schoolId})`);
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("id, is_active, status, name, expires_at")
+          .select("id, name")
           .eq(queryColumn, schoolId)
           .maybeSingle();
         console.log(`[Portal] Supabase sorgu sonucu:`, { school, error });
 
         if (error) {
-          console.error("[Portal] Portal veri çekme hatası (RLS olabilir):", error);
+          console.error("[Portal] Portal veri çekme hatası (RLS veya Bad Request olabilir):", error);
           toast.error("Bağlantı hatası veya yetkisiz erişim. Sayfayı yenileyin veya yöneticiyle iletişime geçin.");
           setIsCheckingExpiration(false);
           return;
         }
 
         if (!school) {
-          console.warn("[Portal] HATA: Supabase başarılı bir şekilde yanıt verdi (network error YOK), ancak veri 'null' döndü. Bu, RLS (Row Level Security) politikalarının okuma izni vermediğini gösterir!");
+          console.warn("[Portal] HATA: Supabase başarılı bir şekilde yanıt verdi, ancak veri 'null' döndü. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı.");
           setIsExpired(true);
           setIsCheckingExpiration(false);
           return;
@@ -159,24 +159,9 @@ function SchoolPortal() {
 
         setActualSchoolId(school.id);
         setSchoolName(school.name);
-
-        const isActive =
-          school.is_active === true ||
-          String(school.is_active).toLowerCase() === 'true' ||
-          String(school.status).toLowerCase() === 'aktif' ||
-          school.status === true;
-
-        let hasExpiredDate = false;
-        if (school.expires_at) {
-          const expiresDate = new Date(school.expires_at);
-          if (expiresDate < new Date()) {
-            hasExpiredDate = true;
-          }
-        }
-
-        if (!isActive || hasExpiredDate) {
-          setIsExpired(true);
-        }
+        
+        // Expiration logic removed since status, is_active, expires_at do not exist in the database
+        setIsCheckingExpiration(false);
       } catch (err) {
         console.error("Unexpected error:", err);
         toast.error("Beklenmeyen bir hata oluştu.");
