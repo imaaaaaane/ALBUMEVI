@@ -265,13 +265,44 @@ function SchoolPortal() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (schoolDetails && username === schoolDetails.login_username && password === schoolDetails.password) {
-      setStep(3);
-    } else {
-      toast.error("Hatalı kullanıcı adı veya şifre.");
-      setPassword("");
+
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    try {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
+      const queryColumn = isUUID ? 'id' : 'unique_link_slug';
+
+      // Use case-insensitive check (.ilike) for the username and exact match for password_hash
+      const { data, error } = await (supabase as any)
+        .from("schools")
+        .select("id")
+        .eq(queryColumn, schoolId)
+        .ilike("login_username", trimmedUsername)
+        // Some users might have stored plaintext passwords in password_hash temporarily
+        .eq("password_hash", trimmedPassword)
+        .maybeSingle();
+
+      if (data) {
+        setStep(3);
+      } else {
+        // Fallback to local schoolDetails check just in case
+        if (
+          schoolDetails &&
+          trimmedUsername.toLowerCase() === (schoolDetails.login_username || "").trim().toLowerCase() &&
+          trimmedPassword === (schoolDetails.password || "").trim()
+        ) {
+          setStep(3);
+        } else {
+          toast.error("Hatalı kullanıcı adı veya şifre.");
+          setPassword("");
+        }
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("Giriş kontrolü sırasında bir hata oluştu.");
     }
   };
 
