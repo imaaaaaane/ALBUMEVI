@@ -256,24 +256,30 @@ function SchoolPortal() {
 
       console.log('Login Payload:', { portalId: schoolId, username: trimmedUsername, password: trimmedPassword });
 
-      // Fetch ONLY the id to verify match and avoid RLS column restrictions
+      // Fetch by ID only to get credentials
       const { data, error } = await (supabase as any)
         .from("schools")
-        .select("id")
+        .select("id, login_username, login_password")
         .eq(queryColumn, schoolId)
-        .ilike("login_username", trimmedUsername)
-        .eq("login_password", trimmedPassword)
         .maybeSingle();
 
-      if (error) {
-        console.error("LOGIN_DB_ERROR:", error);
+      if (error || !data) {
+        if (error) console.error("LOGIN_DB_ERROR:", error);
+        toast.error("Portal not found");
+        return;
       }
 
-      if (data) {
-        setStep(3);
-      } else {
+      // Validate Credentials in JavaScript (case-insensitive for username)
+      if (
+        data.login_username?.trim().toLowerCase() !== trimmedUsername.toLowerCase() ||
+        data.login_password !== trimmedPassword
+      ) {
         toast.error("Hatalı kullanıcı adı veya şifre");
+        return;
       }
+
+      // Success
+      setStep(3);
     } catch (err) {
       console.error("LOGIN_EXCEPTION:", err);
     }
