@@ -27,6 +27,7 @@ interface Student {
   name: string;
   packageSelection: string | null;
   image_url?: string;
+  note?: string;
 }
 
 interface SchoolClass {
@@ -36,17 +37,21 @@ interface SchoolClass {
   students: Student[];
 }
 
-interface SchoolDetails {
-  package1_name: string;
-  package1_price: number;
-  package2_name: string;
-  package2_price: number;
-  login_username: string;
-  password?: string; // used for checking
+interface PortalProduct {
+  id: string;
+  name: string;
+  price: number;
+  image_url: string | null;
+}
+
+interface SelectionData {
+  packages: string[];
+  note: string;
 }
 
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
+  console.log('PORTAL_COMPONENT_UPDATED_v2');
 
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window !== "undefined") {
@@ -68,7 +73,7 @@ function SchoolPortal() {
     sessionStorage.setItem(`portal_step_${schoolId}`, step.toString());
   }, [step, schoolId]);
 
-  const [schoolDetails, setSchoolDetails] = useState<SchoolDetails | null>(null);
+  const [schoolProducts, setSchoolProducts] = useState<PortalProduct[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [actualSchoolId, setActualSchoolId] = useState<string | null>(null);
 
@@ -78,10 +83,25 @@ function SchoolPortal() {
 
   // Selection State
   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
-  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+  const [selections, setSelections] = useState<Record<string, SelectionData>>(() => {
     if (typeof window !== "undefined") {
       const savedSelections = sessionStorage.getItem(`portal_selections_${schoolId}`);
-      if (savedSelections) return JSON.parse(savedSelections);
+      if (savedSelections) {
+        try {
+          const parsed = JSON.parse(savedSelections);
+          const migrated: Record<string, SelectionData> = {};
+          for (const key in parsed) {
+            if (Array.isArray(parsed[key])) {
+              migrated[key] = { packages: parsed[key], note: "" };
+            } else {
+              migrated[key] = parsed[key];
+            }
+          }
+          return migrated;
+        } catch {
+          return {};
+        }
+      }
     }
     return {};
   });
@@ -170,34 +190,38 @@ function SchoolPortal() {
 
   // Load from Local Storage on Mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedDetails = localStorage.getItem(`mock_school_details_${schoolId}`);
-      if (storedDetails) {
-        setSchoolDetails(JSON.parse(storedDetails));
-      } else {
-        setSchoolDetails({
-          package1_name: "Paket 1",
-          package1_price: 150,
-          package2_name: "Paket 2",
-          package2_price: 250,
-          login_username: "admin",
-          password: "password123"
-        });
-      }
-    }
-
-    const fetchClasses = async () => {
+    const fetchClassesAndProducts = async () => {
       try {
+        // Fetch products
+        const { data: spData, error: spError } = await (supabase as any)
+          .from("school_products")
+          .select("custom_price, product_id, products(name, image_url)")
+          .eq("school_id", actualSchoolId);
+
+        if (spError) throw spError;
+
+        if (spData) {
+          const mappedProducts = spData
+            .filter((sp: any) => sp.products)
+            .map((sp: any) => ({
+              id: sp.product_id,
+              name: sp.products.name,
+              price: Number(sp.custom_price) || 0,
+              image_url: sp.products.image_url
+            }));
+          setSchoolProducts(mappedProducts);
+        }
+
         const { data: dbClasses, error } = await (supabase as any)
           .from("classes")
-          .select("id, name, students(id, name, image_url, selection)")
+          .select("id, name, students(id, name, image_url, selection, note)")
           .eq("school_id", actualSchoolId)
           .order("created_at", { ascending: true });
 
         if (error) throw error;
 
         let hasSelections = false;
-        const initialSelections: Record<string, string[]> = {};
+        const initialSelections: Record<string, SelectionData> = {};
 
         if (dbClasses) {
           const mappedClasses = dbClasses.map((c: any) => ({
@@ -205,26 +229,36 @@ function SchoolPortal() {
             className: c.name,
             studentCount: c.students?.length || 0,
             students: (c.students || []).map((s: any) => {
-              if (s.selection) {
+              if (s.selection || s.note) {
                 hasSelections = true;
                 let parsedSelection: string[] = [];
                 try {
-                  parsedSelection = JSON.parse(s.selection);
+                  parsedSelection = s.selection ? JSON.parse(s.selection) : [];
                 } catch {
-                  parsedSelection = s.selection.split(',').filter(Boolean);
+                  parsedSelection = s.selection ? s.selection.split(',').filter(Boolean) : [];
                 }
-                initialSelections[s.id] = parsedSelection;
+                initialSelections[s.id] = { packages: parsedSelection, note: s.note || "" };
               }
               return {
                 id: s.id,
                 name: s.name,
                 image_url: s.image_url,
-                packageSelection: s.selection || null // Kept for backwards compatibility but we use selections state
+                packageSelection: s.selection || null,
+                note: s.note || ""
               };
             })
           }));
           setClasses(mappedClasses);
-          setSelections(prev => ({ ...initialSelections, ...prev }));
+          
+          setSelections(prev => {
+            const merged = { ...initialSelections };
+            for (const key in prev) {
+              if (prev[key] && (prev[key].packages.length > 0 || prev[key].note)) {
+                 merged[key] = prev[key];
+              }
+            }
+            return merged;
+          });
         }
       } catch (error: any) {
         toast.error("Sınıflar yüklenirken hata oluştu.");
@@ -232,7 +266,7 @@ function SchoolPortal() {
     };
 
     if (actualSchoolId) {
-      fetchClasses();
+      fetchClassesAndProducts();
     }
   }, [actualSchoolId]);
 
@@ -295,18 +329,22 @@ function SchoolPortal() {
 
   const handleStudentSelectionChange = (studentId: string, selection: string) => {
     setSelections(prev => {
-      const current = prev[studentId] || [];
-      if (current.includes(selection)) {
-        const updated = current.filter(id => id !== selection);
-        if (updated.length === 0) {
-          const copy = { ...prev };
-          delete copy[studentId];
-          return copy;
-        }
-        return { ...prev, [studentId]: updated };
+      const current = prev[studentId] || { packages: [], note: "" };
+      const currentPackages = current.packages;
+
+      if (currentPackages.includes(selection)) {
+        const updated = currentPackages.filter(id => id !== selection);
+        return { ...prev, [studentId]: { ...current, packages: updated } };
       } else {
-        return { ...prev, [studentId]: [...current, selection] };
+        return { ...prev, [studentId]: { ...current, packages: [...currentPackages, selection] } };
       }
+    });
+  };
+
+  const handleStudentNoteChange = (studentId: string, note: string) => {
+    setSelections(prev => {
+      const current = prev[studentId] || { packages: [], note: "" };
+      return { ...prev, [studentId]: { ...current, note } };
     });
   };
 
@@ -317,10 +355,12 @@ function SchoolPortal() {
     try {
       const updates = selectedClass.students
         .map(async s => {
-          const selectionArr = selections[s.id] || [];
+          const selectionData = selections[s.id] || { packages: [], note: "" };
+          const selectionArr = selectionData.packages;
+          const noteStr = selectionData.note;
           const { error } = await (supabase as any)
             .from("students")
-            .update({ selection: selectionArr.join(',') })
+            .update({ selection: selectionArr.join(','), note: noteStr })
             .eq("id", s.id);
           if (error) throw error;
         });
@@ -334,87 +374,89 @@ function SchoolPortal() {
 
   // Helper calculation for Step 5
   const getSummary = () => {
-    let totalP1 = 0;
-    let totalP2 = 0;
-
-    const p1Price = schoolDetails?.package1_price || 0;
-    const p2Price = schoolDetails?.package2_price || 0;
+    const productTotals: Record<string, number> = {};
+    schoolProducts.forEach(p => productTotals[p.id] = 0);
 
     const rowData = classes.map(c => {
-      let p1 = 0;
-      let p2 = 0;
+      const classProductTotals: Record<string, number> = {};
+      schoolProducts.forEach(p => classProductTotals[p.id] = 0);
+
       c.students.forEach(s => {
-        const studentSelections = selections[s.id] || [];
-        if (studentSelections.includes("paket1")) p1++;
-        if (studentSelections.includes("paket2")) p2++;
+        const studentSelections = selections[s.id]?.packages || [];
+        studentSelections.forEach(selId => {
+          if (classProductTotals[selId] !== undefined) {
+            classProductTotals[selId]++;
+            productTotals[selId]++;
+          }
+        });
       });
-      totalP1 += p1;
-      totalP2 += p2;
-      const classTotal = (p1 * p1Price) + (p2 * p2Price);
-      return { className: c.className, p1, p2, classTotal };
+      
+      let classTotal = 0;
+      schoolProducts.forEach(p => {
+        classTotal += (classProductTotals[p.id] || 0) * p.price;
+      });
+
+      return { className: c.className, productTotals: classProductTotals, classTotal };
     });
 
-    const totalTRY = (totalP1 * p1Price) + (totalP2 * p2Price);
+    let totalTRY = 0;
+    schoolProducts.forEach(p => {
+      totalTRY += (productTotals[p.id] || 0) * p.price;
+    });
 
-    return { rowData, totalP1, totalP2, totalTRY };
+    return { rowData, productTotals, totalTRY };
   };
 
   const downloadExcel = () => {
     const summary = getSummary();
-    const p1Name = schoolDetails?.package1_name || 'Paket 1';
-    const p2Name = schoolDetails?.package2_name || 'Paket 2';
-    const p1Price = schoolDetails?.package1_price || 0;
-    const p2Price = schoolDetails?.package2_price || 0;
 
     const dataMatrix = [];
 
     // ROW 1: Prices
-    dataMatrix.push(['', '', `${p1Price} ₺`, `${p2Price} ₺`, '', '']);
+    const priceRow: any[] = ['', ''];
+    schoolProducts.forEach(p => priceRow.push(`${p.price} ₺`));
+    priceRow.push('', '');
+    dataMatrix.push(priceRow);
 
     // ROW 2: Headers
-    dataMatrix.push(['SIRA NO', 'SINIF/ŞUBE', p1Name, p2Name, 'TOPLAM SATIŞ', 'TOPLAM TUTAR']);
+    const headerRow: any[] = ['SIRA NO', 'SINIF/ŞUBE'];
+    schoolProducts.forEach(p => headerRow.push(p.name));
+    headerRow.push('TOPLAM SATIŞ', 'TOPLAM TUTAR');
+    dataMatrix.push(headerRow);
 
     // DATA ROWS
-    let totalQtyP1 = 0;
-    let totalQtyP2 = 0;
+    let grandTotalQty = 0;
 
     summary.rowData.forEach((row, index) => {
-      const totalQty = row.p1 + row.p2;
-      totalQtyP1 += row.p1;
-      totalQtyP2 += row.p2;
-
-      dataMatrix.push([
-        index + 1,
-        row.className,
-        row.p1,
-        row.p2,
-        totalQty,
-        `${row.classTotal} ₺`
-      ]);
+      const dataRow: any[] = [index + 1, row.className];
+      let totalQty = 0;
+      schoolProducts.forEach(p => {
+        const qty = row.productTotals[p.id] || 0;
+        dataRow.push(qty);
+        totalQty += qty;
+      });
+      dataRow.push(totalQty, `${row.classTotal} ₺`);
+      dataMatrix.push(dataRow);
     });
 
     // BOTTOM ROW
-    const grandTotalQty = totalQtyP1 + totalQtyP2;
-    dataMatrix.push([
-      '',
-      'GENEL TOPLAM',
-      totalQtyP1,
-      totalQtyP2,
-      grandTotalQty,
-      `${summary.totalTRY} ₺`
-    ]);
+    const bottomRow: any[] = ['', 'GENEL TOPLAM'];
+    let overallTotalQty = 0;
+    schoolProducts.forEach(p => {
+      const qty = summary.productTotals[p.id] || 0;
+      bottomRow.push(qty);
+      overallTotalQty += qty;
+    });
+    bottomRow.push(overallTotalQty, `${summary.totalTRY} ₺`);
+    dataMatrix.push(bottomRow);
 
     const ws = XLSX.utils.aoa_to_sheet(dataMatrix);
 
     // Set Column Widths
-    ws['!cols'] = [
-      { wpx: 60 },
-      { wpx: 150 },
-      { wpx: 200 },
-      { wpx: 200 },
-      { wpx: 120 },
-      { wpx: 120 }
-    ];
+    const cols = [{ wpx: 60 }, { wpx: 150 }];
+    schoolProducts.forEach(() => cols.push({ wpx: 200 }));
+    cols.push({ wpx: 120 }, { wpx: 120 });
+    ws['!cols'] = cols;
 
     // Apply Styles
     for (const cell in ws) {
@@ -634,21 +676,28 @@ function SchoolPortal() {
             </div>
 
             {/* Packages */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-              <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden gap-2 md:gap-0">
-                <div>
-                  <p className="text-white/50 font-semibold text-sm mb-1">PAKET 1</p>
-                  <h3 className="text-xl md:text-2xl font-bold">{schoolDetails?.package1_name}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+              {schoolProducts.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-white/50 italic bg-white/5 rounded-2xl border border-white/10">
+                  Henüz paket eklenmedi
                 </div>
-                <div className="text-2xl md:text-3xl font-bold">{schoolDetails?.package1_price} ₺</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden gap-2 md:gap-0">
-                <div>
-                  <p className="text-white/50 font-semibold text-sm mb-1">PAKET 2</p>
-                  <h3 className="text-xl md:text-2xl font-bold">{schoolDetails?.package2_name}</h3>
+              ) : (
+                schoolProducts.map(prod => (
+                <div key={prod.id} className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4">
+                  {prod.image_url && (
+                    <div className="w-full h-32 md:h-40 bg-white/5 rounded-xl overflow-hidden shrink-0">
+                      <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex flex-row justify-between w-full items-center">
+                    <div>
+                      <h3 className="text-xl md:text-2xl font-bold">{prod.name}</h3>
+                    </div>
+                    <div className="text-2xl md:text-3xl font-bold">{prod.price} ₺</div>
+                  </div>
                 </div>
-                <div className="text-2xl md:text-3xl font-bold">{schoolDetails?.package2_price} ₺</div>
-              </div>
+                ))
+              )}
             </div>
 
             {/* Classes Grid */}
@@ -721,35 +770,41 @@ function SchoolPortal() {
                   </div>
 
                   <div className="space-y-3">
-                    <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket1') ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
-                      <input
-                        type="checkbox"
-                        name={`package_${s.id}_paket1`}
-                        value="paket1"
-                        className="hidden"
-                        checked={selections[s.id]?.includes('paket1') || false}
-                        onChange={() => handleStudentSelectionChange(s.id, 'paket1')}
-                      />
-                      <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center ${selections[s.id]?.includes('paket1') ? 'bg-[#A67C52] border-[#A67C52]' : 'border-white/30'}`}>
-                        {selections[s.id]?.includes('paket1') && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    {schoolProducts.length === 0 ? (
+                      <div className="text-center py-4 text-white/50 italic text-sm border border-white/5 rounded-xl bg-white/5">
+                        Henüz paket eklenmedi
                       </div>
-                      <span className="font-medium text-sm flex-1">{schoolDetails?.package1_name || 'Paket 1'}</span>
-                    </label>
+                    ) : (
+                      schoolProducts.map((prod, idx) => {
+                        const isSelected = selections[s.id]?.packages?.includes(prod.id);
+                      const bgClass = isSelected ? (idx % 2 === 0 ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-white/10 border-white text-white') : 'bg-transparent border-white/10 text-white/70 hover:border-white/30';
+                      const checkBgClass = isSelected ? (idx % 2 === 0 ? 'bg-[#A67C52] border-[#A67C52]' : 'bg-white border-white') : 'border-white/30';
+                      const checkColor = idx % 2 === 0 ? 'text-white' : 'text-black';
 
-                    <label className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${selections[s.id]?.includes('paket2') ? 'bg-white/10 border-white text-white' : 'bg-transparent border-white/10 text-white/70 hover:border-white/30'}`}>
-                      <input
-                        type="checkbox"
-                        name={`package_${s.id}_paket2`}
-                        value="paket2"
-                        className="hidden"
-                        checked={selections[s.id]?.includes('paket2') || false}
-                        onChange={() => handleStudentSelectionChange(s.id, 'paket2')}
-                      />
-                      <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center ${selections[s.id]?.includes('paket2') ? 'bg-white border-white' : 'border-white/30'}`}>
-                        {selections[s.id]?.includes('paket2') && <CheckCircle2 className="w-4 h-4 text-black" />}
-                      </div>
-                      <span className="font-medium text-sm flex-1">{schoolDetails?.package2_name || 'Paket 2'}</span>
-                    </label>
+                      return (
+                        <label key={prod.id} className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}>
+                          <input
+                            type="checkbox"
+                            name={`package_${s.id}_${prod.id}`}
+                            value={prod.id}
+                            className="hidden"
+                            checked={isSelected || false}
+                            onChange={() => handleStudentSelectionChange(s.id, prod.id)}
+                          />
+                          <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 ${checkBgClass}`}>
+                            {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
+                          </div>
+                          {prod.image_url && (
+                            <img src={prod.image_url} alt={prod.name} className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0" />
+                          )}
+                          <span className="font-medium text-sm flex-1">{prod.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                  </div>
+                  <div className="mt-4 border-t border-white/10 pt-4">
+                    <input type="text" placeholder="Öğrenci için not ekle..." className="mt-2 w-full text-black p-1 text-sm rounded border" value={selections[s.id]?.note || ""} onChange={(e) => handleStudentNoteChange(s.id, e.target.value)} />
                   </div>
                 </div>
               ))}
@@ -811,8 +866,9 @@ function SchoolPortal() {
                 <TableHeader className="bg-white/5">
                   <TableRow className="border-white/10 hover:bg-transparent">
                     <TableHead className="font-bold text-white/70">Şube</TableHead>
-                    <TableHead className="text-right font-bold text-white/70">{schoolDetails?.package1_name || 'Paket 1'}</TableHead>
-                    <TableHead className="text-right font-bold text-white/70">{schoolDetails?.package2_name || 'Paket 2'}</TableHead>
+                    {schoolProducts.map(p => (
+                      <TableHead key={p.id} className="text-right font-bold text-white/70">{p.name}</TableHead>
+                    ))}
                     <TableHead className="text-right font-bold text-[#A67C52]">Sınıf Toplamı</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -820,15 +876,17 @@ function SchoolPortal() {
                   {getSummary().rowData.map((row, i) => (
                     <TableRow key={i} className="border-white/10 hover:bg-white/5 transition-colors">
                       <TableCell className="font-medium">{row.className}</TableCell>
-                      <TableCell className="text-right text-white/80">{row.p1}</TableCell>
-                      <TableCell className="text-right text-white/80">{row.p2}</TableCell>
+                      {schoolProducts.map(p => (
+                        <TableCell key={p.id} className="text-right text-white/80">{row.productTotals[p.id] || 0}</TableCell>
+                      ))}
                       <TableCell className="text-right font-bold text-[#A67C52]">{Number(row.classTotal).toLocaleString()} ₺</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="border-none bg-[#A67C52]/5 hover:bg-[#A67C52]/5">
                     <TableCell className="font-bold text-[#A67C52]">GENEL TOPLAM</TableCell>
-                    <TableCell className="text-right font-bold text-[#A67C52]">{getSummary().totalP1}</TableCell>
-                    <TableCell className="text-right font-bold text-[#A67C52]">{getSummary().totalP2}</TableCell>
+                    {schoolProducts.map(p => (
+                      <TableCell key={p.id} className="text-right font-bold text-[#A67C52]">{getSummary().productTotals[p.id] || 0}</TableCell>
+                    ))}
                     <TableCell className="text-right font-black text-[#A67C52] text-lg">{Number(getSummary().totalTRY).toLocaleString()} ₺</TableCell>
                   </TableRow>
                 </TableBody>

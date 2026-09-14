@@ -12,8 +12,19 @@ import {
   Info,
   X,
   UploadCloud,
-  Trash2
+  Trash2,
+  FolderDown,
+  Folder,
+  Download
 } from "lucide-react";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -284,7 +295,7 @@ function ManageSchools() {
         { data: schoolProducts, error: spErr },
         { data: products, error: pErr }
       ] = await Promise.all([
-        (supabase as any).from("students").select("id, class_id, selection, created_at").not("selection", "is", null),
+        (supabase as any).from("students").select("id, name, image_url, class_id, selection, created_at").not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id"),
         (supabase as any).from("schools").select("id, name, package_statuses"),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price"),
@@ -313,14 +324,13 @@ function ManageSchools() {
       const schoolProductsMap = new Map();
       (schoolProducts || []).forEach((sp: any) => {
          if (!schoolProductsMap.has(sp.school_id)) {
-            schoolProductsMap.set(sp.school_id, { paket1: null, paket2: null });
+            schoolProductsMap.set(sp.school_id, new Map());
          }
-         const mapping = schoolProductsMap.get(sp.school_id);
-         if (!mapping.paket1) {
-            mapping.paket1 = { id: sp.product_id, price: sp.custom_price, name: productMap.get(sp.product_id) || "Paket 1" };
-         } else if (!mapping.paket2) {
-            mapping.paket2 = { id: sp.product_id, price: sp.custom_price, name: productMap.get(sp.product_id) || "Paket 2" };
-         }
+         schoolProductsMap.get(sp.school_id).set(sp.product_id, {
+            id: sp.product_id, 
+            price: sp.custom_price, 
+            name: productMap.get(sp.product_id) || "Bilinmeyen Paket"
+         });
       });
 
       // 2. Aggregate data in JavaScript
@@ -331,31 +341,53 @@ function ManageSchools() {
         const spMapping = schoolProductsMap.get(schoolId);
         if (!spMapping) return acc;
 
-        let selectedProduct = null;
-        if (s.selection === "paket1" && spMapping.paket1) selectedProduct = spMapping.paket1;
-        if (s.selection === "paket2" && spMapping.paket2) selectedProduct = spMapping.paket2;
-
-        if (!selectedProduct) return acc;
-        
-        const groupingKey = `${schoolId}_${s.selection}`;
-
-        if (!acc[groupingKey]) {
-          acc[groupingKey] = {
-            id: groupingKey,
-            school_name: schoolMap.get(schoolId) || "Bilinmeyen Okul",
-            package_name: selectedProduct.name,
-            quantity: 0,
-            total_price: 0,
-            order_status: (schoolStatusMap.get(schoolId) || {})[selectedProduct.name] || "Hazırlanıyor",
-            created_at: s.created_at,
-            school_id: schoolId, // need this to update the JSONB later
-            selection_key: s.selection // need this to clear orders easily
-          };
+        let parsedSelection: string[] = [];
+        try {
+          parsedSelection = s.selection ? JSON.parse(s.selection) : [];
+        } catch {
+          parsedSelection = s.selection ? s.selection.split(',').filter(Boolean) : [];
         }
-        
-        acc[groupingKey].quantity += 1;
-        acc[groupingKey].total_price += selectedProduct.price || 0;
-        
+
+        parsedSelection.forEach((selectedProductId: string) => {
+          let selectedProduct = spMapping.get(selectedProductId);
+          
+          // Backwards compatibility for old records that have "paket1" or "paket2"
+          if (!selectedProduct && (selectedProductId === "paket1" || selectedProductId === "paket2")) {
+              const oldMapList = Array.from(spMapping.values()) as any[];
+              if (selectedProductId === "paket1" && oldMapList[0]) selectedProduct = oldMapList[0];
+              if (selectedProductId === "paket2" && oldMapList[1]) selectedProduct = oldMapList[1];
+          }
+
+          if (!selectedProduct) return;
+          
+          const groupingKey = `${schoolId}_${selectedProduct.id}`;
+
+          if (!acc[groupingKey]) {
+            acc[groupingKey] = {
+              id: groupingKey,
+              school_name: schoolMap.get(schoolId) || "Bilinmeyen Okul",
+              package_name: selectedProduct.name,
+              quantity: 0,
+              total_price: 0,
+              order_status: (schoolStatusMap.get(schoolId) || {})[selectedProduct.name] || "Hazırlanıyor",
+              created_at: s.created_at,
+              school_id: schoolId,
+              selection_key: selectedProduct.id,
+              students: []
+            };
+          }
+          
+          acc[groupingKey].quantity += 1;
+          acc[groupingKey].total_price += selectedProduct.price || 0;
+          if (s.image_url) {
+             acc[groupingKey].students.push({
+               id: s.id,
+               name: s.name || `Öğrenci`,
+               image_url: s.image_url
+             });
+          }
+        });
+
         return acc;
       }, {});
 
@@ -466,9 +498,9 @@ function ManageSchools() {
       // Save mock details to localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem(`mock_school_details_${newSchoolId}`, JSON.stringify({
-          package1_name: products.find((p: any) => p.id === data.package1_id)?.name || "Paket 1",
+          package1_name: products.find((p: any) => p.id === data.package1_id)?.name,
           package1_price: Number(data.package1_price),
-          package2_name: products.find((p: any) => p.id === data.package2_id)?.name || "Paket 2",
+          package2_name: products.find((p: any) => p.id === data.package2_id)?.name,
           package2_price: Number(data.package2_price),
           login_username: data.login_username,
           password: data.password // Storing for mock portal login
@@ -577,6 +609,53 @@ function ManageSchools() {
 
   const modalInputClasses = "bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] focus-visible:border-[#A67C52] transition-all placeholder:text-white/30";
 
+  const [downloadingZip, setDownloadingZip] = useState<string | null>(null);
+
+  const handleDownloadZip = async (order: any) => {
+    try {
+      setDownloadingZip(order.id);
+      const zip = new JSZip();
+      const folderName = `${order.school_name}_${order.package_name}`;
+      const folder = zip.folder(folderName);
+      
+      if (!folder) throw new Error("Folder could not be created");
+      
+      let hasImages = false;
+      const downloadPromises = order.students.map(async (student: any, idx: number) => {
+         if (!student.image_url) return;
+         try {
+            const response = await fetch(student.image_url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const extension = student.image_url.split('.').pop()?.split('?')[0] || "jpg";
+            const sanitizedStudentName = (student.name || `Ogrenci_${idx+1}`).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            folder.file(`${sanitizedStudentName}.${extension}`, blob);
+            hasImages = true;
+         } catch (err) {
+            console.error(`Failed to download image for ${student.name}`, err);
+         }
+      });
+      
+      await Promise.all(downloadPromises);
+      
+      if (!hasImages) {
+         toast.error("İndirilecek fotoğraf bulunamadı.");
+         return;
+      }
+      
+      toast.info("ZIP dosyası hazırlanıyor, lütfen bekleyin...");
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `${folderName}.zip`);
+      toast.success("İndirme tamamlandı!");
+      
+    } catch (err) {
+      toast.error("ZIP oluşturulurken hata oluştu.");
+      console.error(err);
+    } finally {
+      setDownloadingZip(null);
+    }
+  };
+
   return (
     <div className="space-y-6 text-white selection:bg-[#A67C52] selection:text-white pb-10">
       <div className="flex items-end justify-between gap-4">
@@ -642,7 +721,7 @@ function ManageSchools() {
                     type="number" 
                     value={form.package1_price}
                     onChange={(e) => setForm({ ...form, package1_price: e.target.value })}
-                    placeholder="150"
+                    placeholder="Örn. 150"
                     className={modalInputClasses}
                   />
                 </div>
@@ -674,7 +753,7 @@ function ManageSchools() {
                     type="number" step="any"
                     value={form.package2_price}
                     onChange={(e) => setForm({ ...form, package2_price: e.target.value })}
-                    placeholder="250"
+                    placeholder="Örn. 250"
                     className={modalInputClasses}
                   />
                 </div>
@@ -717,7 +796,7 @@ function ManageSchools() {
               <Button
                 onClick={() => m.mutate({ data: form })}
                 disabled={
-                  m.isPending || !form.name || !form.login_username || form.password.length < 6
+                  m.isPending || !form.name || !form.login_username || form.password.length < 6 || !form.package1_id || !form.package1_price
                 }
                 className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90 cursor-pointer rounded-xl font-bold"
               >
