@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Lock, ArrowRight, ArrowLeft, CheckCircle2, FileSpreadsheet, LogOut, ChevronRight, FileWarning, Info } from "lucide-react";
+import {
+  User,
+  Lock,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  FileSpreadsheet,
+  LogOut,
+  ChevronRight,
+  FileWarning,
+  Info,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from "xlsx-js-style";
 
 export const Route = createFileRoute("/portal/$schoolId")({
   component: SchoolPortal,
@@ -51,7 +62,7 @@ interface SelectionData {
 
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
-  console.log('PORTAL_COMPONENT_UPDATED_v2');
+  console.log("PORTAL_COMPONENT_UPDATED_v2");
 
   const [showGuide, setShowGuide] = useState(() => {
     if (typeof window !== "undefined") {
@@ -114,7 +125,7 @@ function SchoolPortal() {
     if (classes.length > 0 && typeof window !== "undefined") {
       const savedClassId = sessionStorage.getItem(`portal_class_${schoolId}`);
       if (savedClassId) {
-        const found = classes.find(c => c.id === savedClassId);
+        const found = classes.find((c) => c.id === savedClassId);
         if (found) setSelectedClass(found);
       }
     }
@@ -128,7 +139,7 @@ function SchoolPortal() {
     }
   }, [selectedClass, schoolId]);
 
-  const [authError, setAuthError] = useState<{message: string, details?: string} | null>(null);
+  const [authError, setAuthError] = useState<{ message: string; details?: string } | null>(null);
   const [isCheckingExpiration, setIsCheckingExpiration] = useState(true);
   const [schoolName, setSchoolName] = useState("");
   const [displayedText, setDisplayedText] = useState("");
@@ -152,8 +163,11 @@ function SchoolPortal() {
   useEffect(() => {
     const checkExpiration = async () => {
       try {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
-        const queryColumn = isUUID ? 'id' : 'unique_link_slug';
+        const isUUID =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            schoolId || "",
+          );
+        const queryColumn = isUUID ? "id" : "unique_link_slug";
 
         const { data: school, error } = await (supabase as any)
           .from("schools")
@@ -169,7 +183,9 @@ function SchoolPortal() {
         }
 
         if (!school) {
-          console.warn("[Portal] HATA: Supabase döndü ancak school verisi 'null'. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı.");
+          console.warn(
+            "[Portal] HATA: Supabase döndü ancak school verisi 'null'. RLS okuma izni vermiyor olabilir veya kayıt bulunamadı.",
+          );
           setAuthError({ message: "Portal not found or invalid credentials." });
           setIsCheckingExpiration(false);
           return;
@@ -177,7 +193,7 @@ function SchoolPortal() {
 
         setActualSchoolId(school.id);
         setSchoolName(school.name);
-        
+
         setIsCheckingExpiration(false);
       } catch (err: any) {
         console.error("Unexpected error:", err);
@@ -207,7 +223,7 @@ function SchoolPortal() {
               id: sp.product_id,
               name: sp.products.name,
               price: Number(sp.custom_price) || 0,
-              image_url: sp.products.image_url
+              image_url: sp.products.image_url,
             }));
           setSchoolProducts(mappedProducts);
         }
@@ -235,7 +251,7 @@ function SchoolPortal() {
                 try {
                   parsedSelection = s.selection ? JSON.parse(s.selection) : [];
                 } catch {
-                  parsedSelection = s.selection ? s.selection.split(',').filter(Boolean) : [];
+                  parsedSelection = s.selection ? s.selection.split(",").filter(Boolean) : [];
                 }
                 initialSelections[s.id] = { packages: parsedSelection, note: s.note || "" };
               }
@@ -244,17 +260,17 @@ function SchoolPortal() {
                 name: s.name,
                 image_url: s.image_url,
                 packageSelection: s.selection || null,
-                note: s.note || ""
+                note: s.note || "",
               };
-            })
+            }),
           }));
           setClasses(mappedClasses);
-          
-          setSelections(prev => {
+
+          setSelections((prev) => {
             const merged = { ...initialSelections };
             for (const key in prev) {
               if (prev[key] && (prev[key].packages.length > 0 || prev[key].note)) {
-                 merged[key] = prev[key];
+                merged[key] = prev[key];
               }
             }
             return merged;
@@ -285,10 +301,17 @@ function SchoolPortal() {
     const trimmedPassword = password.trim();
 
     try {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(schoolId || '');
-      const queryColumn = isUUID ? 'id' : 'unique_link_slug';
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          schoolId || "",
+        );
+      const queryColumn = isUUID ? "id" : "unique_link_slug";
 
-      console.log('Login Payload:', { portalId: schoolId, username: trimmedUsername, password: trimmedPassword });
+      console.log("Login Payload:", {
+        portalId: schoolId,
+        username: trimmedUsername,
+        password: trimmedPassword,
+      });
 
       // Fetch by ID only to get credentials
       const { data, error } = await (supabase as any)
@@ -328,12 +351,12 @@ function SchoolPortal() {
   };
 
   const handleStudentSelectionChange = (studentId: string, selection: string) => {
-    setSelections(prev => {
+    setSelections((prev) => {
       const current = prev[studentId] || { packages: [], note: "" };
       const currentPackages = current.packages;
 
       if (currentPackages.includes(selection)) {
-        const updated = currentPackages.filter(id => id !== selection);
+        const updated = currentPackages.filter((id) => id !== selection);
         return { ...prev, [studentId]: { ...current, packages: updated } };
       } else {
         return { ...prev, [studentId]: { ...current, packages: [...currentPackages, selection] } };
@@ -342,7 +365,7 @@ function SchoolPortal() {
   };
 
   const handleStudentNoteChange = (studentId: string, note: string) => {
-    setSelections(prev => {
+    setSelections((prev) => {
       const current = prev[studentId] || { packages: [], note: "" };
       return { ...prev, [studentId]: { ...current, note } };
     });
@@ -353,17 +376,16 @@ function SchoolPortal() {
 
     // Update Supabase
     try {
-      const updates = selectedClass.students
-        .map(async s => {
-          const selectionData = selections[s.id] || { packages: [], note: "" };
-          const selectionArr = selectionData.packages;
-          const noteStr = selectionData.note;
-          const { error } = await (supabase as any)
-            .from("students")
-            .update({ selection: selectionArr.join(','), note: noteStr })
-            .eq("id", s.id);
-          if (error) throw error;
-        });
+      const updates = selectedClass.students.map(async (s) => {
+        const selectionData = selections[s.id] || { packages: [], note: "" };
+        const selectionArr = selectionData.packages;
+        const noteStr = selectionData.note;
+        const { error } = await (supabase as any)
+          .from("students")
+          .update({ selection: selectionArr.join(","), note: noteStr })
+          .eq("id", s.id);
+        if (error) throw error;
+      });
       await Promise.all(updates);
       toast.success(`${selectedClass.className} sınıfı seçimleri kaydedildi.`);
       setStep(5);
@@ -375,24 +397,24 @@ function SchoolPortal() {
   // Helper calculation for Step 5
   const getSummary = () => {
     const productTotals: Record<string, number> = {};
-    schoolProducts.forEach(p => productTotals[p.id] = 0);
+    schoolProducts.forEach((p) => (productTotals[p.id] = 0));
 
-    const rowData = classes.map(c => {
+    const rowData = classes.map((c) => {
       const classProductTotals: Record<string, number> = {};
-      schoolProducts.forEach(p => classProductTotals[p.id] = 0);
+      schoolProducts.forEach((p) => (classProductTotals[p.id] = 0));
 
-      c.students.forEach(s => {
+      c.students.forEach((s) => {
         const studentSelections = selections[s.id]?.packages || [];
-        studentSelections.forEach(selId => {
+        studentSelections.forEach((selId) => {
           if (classProductTotals[selId] !== undefined) {
             classProductTotals[selId]++;
             productTotals[selId]++;
           }
         });
       });
-      
+
       let classTotal = 0;
-      schoolProducts.forEach(p => {
+      schoolProducts.forEach((p) => {
         classTotal += (classProductTotals[p.id] || 0) * p.price;
       });
 
@@ -400,7 +422,7 @@ function SchoolPortal() {
     });
 
     let totalTRY = 0;
-    schoolProducts.forEach(p => {
+    schoolProducts.forEach((p) => {
       totalTRY += (productTotals[p.id] || 0) * p.price;
     });
 
@@ -413,24 +435,24 @@ function SchoolPortal() {
     const dataMatrix = [];
 
     // ROW 1: Prices
-    const priceRow: any[] = ['', ''];
-    schoolProducts.forEach(p => priceRow.push(`${p.price} ₺`));
-    priceRow.push('', '');
+    const priceRow: any[] = ["", ""];
+    schoolProducts.forEach((p) => priceRow.push(`${p.price} ₺`));
+    priceRow.push("", "");
     dataMatrix.push(priceRow);
 
     // ROW 2: Headers
-    const headerRow: any[] = ['SIRA NO', 'SINIF/ŞUBE'];
-    schoolProducts.forEach(p => headerRow.push(p.name));
-    headerRow.push('TOPLAM SATIŞ', 'TOPLAM TUTAR');
+    const headerRow: any[] = ["SIRA NO", "SINIF/ŞUBE"];
+    schoolProducts.forEach((p) => headerRow.push(p.name));
+    headerRow.push("TOPLAM SATIŞ", "TOPLAM TUTAR");
     dataMatrix.push(headerRow);
 
     // DATA ROWS
-    let grandTotalQty = 0;
+    const grandTotalQty = 0;
 
     summary.rowData.forEach((row, index) => {
       const dataRow: any[] = [index + 1, row.className];
       let totalQty = 0;
-      schoolProducts.forEach(p => {
+      schoolProducts.forEach((p) => {
         const qty = row.productTotals[p.id] || 0;
         dataRow.push(qty);
         totalQty += qty;
@@ -440,9 +462,9 @@ function SchoolPortal() {
     });
 
     // BOTTOM ROW
-    const bottomRow: any[] = ['', 'GENEL TOPLAM'];
+    const bottomRow: any[] = ["", "GENEL TOPLAM"];
     let overallTotalQty = 0;
-    schoolProducts.forEach(p => {
+    schoolProducts.forEach((p) => {
       const qty = summary.productTotals[p.id] || 0;
       bottomRow.push(qty);
       overallTotalQty += qty;
@@ -456,13 +478,13 @@ function SchoolPortal() {
     const cols = [{ wpx: 60 }, { wpx: 150 }];
     schoolProducts.forEach(() => cols.push({ wpx: 200 }));
     cols.push({ wpx: 120 }, { wpx: 120 });
-    ws['!cols'] = cols;
+    ws["!cols"] = cols;
 
     // Apply Styles
     for (const cell in ws) {
-      if (cell[0] === '!') continue;
+      if (cell[0] === "!") continue;
 
-      const row = parseFloat(cell.replace(/\D/g, '')) - 1;
+      const row = parseFloat(cell.replace(/\D/g, "")) - 1;
 
       if (!ws[cell].s) ws[cell].s = {};
 
@@ -474,19 +496,19 @@ function SchoolPortal() {
         ws[cell].s = {
           font: { bold: true, color: { rgb: "FFFFFF" } },
           fill: { fgColor: { rgb: "4F4F4F" } },
-          alignment: { horizontal: "center" }
+          alignment: { horizontal: "center" },
         };
       } else if (row === dataMatrix.length - 1) {
         // Grand Total Row (Bottom Row)
         ws[cell].s = {
           font: { bold: true },
-          fill: { fgColor: { rgb: "E5E7EB" } }
+          fill: { fgColor: { rgb: "E5E7EB" } },
         };
       } else {
         // Normal Data Rows
         ws[cell].s = { alignment: { horizontal: "center" } };
         // Left align Class names
-        if (cell.startsWith('B')) {
+        if (cell.startsWith("B")) {
           ws[cell].s = { alignment: { horizontal: "left" } };
         }
       }
@@ -506,7 +528,11 @@ function SchoolPortal() {
   };
 
   if (isCheckingExpiration) {
-    return <div className="min-h-screen bg-[#131316] flex items-center justify-center text-white/50">Kontrol ediliyor...</div>;
+    return (
+      <div className="min-h-screen bg-[#131316] flex items-center justify-center text-white/50">
+        Kontrol ediliyor...
+      </div>
+    );
   }
 
   if (authError) {
@@ -543,7 +569,9 @@ function SchoolPortal() {
                 </div>
                 <h1 className="text-3xl font-bold mb-4 tracking-tight">Hoş Geldiniz</h1>
                 <p className="text-white/60 mb-8 leading-relaxed">
-                  ALBÜMEVİ okul fotoğrafçılığı portalına hoş geldiniz. Bu portal üzerinden, öğrencilerinizin paket seçimlerini hızlı ve kolay bir şekilde yönetebilirsiniz. Lütfen size verilen kullanıcı adı ve şifre ile giriş yapın.
+                  ALBÜMEVİ okul fotoğrafçılığı portalına hoş geldiniz. Bu portal üzerinden,
+                  öğrencilerinizin paket seçimlerini hızlı ve kolay bir şekilde yönetebilirsiniz.
+                  Lütfen size verilen kullanıcı adı ve şifre ile giriş yapın.
                 </p>
 
                 <div className="space-y-4 mb-8 text-left">
@@ -592,7 +620,9 @@ function SchoolPortal() {
                   <Lock className="w-8 h-8 text-[#A67C52]" />
                 </div>
                 <h2 className="text-xl font-bold text-white">Öğretmen Girişi</h2>
-                <p className="text-white/50 text-sm mt-2 text-center">Size verilen bilgileri girin.</p>
+                <p className="text-white/50 text-sm mt-2 text-center">
+                  Size verilen bilgileri girin.
+                </p>
               </div>
 
               <form onSubmit={handleLogin}>
@@ -652,11 +682,21 @@ function SchoolPortal() {
               <div className="flex w-full md:w-auto justify-between items-center">
                 <img src="/logo.jpg" alt="ALBÜMEVİ" className="h-10 rounded-md object-contain" />
                 <div className="flex items-center gap-2 md:hidden">
-                  <Button variant="ghost" size="sm" onClick={() => setShowGuide(true)} className="text-white/50 hover:text-white">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowGuide(true)}
+                    className="text-white/50 hover:text-white"
+                  >
                     <Info className="w-4 h-4 mr-1" />
                     Kılavuz
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/50 hover:text-white">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    className="text-white/50 hover:text-white"
+                  >
                     <LogOut className="w-5 h-5" />
                   </Button>
                 </div>
@@ -665,11 +705,21 @@ function SchoolPortal() {
                 {displayedText}
               </h1>
               <div className="hidden md:flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setShowGuide(true)} className="text-white/50 hover:text-white">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowGuide(true)}
+                  className="text-white/50 hover:text-white"
+                >
                   <Info className="w-4 h-4 mr-2" />
                   Kılavuz
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="text-white/50 hover:text-white">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="text-white/50 hover:text-white"
+                >
                   <LogOut className="w-5 h-5" />
                 </Button>
               </div>
@@ -682,20 +732,27 @@ function SchoolPortal() {
                   Henüz paket eklenmedi
                 </div>
               ) : (
-                schoolProducts.map(prod => (
-                <div key={prod.id} className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4">
-                  {prod.image_url && (
-                    <div className="w-full h-32 md:h-40 bg-white/5 rounded-xl overflow-hidden shrink-0">
-                      <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
+                schoolProducts.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4"
+                  >
+                    {prod.image_url && (
+                      <div className="w-full h-32 md:h-40 bg-white/5 rounded-xl overflow-hidden shrink-0">
+                        <img
+                          src={prod.image_url}
+                          alt={prod.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-row justify-between w-full items-center">
+                      <div>
+                        <h3 className="text-xl md:text-2xl font-bold">{prod.name}</h3>
+                      </div>
+                      <div className="text-2xl md:text-3xl font-bold">{prod.price} ₺</div>
                     </div>
-                  )}
-                  <div className="flex flex-row justify-between w-full items-center">
-                    <div>
-                      <h3 className="text-xl md:text-2xl font-bold">{prod.name}</h3>
-                    </div>
-                    <div className="text-2xl md:text-3xl font-bold">{prod.price} ₺</div>
                   </div>
-                </div>
                 ))
               )}
             </div>
@@ -708,7 +765,7 @@ function SchoolPortal() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {classes.map(c => (
+                {classes.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => {
@@ -720,7 +777,9 @@ function SchoolPortal() {
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
                       <ChevronRight className="w-6 h-6 text-[#A67C52]" />
                     </div>
-                    <div className="text-4xl font-black mb-2 text-white/80 group-hover:text-white">{c.className}</div>
+                    <div className="text-4xl font-black mb-2 text-white/80 group-hover:text-white">
+                      {c.className}
+                    </div>
                     <div className="text-sm text-white/50">{c.studentCount} Öğrenci</div>
                   </button>
                 ))}
@@ -729,7 +788,11 @@ function SchoolPortal() {
 
             {/* View Summary Button */}
             <div className="mt-12 text-center">
-              <Button onClick={() => setStep(5)} variant="outline" className="border-white/10 hover:bg-white/5 hover:text-white bg-transparent h-12 px-8 rounded-xl">
+              <Button
+                onClick={() => setStep(5)}
+                variant="outline"
+                className="border-white/10 hover:bg-white/5 hover:text-white bg-transparent h-12 px-8 rounded-xl"
+              >
                 <FileSpreadsheet className="w-5 h-5 mr-2" /> Genel Özeti Görüntüle
               </Button>
             </div>
@@ -746,23 +809,37 @@ function SchoolPortal() {
             className="max-w-6xl mx-auto px-4 pt-8"
           >
             <div className="flex items-center gap-4 mb-8">
-              <Button variant="ghost" size="icon" onClick={() => setStep(3)} className="text-white/50 hover:text-white shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setStep(3)}
+                className="text-white/50 hover:text-white shrink-0"
+              >
                 <ArrowLeft className="w-6 h-6" />
               </Button>
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">{selectedClass.className} Sınıfı Seçimleri</h2>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  {selectedClass.className} Sınıfı Seçimleri
+                </h2>
                 <p className="text-white/50">Öğrencilerin paket seçimlerini belirleyin.</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-24">
-              {selectedClass.students.map(s => (
-                <div key={s.id} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg flex flex-col">
+              {selectedClass.students.map((s) => (
+                <div
+                  key={s.id}
+                  className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg flex flex-col"
+                >
                   <div className="flex flex-col items-center mb-5 border-b border-white/10 pb-4">
                     <h4 className="font-bold text-lg mb-3">{s.name}</h4>
                     <div className="w-full aspect-[3/4] bg-white/5 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
                       {s.image_url ? (
-                        <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" />
+                        <img
+                          src={s.image_url}
+                          alt={s.name}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <User className="w-12 h-12 text-white/20" />
                       )}
@@ -777,34 +854,57 @@ function SchoolPortal() {
                     ) : (
                       schoolProducts.map((prod, idx) => {
                         const isSelected = selections[s.id]?.packages?.includes(prod.id);
-                      const bgClass = isSelected ? (idx % 2 === 0 ? 'bg-[#A67C52]/20 border-[#A67C52] text-white' : 'bg-white/10 border-white text-white') : 'bg-transparent border-white/10 text-white/70 hover:border-white/30';
-                      const checkBgClass = isSelected ? (idx % 2 === 0 ? 'bg-[#A67C52] border-[#A67C52]' : 'bg-white border-white') : 'border-white/30';
-                      const checkColor = idx % 2 === 0 ? 'text-white' : 'text-black';
+                        const bgClass = isSelected
+                          ? idx % 2 === 0
+                            ? "bg-[#A67C52]/20 border-[#A67C52] text-white"
+                            : "bg-white/10 border-white text-white"
+                          : "bg-transparent border-white/10 text-white/70 hover:border-white/30";
+                        const checkBgClass = isSelected
+                          ? idx % 2 === 0
+                            ? "bg-[#A67C52] border-[#A67C52]"
+                            : "bg-white border-white"
+                          : "border-white/30";
+                        const checkColor = idx % 2 === 0 ? "text-white" : "text-black";
 
-                      return (
-                        <label key={prod.id} className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}>
-                          <input
-                            type="checkbox"
-                            name={`package_${s.id}_${prod.id}`}
-                            value={prod.id}
-                            className="hidden"
-                            checked={isSelected || false}
-                            onChange={() => handleStudentSelectionChange(s.id, prod.id)}
-                          />
-                          <div className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 ${checkBgClass}`}>
-                            {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
-                          </div>
-                          {prod.image_url && (
-                            <img src={prod.image_url} alt={prod.name} className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0" />
-                          )}
-                          <span className="font-medium text-sm flex-1">{prod.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
+                        return (
+                          <label
+                            key={prod.id}
+                            className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}
+                          >
+                            <input
+                              type="checkbox"
+                              name={`package_${s.id}_${prod.id}`}
+                              value={prod.id}
+                              className="hidden"
+                              checked={isSelected || false}
+                              onChange={() => handleStudentSelectionChange(s.id, prod.id)}
+                            />
+                            <div
+                              className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 ${checkBgClass}`}
+                            >
+                              {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
+                            </div>
+                            {prod.image_url && (
+                              <img
+                                src={prod.image_url}
+                                alt={prod.name}
+                                className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0"
+                              />
+                            )}
+                            <span className="font-medium text-sm flex-1">{prod.name}</span>
+                          </label>
+                        );
+                      })
+                    )}
                   </div>
                   <div className="mt-4 border-t border-white/10 pt-4">
-                    <input type="text" placeholder="Öğrenci için not ekle..." className="mt-2 w-full text-black p-1 text-sm rounded border" defaultValue={selections[s.id]?.note || ""} onBlur={(e) => handleStudentNoteChange(s.id, e.target.value)} />
+                    <input
+                      type="text"
+                      placeholder="Öğrenci için not ekle..."
+                      className="mt-3 w-full bg-white/5 border border-white/10 text-white placeholder:text-white/30 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-[#A67C52] focus:ring-1 focus:ring-[#A67C52] transition-all"
+                      defaultValue={selections[s.id]?.note || ""}
+                      onBlur={(e) => handleStudentNoteChange(s.id, e.target.value)}
+                    />
                   </div>
                 </div>
               ))}
@@ -814,13 +914,21 @@ function SchoolPortal() {
             <div className="fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-xl border-t border-white/10 p-4 z-50">
               <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
                 <div className="text-white/60 text-sm hidden sm:block">
-                  Seçilmeyen öğrenciler <strong className="text-white">boş</strong> kabul edilecektir.
+                  Seçilmeyen öğrenciler <strong className="text-white">boş</strong> kabul
+                  edilecektir.
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <Button variant="ghost" onClick={() => setStep(3)} className="text-white hover:bg-white/10 h-12 px-6 rounded-xl w-full sm:w-auto">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setStep(3)}
+                    className="text-white hover:bg-white/10 h-12 px-6 rounded-xl w-full sm:w-auto"
+                  >
                     Vazgeç
                   </Button>
-                  <Button onClick={saveClassSelections} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 px-10 rounded-xl shadow-xl shadow-[#A67C52]/20 w-full sm:w-auto">
+                  <Button
+                    onClick={saveClassSelections}
+                    className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 px-10 rounded-xl shadow-xl shadow-[#A67C52]/20 w-full sm:w-auto"
+                  >
                     Onayla ve Kaydet <CheckCircle2 className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
@@ -839,7 +947,12 @@ function SchoolPortal() {
             className="max-w-5xl mx-auto px-4 pt-8"
           >
             <div className="flex items-center gap-4 mb-8">
-              <Button variant="ghost" size="icon" onClick={() => setStep(3)} className="text-white/50 hover:text-white shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setStep(3)}
+                className="text-white/50 hover:text-white shrink-0"
+              >
                 <ArrowLeft className="w-6 h-6" />
               </Button>
               <div>
@@ -866,47 +979,67 @@ function SchoolPortal() {
                 <TableHeader className="bg-white/5">
                   <TableRow className="border-white/10 hover:bg-transparent">
                     <TableHead className="font-bold text-white/70">Şube</TableHead>
-                    {schoolProducts.map(p => (
-                      <TableHead key={p.id} className="text-right font-bold text-white/70">{p.name}</TableHead>
+                    {schoolProducts.map((p) => (
+                      <TableHead key={p.id} className="text-right font-bold text-white/70">
+                        {p.name}
+                      </TableHead>
                     ))}
-                    <TableHead className="text-right font-bold text-[#A67C52]">Sınıf Toplamı</TableHead>
+                    <TableHead className="text-right font-bold text-[#A67C52]">
+                      Sınıf Toplamı
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {getSummary().rowData.map((row, i) => (
-                    <TableRow key={i} className="border-white/10 hover:bg-white/5 transition-colors">
+                    <TableRow
+                      key={i}
+                      className="border-white/10 hover:bg-white/5 transition-colors"
+                    >
                       <TableCell className="font-medium">{row.className}</TableCell>
-                      {schoolProducts.map(p => (
-                        <TableCell key={p.id} className="text-right text-white/80">{row.productTotals[p.id] || 0}</TableCell>
+                      {schoolProducts.map((p) => (
+                        <TableCell key={p.id} className="text-right text-white/80">
+                          {row.productTotals[p.id] || 0}
+                        </TableCell>
                       ))}
-                      <TableCell className="text-right font-bold text-[#A67C52]">{Number(row.classTotal).toLocaleString()} ₺</TableCell>
+                      <TableCell className="text-right font-bold text-[#A67C52]">
+                        {Number(row.classTotal).toLocaleString()} ₺
+                      </TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="border-none bg-[#A67C52]/5 hover:bg-[#A67C52]/5">
                     <TableCell className="font-bold text-[#A67C52]">GENEL TOPLAM</TableCell>
-                    {schoolProducts.map(p => (
-                      <TableCell key={p.id} className="text-right font-bold text-[#A67C52]">{getSummary().productTotals[p.id] || 0}</TableCell>
+                    {schoolProducts.map((p) => (
+                      <TableCell key={p.id} className="text-right font-bold text-[#A67C52]">
+                        {getSummary().productTotals[p.id] || 0}
+                      </TableCell>
                     ))}
-                    <TableCell className="text-right font-black text-[#A67C52] text-lg">{Number(getSummary().totalTRY).toLocaleString()} ₺</TableCell>
+                    <TableCell className="text-right font-black text-[#A67C52] text-lg">
+                      {Number(getSummary().totalTRY).toLocaleString()} ₺
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
               <div className="bg-black/20 p-6 flex justify-end">
                 <div className="text-right">
                   <div className="text-sm text-white/50 mb-1">Hesaplanan Toplam Tutar</div>
-                  <div className="text-4xl font-black text-[#A67C52]">{getSummary().totalTRY.toLocaleString()} ₺</div>
+                  <div className="text-4xl font-black text-[#A67C52]">
+                    {getSummary().totalTRY.toLocaleString()} ₺
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="text-center">
-              <Button onClick={() => setStep(3)} variant="ghost" className="text-white/50 hover:text-white">
+              <Button
+                onClick={() => setStep(3)}
+                variant="ghost"
+                className="text-white/50 hover:text-white"
+              >
                 Sınıflara Dön
               </Button>
             </div>
           </motion.div>
         )}
-
       </AnimatePresence>
     </div>
   );
