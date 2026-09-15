@@ -124,7 +124,7 @@ const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) 
         clearInterval(intervalId);
         setIsTyping1(false);
       }
-    }, 45); // Typing speed
+    }, 110); // Typing speed
     return () => clearInterval(intervalId);
   }, [text1]);
 
@@ -138,7 +138,7 @@ const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) 
       if (i >= text2.length) {
         clearInterval(intervalId);
       }
-    }, 45);
+    }, 110);
     return () => clearInterval(intervalId);
   }, [text2, isTyping1]);
 
@@ -278,7 +278,7 @@ function Landing() {
             <img
               src="/logo-light.png"
               alt="Albumevi Logo"
-              className="h-12 md:h-16 w-auto object-contain"
+              className="h-20 md:h-24 w-auto object-contain"
             />
           </Link>
 
