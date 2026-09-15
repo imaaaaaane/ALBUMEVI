@@ -562,7 +562,7 @@ function SchoolPortal() {
     );
   }
 
-  if (!isCheckingExpiration && schoolStatus === "Pasif" && role !== "admin") {
+  if (!isCheckingExpiration && String(schoolStatus).toLowerCase() === "pasif" && role !== "admin") {
     return (
       <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 font-sans text-white relative overflow-hidden">
         {/* Background blobs for premium feel */}
@@ -596,7 +596,7 @@ function SchoolPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
-      {schoolStatus === "Pasif" && role === "admin" && (
+      {String(schoolStatus).toLowerCase() === "pasif" && role === "admin" && (
         <div className="bg-red-500/90 backdrop-blur text-white text-center py-2 px-4 text-sm font-medium z-[100] relative flex items-center justify-center gap-2">
           <Info className="w-4 h-4" />
           Admin Görünümü: Bu portal şu anda dış kullanıcılara PASİF durumdadır.

@@ -1302,7 +1302,7 @@ function ManageSchools() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={s.status === "Aktif" ? "Aktif" : "Pasif"}
+                        value={String(s.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif"}
                         onValueChange={(val) => {
                           toggleActiveStatus.mutate({ id: s.id, status: val });
                         }}
