@@ -110,6 +110,7 @@ function SchoolPortal() {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [actualSchoolId, setActualSchoolId] = useState<string | null>(null);
   const [globalStatus, setGlobalStatus] = useState<string>("Bekliyor");
+  const [schoolStatus, setSchoolStatus] = useState<string>("Aktif");
 
   // Auth State
   const [username, setUsername] = useState("");
