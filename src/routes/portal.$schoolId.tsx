@@ -12,6 +12,10 @@ import {
   ChevronRight,
   FileWarning,
   Info,
+  Clock,
+  Settings,
+  Package,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +108,7 @@ function SchoolPortal() {
   const [schoolProducts, setSchoolProducts] = useState<PortalProduct[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [actualSchoolId, setActualSchoolId] = useState<string | null>(null);
+  const [globalStatus, setGlobalStatus] = useState<string>("Bekliyor");
 
   // Auth State
   const [username, setUsername] = useState("");
@@ -188,7 +193,7 @@ function SchoolPortal() {
 
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("id, name")
+          .select("id, name, package_statuses")
           .eq(queryColumn, schoolId)
           .maybeSingle();
 
@@ -210,6 +215,9 @@ function SchoolPortal() {
 
         setActualSchoolId(school.id);
         setSchoolName(school.name);
+        if (school.package_statuses?.global_status) {
+          setGlobalStatus(school.package_statuses.global_status);
+        }
 
         setIsCheckingExpiration(false);
       } catch (err: any) {
@@ -802,6 +810,40 @@ function SchoolPortal() {
                 ))}
               </div>
             )}
+
+            {/* Canlı Üretim Hunisi */}
+            <div className="mt-12">
+              <h3 className="text-xl font-bold mb-6">Canlı Üretim Hunisi</h3>
+              <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 relative overflow-hidden">
+                <div className="flex flex-col md:flex-row justify-between relative z-10 gap-6 md:gap-0">
+                  {[
+                    { id: "Bekliyor", label: "Bekliyor", icon: Clock },
+                    { id: "Üretimde", label: "Üretimde", icon: Settings },
+                    { id: "Kargoya Hazır", label: "Kargoya Hazır", icon: Package },
+                    { id: "Teslim Edildi", label: "Teslim Edildi", icon: Truck },
+                  ].map((stage, idx, arr) => {
+                    const isActive = stage.id === globalStatus;
+                    const isPast = arr.findIndex(s => s.id === globalStatus) > idx;
+                    const isCompleted = isPast || isActive;
+
+                    return (
+                      <div key={stage.id} className="flex-1 relative flex flex-col items-center">
+                        {/* Connecting Line (hidden on mobile, visible on md+) */}
+                        {idx !== arr.length - 1 && (
+                          <div className={`hidden md:block absolute top-6 left-[50%] w-full h-[2px] ${isPast ? 'bg-[#A67C52]' : 'bg-white/10'}`} />
+                        )}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-2 transition-all ${isCompleted ? (isActive ? 'bg-[#A67C52]/20 border-[#A67C52] text-[#A67C52]' : 'bg-[#A67C52] border-[#A67C52] text-black') : 'bg-black/50 border-white/10 text-white/30'}`}>
+                          <stage.icon className="w-5 h-5" />
+                        </div>
+                        <span className={`mt-3 text-sm font-semibold text-center ${isCompleted ? (isActive ? 'text-[#A67C52]' : 'text-white/80') : 'text-white/30'}`}>
+                          {stage.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
             {/* View Summary Button */}
             <div className="mt-12 text-center">
