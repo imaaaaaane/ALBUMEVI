@@ -705,7 +705,7 @@ function SchoolPortal() {
             {/* Header */}
             <div className="flex flex-col md:relative md:flex-row items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-2xl mb-8 gap-4 md:gap-0">
               <div className="flex w-full md:w-auto justify-between items-center">
-                <img src="/logo-new.png" alt="ALBÜMEVİ" className="h-10 md:h-12 w-auto rounded-md object-contain drop-shadow-sm" />
+                <img src="/logo.jpg" alt="ALBÜMEVİ" className="h-10 rounded-md object-contain" />
                 <div className="flex items-center gap-2 md:hidden">
                   <Button
                     variant="ghost"

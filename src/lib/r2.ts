@@ -36,8 +36,14 @@ export const getR2FileUrl = async (path: string) => {
 };
 
 export const getR2PublicUrl = (path: string) => {
-  const endpoint = import.meta.env.VITE_R2_PUBLIC_URL || `${import.meta.env.VITE_R2_ENDPOINT}/${R2_BUCKET_NAME}`;
-  return `${endpoint}/${path}`;
+  const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+  if (publicUrl) {
+    // Trim trailing slash to prevent double slashes (e.g., https://pub-xxx.r2.dev//path)
+    const baseUrl = publicUrl.replace(/\/$/, "");
+    return `${baseUrl}/${path}`;
+  }
+  // Fallback to S3 endpoint (Note: requires public access to be configured on the bucket)
+  return `${import.meta.env.VITE_R2_ENDPOINT}/${R2_BUCKET_NAME}/${path}`;
 };
 
 export const deleteFileFromR2 = async (path: string) => {

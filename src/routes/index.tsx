@@ -220,9 +220,9 @@ function Landing() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5">
             <img
-              src="/logo-new.png"
-              alt="ALBÜMEVİ Logo"
-              className="h-10 md:h-12 w-auto object-contain drop-shadow-sm"
+              src="/logo.jpg"
+              alt="Albumevi Logo"
+              className="h-8 md:h-12 w-auto object-contain"
             />
           </Link>
 
@@ -840,7 +840,7 @@ function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <img src="/logo-new.png" alt="ALBÜMEVİ Logo" className="h-10 md:h-12 w-auto object-contain drop-shadow-sm" />
+            <img src="/logo.jpg" alt="Albumevi Logo" className="h-6 md:h-8 w-auto object-contain" />
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
