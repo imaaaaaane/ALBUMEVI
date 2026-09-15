@@ -170,7 +170,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-white/5 bg-[#120E0E]">
       <SidebarHeader className="bg-[#120E0E] px-4 py-6 border-b border-white/5">
         <Link to="/dashboard" className="flex items-center">
-          <img src="/logo.jpg" alt="Albumevi Logo" className="h-8 w-auto object-contain" />
+          <img src="/logo-new.png" alt="ALBÜMEVİ Logo" className="h-10 w-auto object-contain drop-shadow-sm" />
         </Link>
       </SidebarHeader>
 
