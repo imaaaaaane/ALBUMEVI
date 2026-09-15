@@ -639,7 +639,7 @@ function EbatlamaView() {
       <div className="flex items-center justify-between mb-8 relative">
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
           <img
-            src="/logo.jpg"
+            src="/logo-light.png"
             alt="ALBÜMEVİ Logo"
             className="h-24 w-auto object-contain rounded-2xl shadow-xl shadow-black/50"
           />

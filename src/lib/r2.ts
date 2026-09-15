@@ -35,15 +35,38 @@ export const getR2FileUrl = async (path: string) => {
   return await getSignedUrl(r2Client, command, { expiresIn: 3600 });
 };
 
-export const getR2PublicUrl = (path: string) => {
+export const getR2PublicUrl = (pathOrUrl: string) => {
   const publicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
-  if (publicUrl) {
-    // Trim trailing slash to prevent double slashes (e.g., https://pub-xxx.r2.dev//path)
-    const baseUrl = publicUrl.replace(/\/$/, "");
-    return `${baseUrl}/${path}`;
+  const baseUrl = publicUrl ? publicUrl.replace(/\/$/, "") : "";
+
+  // If it's already a full URL
+  if (pathOrUrl.startsWith("http")) {
+    // If it's using the old S3 endpoint, convert it
+    if (pathOrUrl.includes("r2.cloudflarestorage.com")) {
+      try {
+        const url = new URL(pathOrUrl);
+        // pathname is like "/albumevi-photos/portfolyo/123.jpg"
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        if (pathParts[0] === import.meta.env.VITE_R2_BUCKET_NAME) {
+          pathParts.shift(); // Remove bucket name
+        }
+        const objectKey = pathParts.join('/');
+        return baseUrl ? `${baseUrl}/${objectKey}` : pathOrUrl;
+      } catch (e) {
+        return pathOrUrl;
+      }
+    }
+    return pathOrUrl; // Already a valid URL (e.g. pub.r2.dev)
   }
-  // Fallback to S3 endpoint (Note: requires public access to be configured on the bucket)
-  return `${import.meta.env.VITE_R2_ENDPOINT}/${R2_BUCKET_NAME}/${path}`;
+
+  // If it's just a path/key
+  if (baseUrl) {
+    return `${baseUrl}/${pathOrUrl}`;
+  }
+  
+  // Fallback if VITE_R2_PUBLIC_URL is missing, but avoid S3 URL directly in frontend
+  console.warn("VITE_R2_PUBLIC_URL is not defined! Images may not load properly.");
+  return `/${pathOrUrl}`;
 };
 
 export const deleteFileFromR2 = async (path: string) => {

@@ -149,7 +149,7 @@ function PortfolioPage() {
               className="relative group rounded-2xl overflow-hidden break-inside-avoid shadow-lg bg-[#12100E] border border-white/5"
             >
               <img
-                src={image.image_url}
+                src={getR2PublicUrl(image.image_url)}
                 alt="Portfolio Item"
                 className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
               />

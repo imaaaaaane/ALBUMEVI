@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getR2PublicUrl } from "@/lib/r2";
 
 const PHOTOGRAPHERS = [
   {
@@ -220,7 +221,7 @@ function Landing() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5">
             <img
-              src="/logo.jpg"
+              src="/logo-light.png"
               alt="Albumevi Logo"
               className="h-8 md:h-12 w-auto object-contain"
             />
@@ -475,8 +476,8 @@ function Landing() {
               >
                 <div className="w-48 h-48 rounded-full border-4 border-[#A67C52] overflow-hidden mb-5 relative shadow-lg shadow-[#A67C52]/10 group-hover:shadow-[#A67C52]/30 transition-shadow duration-500 p-1">
                   <img
-                    src={photographer.img || photographer.image_url}
-                    alt={photographer.full_name || photographer.name}
+                    src={photographer.img ? getR2PublicUrl(photographer.img) : photographer.image_url ? getR2PublicUrl(photographer.image_url) : ""}
+                    alt={photographer.name || photographer.full_name}
                     className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
@@ -529,8 +530,8 @@ function Landing() {
                 className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 break-inside-avoid mb-4"
               >
                 <img
-                  src={item.image_url || item.src}
-                  alt={item.alt || "Portfolyo Görseli"}
+                  src={item.image_url ? getR2PublicUrl(item.image_url) : getR2PublicUrl(item.src)}
+                  alt={item.alt || item.title || "Portfolyo Görseli"}
                   className="w-full h-auto object-cover rounded-lg group-hover:scale-110 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
@@ -840,7 +841,7 @@ function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <img src="/logo.jpg" alt="Albumevi Logo" className="h-6 md:h-8 w-auto object-contain" />
+            <img src="/logo-light.png" alt="Albumevi Logo" className="h-6 md:h-8 w-auto object-contain" />
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">

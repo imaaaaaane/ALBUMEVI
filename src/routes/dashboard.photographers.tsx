@@ -173,7 +173,7 @@ function PhotographersPage() {
               <div className="aspect-[4/3] relative bg-black">
                 {p.img ? (
                   <img
-                    src={p.img}
+                    src={getR2PublicUrl(p.img)}
                     alt={p.full_name}
                     className="w-full h-full object-cover opacity-80"
                   />

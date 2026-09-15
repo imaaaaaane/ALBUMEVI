@@ -64,7 +64,7 @@ interface SelectionData {
   note: string;
 }
 
-import { getR2FileUrl } from "../lib/r2";
+import { getR2FileUrl, getR2PublicUrl } from "../lib/r2";
 
 const R2Image = ({ src, alt, className }: { src: string; alt?: string; className?: string }) => {
   const [url, setUrl] = useState<string | null>(null);
@@ -705,7 +705,7 @@ function SchoolPortal() {
             {/* Header */}
             <div className="flex flex-col md:relative md:flex-row items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-2xl mb-8 gap-4 md:gap-0">
               <div className="flex w-full md:w-auto justify-between items-center">
-                <img src="/logo.jpg" alt="ALBÜMEVİ" className="h-10 rounded-md object-contain" />
+                <img src="/logo-light.png" alt="ALBÜMEVİ" className="h-10 md:h-12 w-auto rounded-md object-contain" />
                 <div className="flex items-center gap-2 md:hidden">
                   <Button
                     variant="ghost"
@@ -760,20 +760,20 @@ function SchoolPortal() {
                 schoolProducts.map((prod) => (
                   <div
                     key={prod.id}
-                    className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4"
+                    className="group bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4 hover:border-white/20 transition-all duration-300"
                   >
                     {prod.image_url && (
-                      <div className="w-full h-32 md:h-40 bg-white/5 p-2 rounded-xl overflow-hidden shrink-0">
+                      <div className="w-full h-56 md:h-64 bg-white/5 p-4 rounded-2xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
                         <img
-                          src={prod.image_url}
+                          src={getR2PublicUrl(prod.image_url)}
                           alt={prod.name}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                         />
                       </div>
                     )}
-                    <div className="flex flex-row justify-between w-full items-center">
+                    <div className="relative z-10 flex flex-row justify-between w-full items-center">
                       <div>
-                        <h3 className="text-xl md:text-2xl font-bold">{prod.name}</h3>
+                        <h3 className="text-xl md:text-2xl font-bold group-hover:text-[#A67C52] transition-colors">{prod.name}</h3>
                       </div>
                       <div className="text-2xl md:text-3xl font-bold">{prod.price} ₺</div>
                     </div>
@@ -928,7 +928,7 @@ function SchoolPortal() {
                         return (
                           <label
                             key={prod.id}
-                            className={`flex items-center min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}
+                            className={`flex items-center relative overflow-hidden min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}
                           >
                             <input
                               type="checkbox"
@@ -939,18 +939,21 @@ function SchoolPortal() {
                               onChange={() => handleStudentSelectionChange(s.id, prod.id)}
                             />
                             <div
-                              className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 ${checkBgClass}`}
+                              className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 relative z-10 ${checkBgClass}`}
                             >
                               {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
                             </div>
                             {prod.image_url && (
                               <img
-                                src={prod.image_url}
+                                src={getR2PublicUrl(prod.image_url)}
                                 alt={prod.name}
-                                className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0"
+                                className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0 relative z-10"
                               />
                             )}
-                            <span className="font-medium text-sm flex-1">{prod.name}</span>
+                            <span className="font-medium text-sm flex-1 relative z-10">{prod.name}</span>
+                            <span className="font-bold text-sm ml-2 bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap relative z-10">
+                              {prod.price} ₺
+                            </span>
                           </label>
                         );
                       })

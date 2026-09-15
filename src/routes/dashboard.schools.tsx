@@ -344,6 +344,26 @@ function ManageSchools() {
 
       await Promise.all(promises);
 
+      const classNotesMap = new Map<string, string[]>();
+      students.forEach((student) => {
+        if (student.note && student.note.trim() !== "") {
+          const safeClassName = (student.class_name || "Bilinmeyen Şube").replace(/[/\\]/g, "-").trim();
+          if (!classNotesMap.has(safeClassName)) {
+            classNotesMap.set(safeClassName, []);
+          }
+          classNotesMap.get(safeClassName)?.push(`${student.name} (${packageName}): ${student.note.trim()}`);
+        }
+      });
+      
+      const safePackageName = packageName.replace(/[/\\]/g, "-").trim();
+      classNotesMap.forEach((notesList, safeClassName) => {
+        if (notesList.length > 0) {
+          const fileName = `${safePackageName}/${safeClassName}/notlar.txt`;
+          const contentStr = notesList.join("\n\n");
+          zip.file(fileName, contentStr);
+        }
+      });
+
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `${slugify(schoolName)}_${slugify(packageName)}.zip`);
       toast.success("Baskı dosyaları başarıyla indirildi.");
@@ -380,7 +400,7 @@ function ManageSchools() {
       ] = await Promise.all([
         (supabase as any)
           .from("students")
-          .select("id, name, image_url, class_id, selection, created_at")
+          .select("id, name, image_url, class_id, selection, note, created_at")
           .not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id, name"),
         (supabase as any).from("schools").select("id, name, package_statuses"),
@@ -476,6 +496,7 @@ function ManageSchools() {
               name: s.name || `Öğrenci`,
               image_url: s.image_url,
               class_name: classInfo.name || "Bilinmeyen Şube",
+              note: s.note,
             });
           }
         });

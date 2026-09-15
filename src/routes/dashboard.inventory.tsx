@@ -40,6 +40,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getR2PublicUrl } from "@/lib/r2";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/dashboard/inventory")({
@@ -153,7 +154,7 @@ function SortableProductCard({
       {p.image_url ? (
         <div className="h-28 w-full bg-black/40 overflow-hidden relative border-b border-white/5">
           <img
-            src={p.image_url}
+            src={getR2PublicUrl(p.image_url)}
             alt={p.name}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
           />
@@ -843,7 +844,7 @@ function Inventory() {
                 {editForm.image_url || editForm.file ? (
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
                     <img
-                      src={editForm.file ? URL.createObjectURL(editForm.file) : editForm.image_url!}
+                      src={editForm.file ? URL.createObjectURL(editForm.file) : getR2PublicUrl(editForm.image_url!)}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />

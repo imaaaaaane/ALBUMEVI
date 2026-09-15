@@ -106,12 +106,11 @@ function AdminLogin() {
           to="/"
           className="mb-8 flex flex-col items-center justify-center gap-3 group text-white"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 border border-white/10 backdrop-blur shadow-[0_0_20px_rgba(255,255,255,0.05)] transition-transform group-hover:scale-105">
-            <ShieldCheck className="h-6 w-6 text-[#A67C52]" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight lowercase">
-            album<span className="text-[#A67C52]">evi</span> admin
-          </span>
+          <img
+            src="/logo-light.png"
+            alt="Albumevi Admin Logo"
+            className="h-16 md:h-20 w-auto object-contain transition-transform group-hover:scale-105"
+          />
         </Link>
 
         {/* Card */}
