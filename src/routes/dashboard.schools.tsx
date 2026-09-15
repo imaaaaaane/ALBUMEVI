@@ -736,6 +736,43 @@ function ManageSchools() {
     }, {});
   }, [orders]);
 
+  const hierarchicalOrders = useMemo(() => {
+    const schoolGroups = new Map();
+    orders.forEach((order: any) => {
+      if (!schoolGroups.has(order.school_id)) {
+        schoolGroups.set(order.school_id, {
+          school_id: order.school_id,
+          school_name: order.school_name,
+          latest_date: order.created_at,
+          packages: [],
+        });
+      }
+
+      const school = schoolGroups.get(order.school_id);
+      if (new Date(order.created_at) > new Date(school.latest_date)) {
+        school.latest_date = order.created_at;
+      }
+
+      const classCounts = new Map();
+      (order.students || []).forEach((student: any) => {
+        const cName = student.class_name || "Bilinmeyen Şube";
+        classCounts.set(cName, (classCounts.get(cName) || 0) + 1);
+      });
+
+      school.packages.push({
+        ...order,
+        class_breakdown: Array.from(classCounts.entries()).map(([cName, count]) => ({
+          class_name: cName,
+          count,
+        })).sort((a, b) => a.class_name.localeCompare(b.class_name)),
+      });
+    });
+
+    return Array.from(schoolGroups.values()).sort(
+      (a, b) => new Date(b.latest_date).getTime() - new Date(a.latest_date).getTime()
+    );
+  }, [orders]);
+
   return (
     <div className="space-y-6 text-white selection:bg-[#A67C52] selection:text-white pb-10">
       <div className="flex items-end justify-between gap-4">
@@ -945,108 +982,145 @@ function ManageSchools() {
             {orders.filter((o: any) => o.order_status === "Hazırlanıyor").length} Hazırlanıyor
           </Badge>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-white/5 hover:bg-transparent">
-              <TableHead className="text-white/50">Okul</TableHead>
-              <TableHead className="text-white/50">Paketler</TableHead>
-              <TableHead className="text-right text-white/50">Miktar</TableHead>
-              <TableHead className="text-right text-white/50">Toplam</TableHead>
-              <TableHead className="text-white/50">Gönderildi</TableHead>
-              <TableHead className="text-white/50">Durum</TableHead>
-              <TableHead className="text-right text-white/50">İşlemler</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.length === 0 ? (
-              <TableRow className="border-white/5 hover:bg-transparent">
-                <TableCell colSpan={7} className="text-center text-white/40 py-8">
-                  Sipariş bulunamadı.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.slice(0, 8).map((o: any) => {
-                const isPending = o.order_status === "Hazırlanıyor";
-                return (
-                  <TableRow
-                    key={o.id}
-                    className="border-white/5 hover:bg-white/5 transition-colors"
-                  >
-                    <TableCell className="font-medium text-white">{o.school_name}</TableCell>
-                    <TableCell className="text-white/70">{o.package_name}</TableCell>
-                    <TableCell className="text-right text-white/70">{o.quantity}</TableCell>
-                    <TableCell className="text-right text-[#A67C52] font-semibold">
-                      {Number(o.total_price).toLocaleString()} ₺
-                    </TableCell>
-                    <TableCell className="text-white/40 text-xs">
-                      {new Date(o.created_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          o.order_status === "Hazırlandı"
-                            ? "border-transparent bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20"
-                            : "border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/30"
-                        }
-                      >
-                        {o.order_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={updatePackageStatus.isPending}
-                        onClick={() => {
-                          const newStatus =
-                            o.order_status === "Hazırlandı" ? "Hazırlanıyor" : "Hazırlandı";
-                          updatePackageStatus.mutate({
-                            schoolId: o.school_id,
-                            packageName: o.package_name,
-                            newStatus,
-                          });
-                        }}
-                        className={`h-8 w-8 rounded-md transition-colors ${
-                          o.order_status === "Hazırlandı"
-                            ? "text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
-                            : "text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-300"
-                        }`}
-                      >
-                        {updatePackageStatus.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : o.order_status === "Hazırlandı" ? (
-                          <span className="text-xs font-bold">X</span>
-                        ) : (
-                          <span className="text-xs font-bold">✓</span>
-                        )}
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={clearOrder.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Bu pakete ait tüm öğrenci seçimlerini iptal etmek (sıfırlamak) istediğinize emin misiniz?",
-                            )
-                          ) {
-                            clearOrder.mutate({
-                              schoolId: o.school_id,
-                              selectionKey: o.selection_key,
-                            });
-                          }
-                        }}
-                        className="h-8 w-8 rounded-md transition-colors text-red-400 hover:bg-red-500/15 hover:text-red-300 ml-1"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+        <div className="p-2 md:p-4">
+          {hierarchicalOrders.length === 0 ? (
+            <div className="text-center text-white/40 py-8">
+              Sipariş bulunamadı.
+            </div>
+          ) : (
+            <Accordion type="multiple" className="space-y-4">
+              {hierarchicalOrders.map((school: any, idx: number) => (
+                <AccordionItem
+                  key={school.school_id}
+                  value={school.school_id}
+                  className="border border-white/10 bg-black/40 rounded-xl overflow-hidden"
+                >
+                  <AccordionTrigger className="px-6 py-4 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 font-bold text-white/70 shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-white">{school.school_name}</h3>
+                        <p className="text-xs text-white/50">
+                          Son Sipariş: {new Date(school.latest_date).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6 pt-2">
+                    <Accordion type="multiple" className="space-y-3">
+                      {school.packages.map((pkg: any) => (
+                        <AccordionItem
+                          key={pkg.id}
+                          value={pkg.id}
+                          className="border border-white/5 bg-white/5 rounded-lg overflow-hidden"
+                        >
+                          <AccordionTrigger className="px-4 py-3 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline group">
+                            <div className="flex items-center justify-between w-full pr-4 text-left">
+                              <div>
+                                <h4 className="font-medium text-white">{pkg.package_name}</h4>
+                                <div className="text-xs text-white/50 flex items-center gap-2 mt-1">
+                                  <span>{pkg.quantity} adet</span>
+                                  <span>•</span>
+                                  <span className="text-[#A67C52]">{Number(pkg.total_price).toLocaleString()} ₺</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Badge
+                                  className={
+                                    pkg.order_status === "Hazırlandı"
+                                      ? "border-transparent bg-emerald-500/15 text-emerald-400"
+                                      : "border-transparent bg-[#A67C52]/20 text-[#A67C52]"
+                                  }
+                                >
+                                  {pkg.order_status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4 pt-2">
+                            <div className="flex justify-end gap-2 mb-4">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={updatePackageStatus.isPending}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const newStatus =
+                                    pkg.order_status === "Hazırlandı" ? "Hazırlanıyor" : "Hazırlandı";
+                                  updatePackageStatus.mutate({
+                                    schoolId: pkg.school_id,
+                                    packageName: pkg.package_name,
+                                    newStatus,
+                                  });
+                                }}
+                                className={`h-8 rounded-md transition-colors ${
+                                  pkg.order_status === "Hazırlandı"
+                                    ? "text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
+                                    : "text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-300"
+                                }`}
+                              >
+                                {updatePackageStatus.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : pkg.order_status === "Hazırlandı" ? (
+                                  <span className="text-xs font-bold mr-2">X</span>
+                                ) : (
+                                  <span className="text-xs font-bold mr-2">✓</span>
+                                )}
+                                {pkg.order_status === "Hazırlandı" ? "Hazırlanıyor Yap" : "Hazırlandı İşaretle"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={clearOrder.isPending}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (
+                                    window.confirm(
+                                      "Bu pakete ait tüm öğrenci seçimlerini iptal etmek (sıfırlamak) istediğinize emin misiniz?",
+                                    )
+                                  ) {
+                                    clearOrder.mutate({
+                                      schoolId: pkg.school_id,
+                                      selectionKey: pkg.selection_key,
+                                    });
+                                  }
+                                }}
+                                className="h-8 rounded-md transition-colors text-red-400 hover:bg-red-500/15 hover:text-red-300"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Sıfırla
+                              </Button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Şube Dağılımı</h5>
+                              {pkg.class_breakdown.length === 0 ? (
+                                <div className="text-sm text-white/40 italic">Veri bulunamadı</div>
+                              ) : (
+                                pkg.class_breakdown.map((cb: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                                    <span className="text-sm font-medium text-white">{cb.class_name}</span>
+                                    <span className="text-sm text-[#A67C52] bg-[#A67C52]/10 px-2 py-0.5 rounded">
+                                      {cb.count} sipariş
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+        </div>
       </motion.div>
 
       {/* Baskı Dosyaları */}
