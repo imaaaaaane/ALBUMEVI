@@ -804,7 +804,7 @@ function SchoolPortal() {
                   )}
                   </div>
                   <div className="mt-4 border-t border-white/10 pt-4">
-                    <input type="text" placeholder="Öğrenci için not ekle..." className="mt-2 w-full text-black p-1 text-sm rounded border" value={selections[s.id]?.note || ""} onChange={(e) => handleStudentNoteChange(s.id, e.target.value)} />
+                    <input type="text" placeholder="Öğrenci için not ekle..." className="mt-2 w-full text-black p-1 text-sm rounded border" defaultValue={selections[s.id]?.note || ""} onBlur={(e) => handleStudentNoteChange(s.id, e.target.value)} />
                   </div>
                 </div>
               ))}
