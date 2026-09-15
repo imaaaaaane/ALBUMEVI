@@ -1,14 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
-import { Calculator, Loader2, Edit2, TrendingUp, Plus, Trash2, Minus, GripVertical, Download } from "lucide-react";
+import {
+  Calculator,
+  Loader2,
+  Edit2,
+  TrendingUp,
+  Plus,
+  Trash2,
+  Minus,
+  GripVertical,
+  Download,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { exportToPDF } from "../lib/pdf-export";
 
 export const Route = createFileRoute("/dashboard/maliyet")({
@@ -30,7 +53,7 @@ type ProductCost = {
   iscilik: number;
   lazer: number;
   genel_giderler: number;
-}
+};
 
 function MaliyetView() {
   const queryClient = useQueryClient();
@@ -38,9 +61,12 @@ function MaliyetView() {
   const [quantity, setQuantity] = useState<number>(1);
   const [editingProduct, setEditingProduct] = useState<ProductCost | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-        const [newProductId, setNewProductId] = useState<string>("");
+  const [newProductId, setNewProductId] = useState<string>("");
   const [newSayfaSayisi, setNewSayfaSayisi] = useState<number>(1);
-  const [formulaConfirmData, setFormulaConfirmData] = useState<{item: ProductCost, calc: any} | null>(null);
+  const [formulaConfirmData, setFormulaConfirmData] = useState<{
+    item: ProductCost;
+    calc: any;
+  } | null>(null);
 
   const { data: hamMaddeler = [] } = useQuery({
     queryKey: ["ham_maddeler"],
@@ -48,23 +74,31 @@ function MaliyetView() {
       const { data, error } = await supabaseClient.from("ham_maddeler").select("*");
       if (error) throw error;
       return data;
-    }
+    },
   });
-  
-  
+
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState<string>("");
 
   const getCategory = (c: ProductCost) => {
     if (c.kategori) return c.kategori;
-    if (c.urun_adi.toLowerCase().includes('panoramik')) return 'Panoramik Albümler';
-    if (c.urun_adi.toLowerCase().includes('baskı') || c.urun_adi.toLowerCase().includes('baski')) return 'Baskı Ürünleri';
-    return 'Diğer Ürünler';
+    if (c.urun_adi.toLowerCase().includes("panoramik")) return "Panoramik Albümler";
+    if (c.urun_adi.toLowerCase().includes("baskı") || c.urun_adi.toLowerCase().includes("baski"))
+      return "Baskı Ürünleri";
+    return "Diğer Ürünler";
   };
 
   const updateCategoryMutation = useMutation({
-    mutationFn: async ({ oldName, newName, itemIds }: { oldName: string, newName: string, itemIds: number[] }) => {
+    mutationFn: async ({
+      oldName,
+      newName,
+      itemIds,
+    }: {
+      oldName: string;
+      newName: string;
+      itemIds: number[];
+    }) => {
       const { error } = await supabaseClient
         .from("maliyetler")
         .update({ kategori: newName })
@@ -78,7 +112,7 @@ function MaliyetView() {
     },
     onError: (err: any) => {
       toast.error(`Kategori güncellenirken hata oluştu: ${err.message}`);
-    }
+    },
   });
 
   const handleCategorySave = (oldName: string, items: ProductCost[]) => {
@@ -86,17 +120,16 @@ function MaliyetView() {
       setEditingCategory(null);
       return;
     }
-    
+
     // Optimistic update
     queryClient.setQueryData(["maliyetler"], (old: ProductCost[] | undefined) => {
       if (!old) return old;
-      return old.map(c => getCategory(c) === oldName ? { ...c, kategori: newCategoryName } : c);
+      return old.map((c) => (getCategory(c) === oldName ? { ...c, kategori: newCategoryName } : c));
     });
 
-    const itemIds = items.map(i => i.id);
+    const itemIds = items.map((i) => i.id);
     updateCategoryMutation.mutate({ oldName, newName: newCategoryName, itemIds });
   };
-
 
   const { data: products = [] } = useQuery({
     queryKey: ["products_inventory"],
@@ -111,7 +144,13 @@ function MaliyetView() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async ({ productName, sayfaSayisi }: { productName: string, sayfaSayisi: number }) => {
+    mutationFn: async ({
+      productName,
+      sayfaSayisi,
+    }: {
+      productName: string;
+      sayfaSayisi: number;
+    }) => {
       const payload = {
         urun_adi: productName,
         sayfa_sayisi: sayfaSayisi,
@@ -123,7 +162,7 @@ function MaliyetView() {
         kumas: 0,
         iscilik: 0,
         lazer: 0,
-        genel_giderler: 0
+        genel_giderler: 0,
       };
       const { error } = await supabaseClient.from("maliyetler").insert([payload]);
       if (error) throw error;
@@ -136,7 +175,7 @@ function MaliyetView() {
     },
     onError: (err: any) => {
       toast.error(`Ekleme hatası: ${err.message}`);
-    }
+    },
   });
 
   const handleAddSubmit = () => {
@@ -158,12 +197,12 @@ function MaliyetView() {
         .select("*")
         .order("sira", { ascending: true })
         .order("id", { ascending: true });
-      
+
       if (error) throw error;
-      
+
       return data.map((item: any) => ({
         ...item,
-        urun_adi: item.urunAdi || item.urun_adi || "Unknown"
+        urun_adi: item.urunAdi || item.urun_adi || "Unknown",
       })) as ProductCost[];
     },
   });
@@ -180,14 +219,14 @@ function MaliyetView() {
         kumas: updatedCost.kumas,
         iscilik: updatedCost.iscilik,
         lazer: updatedCost.lazer,
-        genel_giderler: updatedCost.genel_giderler
+        genel_giderler: updatedCost.genel_giderler,
       };
-      
+
       const { error } = await supabaseClient
         .from("maliyetler")
         .update(payload)
         .eq("id", updatedCost.id);
-        
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -197,15 +236,12 @@ function MaliyetView() {
     },
     onError: (err: any) => {
       toast.error(`Güncelleme hatası: ${err.message}`);
-    }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabaseClient
-        .from("maliyetler")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabaseClient.from("maliyetler").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -214,7 +250,7 @@ function MaliyetView() {
     },
     onError: (err: any) => {
       toast.error(`Silme hatası: ${err.message}`);
-    }
+    },
   });
 
   const handleDelete = (id: number) => {
@@ -226,18 +262,45 @@ function MaliyetView() {
   const handleExportMaliyetPDF = () => {
     if (!costs) return;
     const columns = [
-      "Ürün Adı", "Sayfa", "Baskı", "PVC", "MDF 1.5", "MDF 2.7", "MDF 4",
-      "Kumaş", "İşçilik", "Lazer", "Gen. Gider", "Toplam"
+      "Ürün Adı",
+      "Sayfa",
+      "Baskı",
+      "PVC",
+      "MDF 1.5",
+      "MDF 2.7",
+      "MDF 4",
+      "Kumaş",
+      "İşçilik",
+      "Lazer",
+      "Gen. Gider",
+      "Toplam",
     ];
     let grandTotal = 0;
-    const data = costs.map(p => {
-      const rowTotal = (Number(p.baski) + Number(p.pvc) + Number(p.mdf_1_5) + Number(p.mdf_2_7) + Number(p.mdf_4) + Number(p.kumas) + Number(p.iscilik) + Number(p.lazer) + Number(p.genel_giderler));
+    const data = costs.map((p) => {
+      const rowTotal =
+        Number(p.baski) +
+        Number(p.pvc) +
+        Number(p.mdf_1_5) +
+        Number(p.mdf_2_7) +
+        Number(p.mdf_4) +
+        Number(p.kumas) +
+        Number(p.iscilik) +
+        Number(p.lazer) +
+        Number(p.genel_giderler);
       grandTotal += rowTotal;
       return [
-        p.urun_adi, p.sayfa_sayisi, 
-        `${p.baski} ₺`, `${p.pvc} ₺`, `${p.mdf_1_5} ₺`, `${p.mdf_2_7} ₺`, `${p.mdf_4} ₺`,
-        `${p.kumas} ₺`, `${p.iscilik} ₺`, `${p.lazer} ₺`, `${p.genel_giderler} ₺`,
-        `${rowTotal} ₺`
+        p.urun_adi,
+        p.sayfa_sayisi,
+        `${p.baski} ₺`,
+        `${p.pvc} ₺`,
+        `${p.mdf_1_5} ₺`,
+        `${p.mdf_2_7} ₺`,
+        `${p.mdf_4} ₺`,
+        `${p.kumas} ₺`,
+        `${p.iscilik} ₺`,
+        `${p.lazer} ₺`,
+        `${p.genel_giderler} ₺`,
+        `${rowTotal} ₺`,
       ];
     });
 
@@ -246,18 +309,16 @@ function MaliyetView() {
       subtitle: "Tüm Ürünlerin Birim Maliyetleri",
       columns,
       data,
-      summary: [
-        { label: "Toplam Maliyet", value: `${grandTotal} ₺` }
-      ],
-      filename: "Maliyet_Tablosu.pdf"
+      summary: [{ label: "Toplam Maliyet", value: `${grandTotal} ₺` }],
+      filename: "Maliyet_Tablosu.pdf",
     });
   };
 
   const calculateUnitCost = (c: ProductCost) => {
     const sayfa = Number(c.sayfa_sayisi ?? 1);
     return (
-      (Number(c.baski || 0) * sayfa) +
-      (Number(c.pvc || 0) * (sayfa + 1)) +
+      Number(c.baski || 0) * sayfa +
+      Number(c.pvc || 0) * (sayfa + 1) +
       Number(c.mdf_1_5 || 0) +
       Number(c.mdf_2_7 || 0) +
       Number(c.mdf_4 || 0) +
@@ -268,7 +329,7 @@ function MaliyetView() {
     );
   };
 
-  const selectedProduct = costs.find(c => c.id.toString() === selectedProductId);
+  const selectedProduct = costs.find((c) => c.id.toString() === selectedProductId);
   const totalOrderCost = selectedProduct ? calculateUnitCost(selectedProduct) * quantity : 0;
 
   const sortedCosts = [...costs].sort((a, b) => calculateUnitCost(b) - calculateUnitCost(a));
@@ -280,7 +341,7 @@ function MaliyetView() {
     if (!editingProduct) return;
     setEditingProduct({
       ...editingProduct,
-      [field]: Number(value) || 0
+      [field]: Number(value) || 0,
     });
   };
 
@@ -290,16 +351,17 @@ function MaliyetView() {
     }
   };
 
-  
-  
   const updateSiraMutation = useMutation({
     mutationFn: async (updates: { id: number; sira: number; kategori?: string }[]) => {
       // Use Promise.all to safely update only the 'sira' field without replacing other columns
-      const updatePromises = updates.map(u => 
-        supabaseClient.from("maliyetler").update({ sira: u.sira, ...(u.kategori !== undefined ? { kategori: u.kategori } : {}) }).eq("id", u.id)
+      const updatePromises = updates.map((u) =>
+        supabaseClient
+          .from("maliyetler")
+          .update({ sira: u.sira, ...(u.kategori !== undefined ? { kategori: u.kategori } : {}) })
+          .eq("id", u.id),
       );
       const results = await Promise.all(updatePromises);
-      const error = results.find(r => r.error)?.error;
+      const error = results.find((r) => r.error)?.error;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -307,71 +369,73 @@ function MaliyetView() {
     },
     onError: (err: any) => {
       toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
-    }
+    },
   });
 
-  
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    
+
     const { source, destination } = result;
     const sourceCategory = source.droppableId;
     const destinationCategory = destination.droppableId;
-    
+
     const allItems = [...sortedTableCosts];
-    
-    const movedItemIndex = allItems.findIndex(c => c.id.toString() === result.draggableId);
+
+    const movedItemIndex = allItems.findIndex((c) => c.id.toString() === result.draggableId);
     if (movedItemIndex === -1) return;
-    
+
     const [movedItem] = allItems.splice(movedItemIndex, 1);
-    
+
     if (sourceCategory !== destinationCategory) {
       movedItem.kategori = destinationCategory;
     }
-    
-    const destItems = allItems.filter(c => getCategory(c) === destinationCategory);
+
+    const destItems = allItems.filter((c) => getCategory(c) === destinationCategory);
     const itemAfter = destItems[destination.index];
-    
+
     let insertIndex = allItems.length;
     if (itemAfter) {
-      insertIndex = allItems.findIndex(c => c.id === itemAfter.id);
+      insertIndex = allItems.findIndex((c) => c.id === itemAfter.id);
     } else if (destItems.length > 0) {
       const lastItemInDest = destItems[destItems.length - 1];
-      insertIndex = allItems.findIndex(c => c.id === lastItemInDest.id) + 1;
+      insertIndex = allItems.findIndex((c) => c.id === lastItemInDest.id) + 1;
     }
-    
+
     allItems.splice(insertIndex, 0, movedItem);
-    
+
     queryClient.setQueryData(["maliyetler"], allItems);
-    
+
     const updates = allItems.map((item, index) => ({
       id: item.id,
       sira: index,
-      ...(sourceCategory !== destinationCategory ? { kategori: getCategory(item) } : {})
+      ...(sourceCategory !== destinationCategory ? { kategori: getCategory(item) } : {}),
     }));
-    
+
     updateSiraMutation.mutate(updates);
   };
 
-
-  
-  const otherItems = sortedTableCosts.filter(c => !c.urun_adi.toLowerCase().includes('panoramik') && !c.urun_adi.toLowerCase().includes('baskı') && !c.urun_adi.toLowerCase().includes('baski'));
+  const otherItems = sortedTableCosts.filter(
+    (c) =>
+      !c.urun_adi.toLowerCase().includes("panoramik") &&
+      !c.urun_adi.toLowerCase().includes("baskı") &&
+      !c.urun_adi.toLowerCase().includes("baski"),
+  );
 
   const calculateFormula = (urunAdi: string, sayfaSayisi: number = 1) => {
     const match = urunAdi.match(/(\d+)x(\d+)/);
     if (!match) return null;
-    
+
     const w = parseFloat(match[1]);
     const h = parseFloat(match[2]);
     const area = (w * h) / 10000; // Convert cm² to m²
-    
-    const getPrice = (adi: string) => hamMaddeler.find(h => h.malzeme_adi === adi)?.fiyat || 0;
-    
+
+    const getPrice = (adi: string) => hamMaddeler.find((h) => h.malzeme_adi === adi)?.fiyat || 0;
+
     return {
-      baski_new: Math.round(area * sayfaSayisi * getPrice('baski')),
-      pvc_new: Math.round(area * (sayfaSayisi + 1) * getPrice('pvc')),
-      mdf_new: Math.round(area * getPrice('mdf_1_5')),
-      kumas_new: Math.round(area * 1.5 * getPrice('kumas')), // 50% extra for folding
+      baski_new: Math.round(area * sayfaSayisi * getPrice("baski")),
+      pvc_new: Math.round(area * (sayfaSayisi + 1) * getPrice("pvc")),
+      mdf_new: Math.round(area * getPrice("mdf_1_5")),
+      kumas_new: Math.round(area * 1.5 * getPrice("kumas")), // 50% extra for folding
     };
   };
 
@@ -387,15 +451,15 @@ function MaliyetView() {
   const executeFormulaUpdate = async () => {
     if (!formulaConfirmData) return;
     const { item, calc } = formulaConfirmData;
-    
+
     const payload = {
       baski: calc.baski_new,
       pvc: calc.pvc_new,
       mdf_1_5: calc.mdf_new,
-      kumas: calc.kumas_new
+      kumas: calc.kumas_new,
     };
-    
-    const { error } = await supabaseClient.from('maliyetler').update(payload).eq('id', item.id);
+
+    const { error } = await supabaseClient.from("maliyetler").update(payload).eq("id", item.id);
     if (error) {
       toast.error("Güncelleme başarısız.");
     } else {
@@ -405,22 +469,26 @@ function MaliyetView() {
     setFormulaConfirmData(null);
   };
 
-  
   const renderTableRow = (item: ProductCost, index: number) => (
     <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
       {(provided, snapshot) => (
-        <tr 
+        <tr
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer ${snapshot.isDragging ? 'bg-[#1a1a1e] shadow-2xl z-50' : ''}`}
+          className={`border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer ${snapshot.isDragging ? "bg-[#1a1a1e] shadow-2xl z-50" : ""}`}
           onClick={() => setEditingProduct(item)}
         >
           <td className="px-2 py-2 w-8 text-center" onClick={(e) => e.stopPropagation()}>
-            <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex items-center justify-center h-full w-full">
+            <div
+              {...provided.dragHandleProps}
+              className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing flex items-center justify-center h-full w-full"
+            >
               <GripVertical className="w-4 h-4" />
             </div>
           </td>
-          <td className="px-2 py-2 text-xs font-medium text-white whitespace-nowrap">{item.urun_adi}</td>
+          <td className="px-2 py-2 text-xs font-medium text-white whitespace-nowrap">
+            {item.urun_adi}
+          </td>
           <td className="px-2 py-2 text-xs text-white/80">{item.baski} ₺</td>
           <td className="px-2 py-2 text-xs text-white/80">{item.pvc} ₺</td>
           <td className="px-2 py-2 text-xs text-white/80">{item.mdf_1_5} ₺</td>
@@ -431,16 +499,16 @@ function MaliyetView() {
           <td className="px-2 py-2 text-xs text-white/80">{item.lazer} ₺</td>
           <td className="px-2 py-2 text-xs text-white/80">{item.genel_giderler} ₺</td>
           <td className="px-2 py-2 text-xs">
-            <Input 
-              type="number"  
+            <Input
+              type="number"
               min="1"
-              value={item.sayfa_sayisi ?? 1} 
+              value={item.sayfa_sayisi ?? 1}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => {
                 const val = Number(e.target.value) || 1;
                 queryClient.setQueryData(["maliyetler"], (old: ProductCost[] | undefined) => {
                   if (!old) return old;
-                  return old.map(c => c.id === item.id ? { ...c, sayfa_sayisi: val } : c);
+                  return old.map((c) => (c.id === item.id ? { ...c, sayfa_sayisi: val } : c));
                 });
               }}
               onBlur={(e) => {
@@ -450,16 +518,43 @@ function MaliyetView() {
               className="w-14 bg-[#0A0A0A] border-[#1a1a1e] h-7 text-xs text-center p-0.5 text-white"
             />
           </td>
-          <td className="px-2 py-2 text-xs whitespace-nowrap font-bold text-[#A67C52]">{calculateUnitCost(item).toLocaleString()} ₺</td>
+          <td className="px-2 py-2 text-xs whitespace-nowrap font-bold text-[#A67C52]">
+            {calculateUnitCost(item).toLocaleString()} ₺
+          </td>
           <td className="px-2 py-2 text-xs text-right whitespace-nowrap">
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10" onClick={(e) => { e.stopPropagation(); handleApplyFormula(item); }} title="Reçete Hesapla">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleApplyFormula(item);
+                }}
+                title="Reçete Hesapla"
+              >
                 <Calculator className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#9E9696] hover:text-[#A67C52]" onClick={(e) => { e.stopPropagation(); setEditingProduct(item); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[#9E9696] hover:text-[#A67C52]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingProduct(item);
+                }}
+              >
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(item.id);
+                }}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -468,7 +563,6 @@ function MaliyetView() {
       )}
     </Draggable>
   );
-
 
   return (
     <div className="p-4 md:p-8 space-y-8 w-full mx-auto">
@@ -484,11 +578,15 @@ function MaliyetView() {
           <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl relative min-h-[400px]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white">Maliyet Tablosu</h3>
-              <Button onClick={handleExportMaliyetPDF} size="sm" className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold h-8 rounded-lg px-3">
+              <Button
+                onClick={handleExportMaliyetPDF}
+                size="sm"
+                className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold h-8 rounded-lg px-3"
+              >
                 <Download className="w-3.5 h-3.5 mr-1" /> PDF İndir
               </Button>
             </div>
-            
+
             {isLoading ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-[#A67C52]" />
@@ -499,7 +597,9 @@ function MaliyetView() {
                   <thead className="text-xs text-[#9E9696] uppercase bg-white/5">
                     <tr>
                       <th className="px-2 py-2 w-8 rounded-tl-lg"></th>
-                      <th className="px-2 py-2 text-[11px] whitespace-nowrap min-w-[150px]">Ürün Adı</th>
+                      <th className="px-2 py-2 text-[11px] whitespace-nowrap min-w-[150px]">
+                        Ürün Adı
+                      </th>
                       <th className="px-2 py-2 text-[11px]">Baskı</th>
                       <th className="px-2 py-2 text-[11px]">PVC</th>
                       <th className="px-2 py-2 text-[11px] whitespace-nowrap">MDF 1.5</th>
@@ -510,34 +610,45 @@ function MaliyetView() {
                       <th className="px-2 py-2 text-[11px]">Lazer</th>
                       <th className="px-2 py-2 text-[11px] whitespace-nowrap">Genel Giderler</th>
                       <th className="px-2 py-2 text-[11px] whitespace-nowrap">Sayfalar</th>
-                      <th className="px-2 py-2 text-[11px] whitespace-nowrap font-bold text-[#A67C52]">Birim Maliyeti</th>
-                      <th className="px-2 py-2 text-[11px] whitespace-nowrap rounded-tr-lg text-right">İşlem</th>
+                      <th className="px-2 py-2 text-[11px] whitespace-nowrap font-bold text-[#A67C52]">
+                        Birim Maliyeti
+                      </th>
+                      <th className="px-2 py-2 text-[11px] whitespace-nowrap rounded-tr-lg text-right">
+                        İşlem
+                      </th>
                     </tr>
                   </thead>
-                  
+
                   <DragDropContext onDragEnd={onDragEnd}>
                     {Array.from(new Set(sortedTableCosts.map(getCategory))).map((categoryName) => {
-                      const items = sortedTableCosts.filter(c => getCategory(c) === categoryName);
+                      const items = sortedTableCosts.filter((c) => getCategory(c) === categoryName);
                       if (items.length === 0) return null;
-                      
+
                       const isOpen = openCategories[categoryName] ?? false;
-                      
+
                       return (
                         <Droppable key={categoryName} droppableId={categoryName}>
                           {(provided) => (
                             <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                              <tr 
-                                className="bg-[#1a1a1e] border-b border-white/5 transition-colors"
-                              >
+                              <tr className="bg-[#1a1a1e] border-b border-white/5 transition-colors">
                                 <td colSpan={14} className="px-4 py-3 text-sm">
                                   <div className="flex items-center gap-3">
-                                    <button 
+                                    <button
                                       className="text-[#A67C52] hover:text-[#A67C52]/80"
-                                      onClick={() => setOpenCategories(prev => ({ ...prev, [categoryName]: !isOpen }))}
+                                      onClick={() =>
+                                        setOpenCategories((prev) => ({
+                                          ...prev,
+                                          [categoryName]: !isOpen,
+                                        }))
+                                      }
                                     >
-                                      {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                      {isOpen ? (
+                                        <Minus className="w-4 h-4" />
+                                      ) : (
+                                        <Plus className="w-4 h-4" />
+                                      )}
                                     </button>
-                                    
+
                                     {editingCategory === categoryName ? (
                                       <div className="flex items-center gap-2">
                                         <Input
@@ -546,16 +657,19 @@ function MaliyetView() {
                                           onChange={(e) => setNewCategoryName(e.target.value)}
                                           onBlur={() => handleCategorySave(categoryName, items)}
                                           onKeyDown={(e) => {
-                                            if (e.key === 'Enter') handleCategorySave(categoryName, items);
-                                            if (e.key === 'Escape') setEditingCategory(null);
+                                            if (e.key === "Enter")
+                                              handleCategorySave(categoryName, items);
+                                            if (e.key === "Escape") setEditingCategory(null);
                                           }}
                                           className="h-8 w-64 bg-[#0A0A0A] border-[#1a1a1e] text-white"
                                         />
                                       </div>
                                     ) : (
                                       <div className="flex items-center gap-2 group/header">
-                                        <span className="font-bold text-[#A67C52]">{categoryName} ({items.length})</span>
-                                        <button 
+                                        <span className="font-bold text-[#A67C52]">
+                                          {categoryName} ({items.length})
+                                        </span>
+                                        <button
                                           onClick={() => {
                                             setEditingCategory(categoryName);
                                             setNewCategoryName(categoryName);
@@ -577,15 +691,12 @@ function MaliyetView() {
                       );
                     })}
                   </DragDropContext>
-
                 </table>
               </div>
             )}
-            
-            <div className="mt-6 flex justify-end gap-3">
 
-              
-              <Button 
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
                 onClick={() => setIsAddingProduct(true)}
                 className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white gap-2 font-bold px-6 shadow-lg shadow-[#A67C52]/20 rounded-xl"
               >
@@ -604,7 +715,7 @@ function MaliyetView() {
               </div>
               <h3 className="text-lg font-bold text-white">Hızlı Sipariş Hesaplayıcı</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#9E9696] mb-1">Ürün Seçin</label>
@@ -613,8 +724,10 @@ function MaliyetView() {
                     <SelectValue placeholder="Ürün Adı" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#111111] border-white/10 text-white">
-                    {costs.map(c => (
-                      <SelectItem key={c.id} value={c.id.toString()}>{c.urun_adi}</SelectItem>
+                    {costs.map((c) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>
+                        {c.urun_adi}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -622,23 +735,28 @@ function MaliyetView() {
 
               <div>
                 <label className="block text-sm font-medium text-[#9E9696] mb-1">Adet</label>
-                <Input 
-                  type="number" step="any" 
-                  min="1" 
-                  value={quantity} 
-                  onChange={(e) => setQuantity(Number(e.target.value) || 1)} 
-                  className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]" 
+                <Input
+                  type="number"
+                  step="any"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+                  className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]"
                 />
               </div>
 
               <div className="pt-4 mt-4 border-t border-white/10">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[#9E9696] text-sm">Birim Maliyeti</span>
-                  <span className="text-white font-medium">{selectedProduct ? calculateUnitCost(selectedProduct).toLocaleString() : 0} ₺</span>
+                  <span className="text-white font-medium">
+                    {selectedProduct ? calculateUnitCost(selectedProduct).toLocaleString() : 0} ₺
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-white font-bold text-lg">Toplam Sipariş Maliyeti</span>
-                  <span className="text-2xl font-extrabold text-[#12B76A]">{totalOrderCost.toLocaleString()} ₺</span>
+                  <span className="text-2xl font-extrabold text-[#12B76A]">
+                    {totalOrderCost.toLocaleString()} ₺
+                  </span>
                 </div>
               </div>
             </div>
@@ -651,24 +769,26 @@ function MaliyetView() {
               </div>
               <h3 className="text-lg font-bold text-white">Maliyet Analizi</h3>
             </div>
-            
+
             <div className="space-y-5 overflow-y-auto max-h-[400px] pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
               {sortedCosts.map((item, index) => {
                 const unitCost = calculateUnitCost(item);
                 const isMostExpensive = index === 0 && sortedCosts.length > 1;
                 const isCheapest = index === sortedCosts.length - 1 && sortedCosts.length > 1;
                 const percentage = maxCost > 0 ? (unitCost / maxCost) * 100 : 0;
-                
+
                 return (
                   <div key={item.id} className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-white/90">{item.urun_adi}</span>
-                      <span className="text-sm font-bold text-white">{unitCost.toLocaleString()} ₺</span>
+                      <span className="text-sm font-bold text-white">
+                        {unitCost.toLocaleString()} ₺
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-500 ${isMostExpensive ? 'bg-red-500/80' : isCheapest ? 'bg-[#12B76A]/80' : 'bg-[#A67C52]/80'}`} 
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${isMostExpensive ? "bg-red-500/80" : isCheapest ? "bg-[#12B76A]/80" : "bg-[#A67C52]/80"}`}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
@@ -691,9 +811,10 @@ function MaliyetView() {
         </div>
       </div>
 
-      
-
-      <Dialog open={!!formulaConfirmData} onOpenChange={(open) => !open && setFormulaConfirmData(null)}>
+      <Dialog
+        open={!!formulaConfirmData}
+        onOpenChange={(open) => !open && setFormulaConfirmData(null)}
+      >
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
@@ -701,37 +822,50 @@ function MaliyetView() {
               Reçete Hesaplandı
             </DialogTitle>
             <DialogDescription className="text-[#9E9696]">
-              {formulaConfirmData?.item.urun_adi} için güncel ham madde fiyatlarına göre önerilen maliyetler:
+              {formulaConfirmData?.item.urun_adi} için güncel ham madde fiyatlarına göre önerilen
+              maliyetler:
             </DialogDescription>
           </DialogHeader>
-          
+
           {formulaConfirmData && (
             <div className="py-4 space-y-3">
               <div className="flex justify-between items-center bg-[#0A0A0A] p-3 rounded-xl border border-white/5">
                 <span className="text-[#9E9696] font-medium">Baskı</span>
-                <span className="font-bold text-white text-lg">{formulaConfirmData.calc.baski_new} ₺</span>
+                <span className="font-bold text-white text-lg">
+                  {formulaConfirmData.calc.baski_new} ₺
+                </span>
               </div>
               <div className="flex justify-between items-center bg-[#0A0A0A] p-3 rounded-xl border border-white/5">
                 <span className="text-[#9E9696] font-medium">PVC</span>
-                <span className="font-bold text-white text-lg">{formulaConfirmData.calc.pvc_new} ₺</span>
+                <span className="font-bold text-white text-lg">
+                  {formulaConfirmData.calc.pvc_new} ₺
+                </span>
               </div>
               <div className="flex justify-between items-center bg-[#0A0A0A] p-3 rounded-xl border border-white/5">
                 <span className="text-[#9E9696] font-medium">MDF</span>
-                <span className="font-bold text-white text-lg">{formulaConfirmData.calc.mdf_new} ₺</span>
+                <span className="font-bold text-white text-lg">
+                  {formulaConfirmData.calc.mdf_new} ₺
+                </span>
               </div>
               <div className="flex justify-between items-center bg-[#0A0A0A] p-3 rounded-xl border border-white/5">
                 <span className="text-[#9E9696] font-medium">Kumaş</span>
-                <span className="font-bold text-white text-lg">{formulaConfirmData.calc.kumas_new} ₺</span>
+                <span className="font-bold text-white text-lg">
+                  {formulaConfirmData.calc.kumas_new} ₺
+                </span>
               </div>
             </div>
           )}
 
           <DialogFooter className="flex justify-end gap-3 border-t border-[#1a1a1e] pt-4">
-            <Button variant="ghost" onClick={() => setFormulaConfirmData(null)} className="text-[#9E9696] hover:text-white">
+            <Button
+              variant="ghost"
+              onClick={() => setFormulaConfirmData(null)}
+              className="text-[#9E9696] hover:text-white"
+            >
               İptal
             </Button>
-            <Button 
-              onClick={executeFormulaUpdate} 
+            <Button
+              onClick={executeFormulaUpdate}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 shadow-lg shadow-blue-900/20 rounded-xl transition-colors"
             >
               Kaydet
@@ -740,43 +874,52 @@ function MaliyetView() {
         </DialogContent>
       </Dialog>
 
-
       <Dialog open={isAddingProduct} onOpenChange={(open) => !open && setIsAddingProduct(false)}>
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              Yeni Ürün Maliyeti Ekle
-            </DialogTitle>
+            <DialogTitle className="text-xl font-bold">Yeni Ürün Maliyeti Ekle</DialogTitle>
           </DialogHeader>
-          
+
           <div className="py-6">
-            <label className="block text-sm font-bold text-[#9E9696] mb-3">Envanterden Ürün Seçin</label>
+            <label className="block text-sm font-bold text-[#9E9696] mb-3">
+              Envanterden Ürün Seçin
+            </label>
             <Select value={newProductId} onValueChange={setNewProductId}>
               <SelectTrigger className="w-full bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus:ring-[#A67C52]">
                 <SelectValue placeholder="Ürün Adı" />
               </SelectTrigger>
               <SelectContent className="bg-[#111111] border-white/10 text-white max-h-[300px]">
                 {products.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={p.id.toString()}>
+                    {p.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             <label className="block text-sm font-bold text-[#9E9696] mb-3 mt-4">Sayfa Sayısı</label>
-            <Input 
-              type="number"  
+            <Input
+              type="number"
               min="1"
-              value={newSayfaSayisi} 
-              onChange={(e) => setNewSayfaSayisi(Number(e.target.value) || 1)} 
-              className="bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus-visible:ring-[#A67C52]" 
+              value={newSayfaSayisi}
+              onChange={(e) => setNewSayfaSayisi(Number(e.target.value) || 1)}
+              className="bg-[#0A0A0A] border-[#1a1a1e] text-white h-12 rounded-xl focus-visible:ring-[#A67C52]"
             />
           </div>
-          
+
           <DialogFooter className="border-t border-[#1a1a1e] pt-4">
-            <Button variant="ghost" onClick={() => setIsAddingProduct(false)} className="text-[#9E9696] hover:text-white">
+            <Button
+              variant="ghost"
+              onClick={() => setIsAddingProduct(false)}
+              className="text-[#9E9696] hover:text-white"
+            >
               İptal
             </Button>
-            <Button onClick={handleAddSubmit} disabled={addMutation.isPending} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold px-6 shadow-lg shadow-[#A67C52]/20">
+            <Button
+              onClick={handleAddSubmit}
+              disabled={addMutation.isPending}
+              className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold px-6 shadow-lg shadow-[#A67C52]/20"
+            >
               {addMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Kaydet
             </Button>
@@ -791,58 +934,74 @@ function MaliyetView() {
               Maliyet Düzenle: <span className="text-[#A67C52]">{editingProduct?.urun_adi}</span>
             </DialogTitle>
           </DialogHeader>
-          
+
           {editingProduct && (
             <div className="grid grid-cols-1 gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="flex flex-col gap-2 bg-white/5 p-4 rounded-xl border border-white/5 mb-2">
-                <label className="block text-xs font-bold text-[#A67C52] uppercase tracking-wider">Sayfa Sayısı</label>
+                <label className="block text-xs font-bold text-[#A67C52] uppercase tracking-wider">
+                  Sayfa Sayısı
+                </label>
                 <div>
                   <span className="block text-[10px] text-[#9E9696] mb-1">Adet</span>
-                  <Input 
-                    type="number"  
-                    value={editingProduct.sayfa_sayisi ?? 1} 
+                  <Input
+                    type="number"
+                    value={editingProduct.sayfa_sayisi ?? 1}
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0;
                       setEditingProduct({
                         ...editingProduct,
-                        sayfa_sayisi: val
+                        sayfa_sayisi: val,
                       });
-                    }} 
-                    className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]" 
+                    }}
+                    className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]"
                   />
                 </div>
               </div>
               {[
-                { label: 'Baskı', field: 'baski', isAutoQty: true },
-                { label: 'PVC', field: 'pvc', isAutoQty: true },
-                { label: 'MDF 1.5mm', field: 'mdf_1_5' },
-                { label: 'MDF 2.7mm', field: 'mdf_2_7' },
-                { label: 'MDF 4mm', field: 'mdf_4' },
-                { label: 'Kumaş', field: 'kumas' },
-                { label: 'İşçilik', field: 'iscilik' },
-                { label: 'Lazer', field: 'lazer' },
-                { label: 'Genel Giderler', field: 'genel_giderler' }
+                { label: "Baskı", field: "baski", isAutoQty: true },
+                { label: "PVC", field: "pvc", isAutoQty: true },
+                { label: "MDF 1.5mm", field: "mdf_1_5" },
+                { label: "MDF 2.7mm", field: "mdf_2_7" },
+                { label: "MDF 4mm", field: "mdf_4" },
+                { label: "Kumaş", field: "kumas" },
+                { label: "İşçilik", field: "iscilik" },
+                { label: "Lazer", field: "lazer" },
+                { label: "Genel Giderler", field: "genel_giderler" },
               ].map((item) => (
-                <div key={item.field} className="flex flex-col gap-2 bg-white/5 p-4 rounded-xl border border-white/5">
-                  <label className="block text-xs font-bold text-[#A67C52] uppercase tracking-wider">{item.label}</label>
-                  <div className={`grid ${item.isAutoQty ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                <div
+                  key={item.field}
+                  className="flex flex-col gap-2 bg-white/5 p-4 rounded-xl border border-white/5"
+                >
+                  <label className="block text-xs font-bold text-[#A67C52] uppercase tracking-wider">
+                    {item.label}
+                  </label>
+                  <div className={`grid ${item.isAutoQty ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
                     <div>
                       <span className="block text-[10px] text-[#9E9696] mb-1">Birim Fiyat (₺)</span>
-                      <Input 
-                        type="number"  
-                        value={editingProduct[item.field as keyof ProductCost] ?? 0} 
-                        onChange={(e) => handleEditChange(item.field as keyof ProductCost, e.target.value)} 
-                        className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]" 
+                      <Input
+                        type="number"
+                        value={editingProduct[item.field as keyof ProductCost] ?? 0}
+                        onChange={(e) =>
+                          handleEditChange(item.field as keyof ProductCost, e.target.value)
+                        }
+                        className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]"
                       />
                     </div>
                     {item.isAutoQty && (
                       <div>
-                        <span className="block text-[10px] text-[#9E9696] mb-1">Adet (Otomatik)</span>
-                        <Input 
-                          type="number" step="any" 
+                        <span className="block text-[10px] text-[#9E9696] mb-1">
+                          Adet (Otomatik)
+                        </span>
+                        <Input
+                          type="number"
+                          step="any"
                           readOnly
-                          value={item.field === 'baski' ? (editingProduct.sayfa_sayisi ?? 1) : ((editingProduct.sayfa_sayisi ?? 1) + 1)} 
-                          className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] opacity-50 cursor-not-allowed" 
+                          value={
+                            item.field === "baski"
+                              ? (editingProduct.sayfa_sayisi ?? 1)
+                              : (editingProduct.sayfa_sayisi ?? 1) + 1
+                          }
+                          className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] opacity-50 cursor-not-allowed"
                         />
                       </div>
                     )}
@@ -851,12 +1010,20 @@ function MaliyetView() {
               ))}
             </div>
           )}
-          
+
           <DialogFooter className="mt-4 border-t border-[#1a1a1e] pt-4">
-            <Button variant="ghost" onClick={() => setEditingProduct(null)} className="text-[#9E9696] hover:text-white">
+            <Button
+              variant="ghost"
+              onClick={() => setEditingProduct(null)}
+              className="text-[#9E9696] hover:text-white"
+            >
               İptal
             </Button>
-            <Button onClick={handleSave} disabled={updateMutation.isPending} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold px-6 shadow-lg shadow-[#A67C52]/20">
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold px-6 shadow-lg shadow-[#A67C52]/20"
+            >
               {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Kaydet
             </Button>

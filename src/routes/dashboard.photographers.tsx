@@ -92,7 +92,7 @@ function PhotographersPage() {
 
     try {
       setIsUploading(true);
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${teamId}-${Math.random()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -101,9 +101,7 @@ function PhotographersPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(fileName);
+      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
       setForm((prev) => ({ ...prev, img: publicUrlData.publicUrl }));
       toast.success("Fotoğraf yüklendi!");
@@ -130,7 +128,12 @@ function PhotographersPage() {
 
   const openEditModal = (p: any) => {
     setEditingId(p.id);
-    setForm({ full_name: p.full_name || "", role: p.role || "", phone: p.phone || "", img: p.img || "" });
+    setForm({
+      full_name: p.full_name || "",
+      role: p.role || "",
+      phone: p.phone || "",
+      img: p.img || "",
+    });
     setIsModalOpen(true);
   };
 
@@ -173,7 +176,11 @@ function PhotographersPage() {
             >
               <div className="aspect-[4/3] relative bg-black">
                 {p.img ? (
-                  <img src={p.img} alt={p.full_name} className="w-full h-full object-cover opacity-80" />
+                  <img
+                    src={p.img}
+                    alt={p.full_name}
+                    className="w-full h-full object-cover opacity-80"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/30">
                     Görsel Yok
@@ -204,7 +211,9 @@ function PhotographersPage() {
                 <p className="text-[#A67C52] font-medium text-sm mt-1">{p.role}</p>
                 {p.phone && (
                   <p className="text-white/60 text-sm mt-3 flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[10px]">📞</span>
+                    <span className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[10px]">
+                      📞
+                    </span>
                     {p.phone}
                   </p>
                 )}
@@ -238,7 +247,11 @@ function PhotographersPage() {
                   </div>
                 ) : form.img ? (
                   <div className="absolute inset-0 z-10">
-                    <img src={form.img} alt="Preview" className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                    <img
+                      src={form.img}
+                      alt="Preview"
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                    />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <p className="text-white font-bold drop-shadow-md">Değiştirmek için tıkla</p>
                     </div>

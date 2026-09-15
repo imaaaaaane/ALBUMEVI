@@ -63,13 +63,18 @@ function AdminLogin() {
     },
     onError: (err: any) => {
       console.error("Login failed:", err);
-      toast.error(err.message === "Invalid login credentials" ? "Invalid Credentials" : err.message || "Giriş yapılamadı.", {
-        style: {
-          background: "#1a0505",
-          color: "#E53E3E",
-          border: "1px solid rgba(229, 62, 62, 0.4)",
+      toast.error(
+        err.message === "Invalid login credentials"
+          ? "Invalid Credentials"
+          : err.message || "Giriş yapılamadı.",
+        {
+          style: {
+            background: "#1a0505",
+            color: "#E53E3E",
+            border: "1px solid rgba(229, 62, 62, 0.4)",
+          },
         },
-      });
+      );
     },
   });
 
@@ -111,9 +116,7 @@ function AdminLogin() {
 
         {/* Card */}
         <div className="rounded-3xl border border-white/5 bg-[#111111] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <h1 className="text-2xl font-bold text-center tracking-tight">
-            Yönetici Girişi
-          </h1>
+          <h1 className="text-2xl font-bold text-center tracking-tight">Yönetici Girişi</h1>
           <p className="mt-2 text-sm text-gray-400 text-center leading-relaxed">
             Ana sistem yöneticisi erişimi.
           </p>

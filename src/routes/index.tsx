@@ -60,7 +60,7 @@ const GALLERY_ITEMS = [
   { id: 2, src: "/portfolyo/portfolya2.jpg", alt: "Albumevi Portfolyo 2" },
   { id: 3, src: "/portfolyo/portfolya3.jpg", alt: "Albumevi Portfolyo 3" },
   { id: 4, src: "/portfolyo/portfolya4.jpg", alt: "Albumevi Portfolyo 4" },
-  { id: 5, src: "/portfolyo/portfolya5.jpg", alt: "Albumevi Portfolyo 5" }
+  { id: 5, src: "/portfolyo/portfolya5.jpg", alt: "Albumevi Portfolyo 5" },
 ];
 
 const PROCESS_STEPS = [
@@ -89,20 +89,20 @@ const PROCESS_STEPS = [
 const FAQS = [
   {
     q: "Mezuniyet cübbe ve keplerini siz mi temin ediyorsunuz?",
-    a: "Evet, tüm mezuniyet kıyafetleri ve konsept aksesuarları ekibimiz tarafından okunuza getirilir."
+    a: "Evet, tüm mezuniyet kıyafetleri ve konsept aksesuarları ekibimiz tarafından okunuza getirilir.",
   },
   {
     q: "Çekimler okulu aksatır mı?",
-    a: "Kesinlikle hayır. Programı ders saatlerine en uygun şekilde yapıyor ve hızlı, organize bir çekim sağlıyoruz."
+    a: "Kesinlikle hayır. Programı ders saatlerine en uygun şekilde yapıyor ve hızlı, organize bir çekim sağlıyoruz.",
   },
   {
     q: "Veliler fotoğraf seçimi yapıyor mu?",
-    a: "Hayır, süreç okulu yormamak adına çok pratik ilerler. Fotoğraf seçimi karmaşası yaşanmaz; öğretmenlerimiz sistem üzerinden sadece ürün alacak öğrencileri belirler ve sipariş listesini onaylar."
+    a: "Hayır, süreç okulu yormamak adına çok pratik ilerler. Fotoğraf seçimi karmaşası yaşanmaz; öğretmenlerimiz sistem üzerinden sadece ürün alacak öğrencileri belirler ve sipariş listesini onaylar.",
   },
   {
     q: "Ürünler ne kadar sürede teslim ediliyor?",
-    a: "Çekimler ve siparişler tamamlandıktan sonra, premium ürünlerimiz 2-3 hafta içerisinde özenle hazırlanıp okula teslim edilir."
-  }
+    a: "Çekimler ve siparişler tamamlandıktan sonra, premium ürünlerimiz 2-3 hafta içerisinde özenle hazırlanıp okula teslim edilir.",
+  },
 ];
 
 const MotionLink = motion(Link);
@@ -219,7 +219,11 @@ function Landing() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0A0A0A]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src="/logo.jpg" alt="Albumevi Logo" className="h-8 md:h-12 w-auto object-contain" />
+            <img
+              src="/logo.jpg"
+              alt="Albumevi Logo"
+              className="h-8 md:h-12 w-auto object-contain"
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-300 font-medium">
@@ -264,7 +268,7 @@ function Landing() {
       <div className="relative pt-24 min-h-screen flex items-center justify-center overflow-hidden">
         {/* Ambient Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#D0A36D]/10 blur-[120px] rounded-full pointer-events-none" />
-        
+
         <motion.main
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -305,15 +309,10 @@ function Landing() {
                   <Star className="w-4 h-4 fill-current" />
                   <Star className="w-4 h-4 fill-current" />
                 </div>
-                <p className="text-sm text-gray-400">
-                  500+ okul memnuniyetle hizmet aldı
-                </p>
+                <p className="text-sm text-gray-400">500+ okul memnuniyetle hizmet aldı</p>
               </motion.div>
 
-              <motion.div
-                variants={heroItemVariants}
-                className="pt-6"
-              >
+              <motion.div variants={heroItemVariants} className="pt-6">
                 <a
                   href="#galeri"
                   className="inline-flex items-center gap-2 bg-[#D0A36D] hover:bg-[#E2B67C] text-black px-8 py-3 rounded-full font-semibold transition-all hover:scale-105"
@@ -362,13 +361,10 @@ function Landing() {
                   </div>
                 </div>
               </div>
-
             </motion.div>
           </div>
         </motion.main>
       </div>
-
-
 
       {/* SERVICES GRID SECTION - Katana Animation */}
       <div
@@ -454,7 +450,6 @@ function Landing() {
         </div>
       </div>
 
-
       {/* PHOTOGRAPHERS SECTION */}
       <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-[#0A0A0A]">
         <div className="text-center mb-16">
@@ -468,37 +463,43 @@ function Landing() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-center max-w-7xl mx-auto">
-          {(dynamicPhotographers.length > 0 ? dynamicPhotographers : PHOTOGRAPHERS).map((photographer: any, idx: number) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="flex flex-col items-center text-center group"
-            >
-              <div className="w-48 h-48 rounded-full border-4 border-[#A67C52] overflow-hidden mb-5 relative shadow-lg shadow-[#A67C52]/10 group-hover:shadow-[#A67C52]/30 transition-shadow duration-500 p-1">
-                <img
-                  src={photographer.img || photographer.image_url}
-                  alt={photographer.full_name || photographer.name}
-                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
-              
-              <h3 className="text-2xl font-bold text-white mt-1">{photographer.full_name || photographer.name}</h3>
-              <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase mt-2 mb-4">{photographer.role || photographer.title}</p>
-              
-              <a
-                href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#111111] hover:bg-[#D0A36D] text-white hover:text-[#0A0A0A] py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-colors duration-300 w-full max-w-[200px]"
+          {(dynamicPhotographers.length > 0 ? dynamicPhotographers : PHOTOGRAPHERS).map(
+            (photographer: any, idx: number) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: idx * 0.1, duration: 0.5 }}
+                className="flex flex-col items-center text-center group"
               >
-                <Phone className="w-4 h-4" />
-                <span className="font-semibold text-sm">{photographer.phone}</span>
-              </a>
-            </motion.div>
-          ))}
+                <div className="w-48 h-48 rounded-full border-4 border-[#A67C52] overflow-hidden mb-5 relative shadow-lg shadow-[#A67C52]/10 group-hover:shadow-[#A67C52]/30 transition-shadow duration-500 p-1">
+                  <img
+                    src={photographer.img || photographer.image_url}
+                    alt={photographer.full_name || photographer.name}
+                    className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
+
+                <h3 className="text-2xl font-bold text-white mt-1">
+                  {photographer.full_name || photographer.name}
+                </h3>
+                <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase mt-2 mb-4">
+                  {photographer.role || photographer.title}
+                </p>
+
+                <a
+                  href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#111111] hover:bg-[#D0A36D] text-white hover:text-[#0A0A0A] py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-colors duration-300 w-full max-w-[200px]"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span className="font-semibold text-sm">{photographer.phone}</span>
+                </a>
+              </motion.div>
+            ),
+          )}
         </div>
       </section>
 
@@ -510,38 +511,39 @@ function Landing() {
           </p>
           <h2 className="text-4xl md:text-5xl font-bold">Unutulmaz Anılar</h2>
           <p className="text-gray-400 mt-4 max-w-2xl mx-auto">
-            Objektifimizden yansıyan en özel anlar. Çocukların doğal gülümsemeleri ve profesyonel stüdyo kalitemiz.
+            Objektifimizden yansıyan en özel anlar. Çocukların doğal gülümsemeleri ve profesyonel
+            stüdyo kalitemiz.
           </p>
         </div>
 
         {/* Image Grid */}
         <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-          {(dynamicPortfolio.length > 0 ? dynamicPortfolio : GALLERY_ITEMS).map((item: any, i: number) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5 }}
-              className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 break-inside-avoid mb-4"
-            >
-              <img
-                src={item.image_url || item.src}
-                alt={item.alt || "Portfolyo Görseli"}
-                className="w-full h-auto object-cover rounded-lg group-hover:scale-110 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
-            </motion.div>
-          ))}
+          {(dynamicPortfolio.length > 0 ? dynamicPortfolio : GALLERY_ITEMS).map(
+            (item: any, i: number) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5 }}
+                className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 break-inside-avoid mb-4"
+              >
+                <img
+                  src={item.image_url || item.src}
+                  alt={item.alt || "Portfolyo Görseli"}
+                  className="w-full h-auto object-cover rounded-lg group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
+              </motion.div>
+            ),
+          )}
         </div>
       </section>
 
       {/* PROCESS SECTION */}
       <section id="surec" className="px-6 py-24 max-w-7xl mx-auto relative">
         <div className="text-center mb-24 relative z-10">
-          <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">
-            Süreç
-          </p>
+          <p className="text-[#D0A36D] text-sm font-bold tracking-widest uppercase mb-3">Süreç</p>
           <h2 className="text-4xl md:text-5xl font-bold">Nasıl Çalışıyoruz</h2>
         </div>
 
@@ -555,8 +557,10 @@ function Landing() {
               const isEven = idx % 2 === 0;
 
               return (
-                <div key={idx} className={`relative flex flex-col md:flex-row items-center w-full ${isEven ? 'md:justify-start' : 'md:justify-end'} ${idx > 0 ? 'mt-8 md:-mt-24' : ''}`}>
-                  
+                <div
+                  key={idx}
+                  className={`relative flex flex-col md:flex-row items-center w-full ${isEven ? "md:justify-start" : "md:justify-end"} ${idx > 0 ? "mt-8 md:-mt-24" : ""}`}
+                >
                   {/* The Timeline Dot */}
                   <div className="absolute left-6 md:left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-[#0A0A0A] border-2 border-[#D0A36D] flex items-center justify-center shadow-[0_0_20px_rgba(208,163,109,0.4)] z-20 top-8 md:top-1/2 md:-translate-y-1/2">
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#D0A36D]" />
@@ -571,7 +575,9 @@ function Landing() {
                     className={`w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden border border-white/5 hover:border-[#D0A36D]/40 transition-all duration-500 bg-black/60 backdrop-blur-md`}
                   >
                     {/* Giant Number */}
-                    <div className={`absolute -top-4 ${isEven ? '-right-4' : '-left-4'} text-9xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 select-none`}>
+                    <div
+                      className={`absolute -top-4 ${isEven ? "-right-4" : "-left-4"} text-9xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 select-none`}
+                    >
                       {idx + 1}
                     </div>
 
@@ -580,7 +586,9 @@ function Landing() {
                       <div className="w-14 h-14 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D0A36D] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-500">
                         <Icon className="w-7 h-7" />
                       </div>
-                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D0A36D] transition-colors duration-300">{step.title}</h3>
+                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D0A36D] transition-colors duration-300">
+                        {step.title}
+                      </h3>
                       <p className="text-gray-400 leading-relaxed text-sm sm:text-base">
                         {step.desc}
                       </p>
@@ -597,10 +605,12 @@ function Landing() {
       <section id="sss" className="px-6 py-20 max-w-3xl mx-auto relative">
         {/* Dynamic Background Blob */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#8B5A2B] rounded-full blur-[150px] opacity-[0.05] animate-[pulse_6s_ease-in-out_infinite] pointer-events-none z-0" />
-        
+
         <div className="relative z-10">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-serif tracking-widest font-light">Sıkça Sorulan Sorular</h2>
+            <h2 className="text-4xl md:text-5xl font-serif tracking-widest font-light">
+              Sıkça Sorulan Sorular
+            </h2>
           </div>
           <div className="space-y-4">
             {FAQS.map((faq, idx) => (
@@ -616,7 +626,9 @@ function Landing() {
                   onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between py-6 px-4 text-left focus:outline-none bg-transparent group"
                 >
-                  <span className={`font-medium transition-all duration-300 group-hover:translate-x-2 group-hover:text-[#8B5A2B] ${activeFaq === idx ? "text-[#8B5A2B] translate-x-2" : "text-white"}`}>
+                  <span
+                    className={`font-medium transition-all duration-300 group-hover:translate-x-2 group-hover:text-[#8B5A2B] ${activeFaq === idx ? "text-[#8B5A2B] translate-x-2" : "text-white"}`}
+                  >
                     {faq.q}
                   </span>
                   <ChevronDown
@@ -627,15 +639,18 @@ function Landing() {
                   {activeFaq === idx && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
-                      animate={{ 
-                        height: "auto", 
-                        opacity: 1, 
-                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.3, delay: 0.1 } } 
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: {
+                          height: { duration: 0.3 },
+                          opacity: { duration: 0.3, delay: 0.1 },
+                        },
                       }}
-                      exit={{ 
-                        height: 0, 
-                        opacity: 0, 
-                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } } 
+                      exit={{
+                        height: 0,
+                        opacity: 0,
+                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } },
                       }}
                     >
                       <div className="px-4 pb-6 text-gray-400 text-sm leading-relaxed mt-2 bg-transparent">
@@ -873,19 +888,21 @@ function Landing() {
                 {/* CEO Section */}
                 <div className="flex flex-col items-center justify-center text-center bg-[#151515] rounded-3xl p-8 border border-[#D0A36D]/30 relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#D0A36D]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  
+
                   <div className="w-28 h-28 rounded-full p-1 border-2 border-[#D0A36D]/60 mb-5 relative z-10 shadow-lg shadow-[#D0A36D]/10 group-hover:border-[#D0A36D] transition-colors duration-500">
-                    <img 
-                      src="/pic4.jpg" 
-                      alt="Amine Himmich" 
+                    <img
+                      src="/pic4.jpg"
+                      alt="Amine Himmich"
                       className="w-full h-full object-cover rounded-full"
                     />
                   </div>
-                  
+
                   <div className="relative z-10 space-y-2 flex flex-col items-center">
                     <h4 className="text-2xl font-bold text-white">Amine Himmich</h4>
-                    <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase">Kurucu & Baş Fotoğrafçı</p>
-                    
+                    <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase">
+                      Kurucu & Baş Fotoğrafçı
+                    </p>
+
                     <div className="pt-3 w-full">
                       <a
                         href="https://wa.me/905551234567"
@@ -907,10 +924,13 @@ function Landing() {
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {PHOTOGRAPHERS.map((photographer, idx) => (
-                      <div key={idx} className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4">
+                      <div
+                        key={idx}
+                        className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4"
+                      >
                         <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
-                          <img 
-                            src={photographer.img} 
+                          <img
+                            src={photographer.img}
                             alt={photographer.name}
                             className="w-full h-full object-cover"
                           />

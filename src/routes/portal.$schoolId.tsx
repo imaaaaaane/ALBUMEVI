@@ -60,6 +60,23 @@ interface SelectionData {
   note: string;
 }
 
+import { getR2FileUrl } from "../lib/r2";
+
+const R2Image = ({ src, alt, className }: { src: string; alt?: string; className?: string }) => {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (src.startsWith("http")) {
+      setUrl(src);
+    } else {
+      getR2FileUrl(src).then(setUrl).catch(console.error);
+    }
+  }, [src]);
+
+  if (!url) return <div className={`animate-pulse bg-white/10 ${className}`} />;
+  return <img src={url} alt={alt} className={className} />;
+};
+
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
   console.log("PORTAL_COMPONENT_UPDATED_v2");
@@ -835,7 +852,7 @@ function SchoolPortal() {
                     <h4 className="font-bold text-lg mb-3">{s.name}</h4>
                     <div className="w-full aspect-[3/4] bg-white/5 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
                       {s.image_url ? (
-                        <img
+                        <R2Image
                           src={s.image_url}
                           alt={s.name}
                           className="w-full h-full object-cover"

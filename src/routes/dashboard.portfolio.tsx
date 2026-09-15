@@ -31,7 +31,7 @@ function PortfolioPage() {
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
 
       // Upload to storage
@@ -41,17 +41,13 @@ function PortfolioPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from("portfolio")
-        .getPublicUrl(fileName);
+      const { data: publicUrlData } = supabase.storage.from("portfolio").getPublicUrl(fileName);
 
       // Insert into database
-      const { error: dbError } = await (supabase as any)
-        .from("portfolio_images")
-        .insert({
-          image_url: publicUrlData.publicUrl,
-          team_id: teamId === "all" ? null : (teamId || null),
-        });
+      const { error: dbError } = await (supabase as any).from("portfolio_images").insert({
+        image_url: publicUrlData.publicUrl,
+        team_id: teamId === "all" ? null : teamId || null,
+      });
 
       if (dbError) throw dbError;
     },
@@ -64,14 +60,14 @@ function PortfolioPage() {
     },
     onSettled: () => {
       setIsUploading(false);
-    }
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (image: any) => {
       // Optional: Delete from storage as well
       if (image.image_url) {
-        const urlParts = image.image_url.split('/');
+        const urlParts = image.image_url.split("/");
         const fileName = urlParts[urlParts.length - 1];
         if (fileName) {
           await supabase.storage.from("portfolio").remove([fileName]);
@@ -110,7 +106,7 @@ function PortfolioPage() {
             Açılış sayfasında gösterilecek portfolyo görsellerini buradan ekleyip silebilirsiniz.
           </p>
         </div>
-        
+
         <div className="relative overflow-hidden group">
           <Button
             disabled={isUploading}

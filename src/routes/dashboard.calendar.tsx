@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Camera, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  Camera,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -12,11 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -49,10 +52,32 @@ const PALETTE = [
 ];
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 const MONTHS_TR = [
-  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
 ];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAYS_TR = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -65,7 +90,14 @@ function CalendarView() {
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ school_name: "", photographer_name: "", photographer_id: "", date: "", time: "09:00", event_color: PALETTE[0] });
+  const [form, setForm] = useState({
+    school_name: "",
+    photographer_name: "",
+    photographer_id: "",
+    date: "",
+    time: "09:00",
+    event_color: PALETTE[0],
+  });
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles", teamId],
@@ -85,14 +117,15 @@ function CalendarView() {
   const { data: shoots = [] } = useQuery({
     queryKey: ["photo_shoots"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("photo_shoots" as any)
+      const { data, error } = await supabase
+        .from("photo_shoots" as any)
         .select("*")
         .order("shoot_date", { ascending: true })
         .order("shoot_time", { ascending: true });
 
       if (error) throw new Error(error.message);
       return (data as any[]) || [];
-    }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -101,14 +134,14 @@ function CalendarView() {
         .from("photo_shoots" as any)
         .delete()
         .eq("id", id);
-      
+
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Çekim silindi.");
       qc.invalidateQueries({ queryKey: ["photo_shoots"] });
     },
-    onError: (e: Error) => toast.error(e.message || "Çekim silinemedi.")
+    onError: (e: Error) => toast.error(e.message || "Çekim silinemedi."),
   });
 
   const year = cursor.getFullYear();
@@ -142,7 +175,7 @@ function CalendarView() {
 
   const handleAdd = async () => {
     if (!form.school_name.trim() || !form.date) return;
-    
+
     setIsSubmitting(true);
     try {
       const newShoot = {
@@ -155,22 +188,27 @@ function CalendarView() {
         team_id: teamId,
       };
 
-      const { error } = await (supabase as any)
-        .from("photo_shoots")
-        .insert(newShoot);
-        
+      const { error } = await (supabase as any).from("photo_shoots").insert(newShoot);
+
       if (error) {
         console.error("Insert Error:", error);
         throw error;
       }
-      
+
       toast.success("Çekim başarıyla eklendi");
       qc.invalidateQueries({ queryKey: ["photo_shoots"] });
-      
+
       const dt = new Date(form.date);
       setCursor(new Date(dt.getFullYear(), dt.getMonth(), 1));
-      
-      setForm({ school_name: "", photographer_name: "", photographer_id: "", date: "", time: "09:00", event_color: PALETTE[0] });
+
+      setForm({
+        school_name: "",
+        photographer_name: "",
+        photographer_id: "",
+        date: "",
+        time: "09:00",
+        event_color: PALETTE[0],
+      });
       setOpen(false);
     } catch (e: any) {
       console.error("Catch Block Error:", e);
@@ -191,7 +229,9 @@ function CalendarView() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Takvim Yönetimi</h1>
-          <p className="text-sm text-muted-foreground">Çekim seanslarını ve etkinlikleri planlayın.</p>
+          <p className="text-sm text-muted-foreground">
+            Çekim seanslarını ve etkinlikleri planlayın.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -209,7 +249,9 @@ function CalendarView() {
                 <Label htmlFor="school">Okul Adı</Label>
                 <Input
                   id="school"
-                  placeholder={lang === "TR" ? "Örn. Batman Anadolu Lisesi" : "e.g. Beverly Hills School"}
+                  placeholder={
+                    lang === "TR" ? "Örn. Batman Anadolu Lisesi" : "e.g. Beverly Hills School"
+                  }
                   value={form.school_name}
                   onChange={(e) => setForm({ ...form, school_name: e.target.value })}
                 />
@@ -222,14 +264,20 @@ function CalendarView() {
                   onChange={(e) => {
                     const selected = profiles.find((p: any) => p.id === e.target.value);
                     if (selected) {
-                      setForm({ ...form, photographer_name: selected.full_name || selected.email, photographer_id: selected.id });
+                      setForm({
+                        ...form,
+                        photographer_name: selected.full_name || selected.email,
+                        photographer_id: selected.id,
+                      });
                     } else {
                       setForm({ ...form, photographer_name: "", photographer_id: "" });
                     }
                   }}
                   className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="" disabled>Fotoğrafçı (Ekip Üyesi) Seçiniz...</option>
+                  <option value="" disabled>
+                    Fotoğrafçı (Ekip Üyesi) Seçiniz...
+                  </option>
                   {profiles.map((p: any) => (
                     <option key={p.id} value={p.id}>
                       {(p.full_name || p.email)?.toUpperCase()}
@@ -308,8 +356,12 @@ function CalendarView() {
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 {lang === "TR" ? "Vazgeç" : "Cancel"}
               </Button>
-              <Button className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90" onClick={handleAdd} disabled={!form.school_name.trim() || !form.date || isSubmitting}>
-                {isSubmitting ? "Ekleniyor..." : (lang === "TR" ? "Çekim Planla" : "Schedule Shoot")}
+              <Button
+                className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90"
+                onClick={handleAdd}
+                disabled={!form.school_name.trim() || !form.date || isSubmitting}
+              >
+                {isSubmitting ? "Ekleniyor..." : lang === "TR" ? "Çekim Planla" : "Schedule Shoot"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -393,11 +445,14 @@ function CalendarView() {
                             style={{
                               backgroundColor: `${s.event_color || "#A67C52"}26`,
                               borderColor: `${s.event_color || "#A67C52"}66`,
-                              color: s.event_color || "#A67C52"
+                              color: s.event_color || "#A67C52",
                             }}
                             title={`${s.shoot_time} · ${s.school_name} — ${s.photographer_name}`}
                           >
-                            <span className="font-medium">{s.shoot_time ? s.shoot_time.slice(0, 5) : ""}</span> {s.school_name}
+                            <span className="font-medium">
+                              {s.shoot_time ? s.shoot_time.slice(0, 5) : ""}
+                            </span>{" "}
+                            {s.school_name}
                           </div>
                         ))}
                       </div>
@@ -426,25 +481,27 @@ function CalendarView() {
                     key={s.id}
                     className="flex gap-3 items-center rounded-lg border border-border bg-background/40 p-3 group relative pr-12"
                   >
-                    <div 
+                    <div
                       className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md"
                       style={{
                         backgroundColor: `${s.event_color || "#A67C52"}26`,
-                        color: s.event_color || "#A67C52"
+                        color: s.event_color || "#A67C52",
                       }}
                     >
                       <div className="text-[10px] uppercase">
-                        {lang === "TR" ? MONTHS_TR[dt.getMonth()].slice(0, 3) : MONTHS[dt.getMonth()].slice(0, 3)}
+                        {lang === "TR"
+                          ? MONTHS_TR[dt.getMonth()].slice(0, 3)
+                          : MONTHS[dt.getMonth()].slice(0, 3)}
                       </div>
                       <div className="text-lg font-bold leading-none">{dt.getDate()}</div>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{s.school_name}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {s.shoot_time ? s.shoot_time.slice(0,5) : ""} · {s.photographer_name}
+                        {s.shoot_time ? s.shoot_time.slice(0, 5) : ""} · {s.photographer_name}
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleDeleteEvent(s.id)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-md text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
                       title="Sil"

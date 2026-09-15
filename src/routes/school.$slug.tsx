@@ -1,7 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Camera, Check, FileDown, Loader2, Minus, Package, Plus, ShoppingBag, X, Truck, Settings, Clock
+  Camera,
+  Check,
+  FileDown,
+  Loader2,
+  Minus,
+  Package,
+  Plus,
+  ShoppingBag,
+  X,
+  Truck,
+  Settings,
+  Clock,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +22,6 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { supabase } from "@/integrations/supabase/client";
-
 
 export const Route = createFileRoute("/school/$slug")({
   component: SchoolPortal,
@@ -42,11 +52,18 @@ function SchoolPortal() {
   const { t, dir } = useI18n();
   const qc = useQueryClient();
 
-  const { data, isLoading: dataLoading, error } = useQuery({
+  const {
+    data,
+    isLoading: dataLoading,
+    error,
+  } = useQuery({
     queryKey: ["school", slug],
     queryFn: async () => {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug || '');
-      const queryColumn = isUUID ? 'id' : 'unique_link_slug';
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          slug || "",
+        );
+      const queryColumn = isUUID ? "id" : "unique_link_slug";
 
       // Hna rje3na l is_active li kayna f Supabase dyalk
       const { data: school, error: schoolError } = await (supabase as any)
@@ -118,7 +135,7 @@ function SchoolPortal() {
           quantity: qty,
           total_price: itemTotal,
           order_status: "Pending",
-          note: orderNote // Siftna l-mola7ada hna
+          note: orderNote, // Siftna l-mola7ada hna
         });
         if (error) throw new Error(error.message);
 
@@ -146,10 +163,17 @@ function SchoolPortal() {
   }
   if (error || !data) {
     return (
-      <div dir={dir} className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground">
+      <div
+        dir={dir}
+        className="albumevi-dark flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-foreground"
+      >
         <h1 className="text-xl font-semibold">Okul bulunamadı</h1>
-        <p className="text-sm text-muted-foreground">Bu bağlantı geçersiz veya süresi dolmuş olabilir.</p>
-        <Link to="/" className="text-primary underline">Ana sayfaya dön</Link>
+        <p className="text-sm text-muted-foreground">
+          Bu bağlantı geçersiz veya süresi dolmuş olabilir.
+        </p>
+        <Link to="/" className="text-primary underline">
+          Ana sayfaya dön
+        </Link>
       </div>
     );
   }
@@ -170,7 +194,7 @@ function SchoolPortal() {
     { id: "Completed", label: "Teslim Edildi", icon: Truck },
   ];
 
-  const currentStageIndex = funnelStages.findIndex(s => s.id === currentStatus);
+  const currentStageIndex = funnelStages.findIndex((s) => s.id === currentStatus);
 
   const inc = (id: string) => setSelection((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }));
   const dec = (id: string) =>
@@ -203,7 +227,12 @@ function SchoolPortal() {
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <Button variant="outline" size="sm" onClick={() => setTray(true)} className="relative border-border bg-card hover:bg-accent">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTray(true)}
+              className="relative border-border bg-card hover:bg-accent"
+            >
               <ShoppingBag className="mr-2 h-4 w-4" />
               Seçimi İncele
               {totalQty > 0 && (
@@ -212,7 +241,9 @@ function SchoolPortal() {
                 </span>
               )}
             </Button>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Çıkış yap</Link>
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+              Çıkış yap
+            </Link>
           </div>
         </div>
       </header>
@@ -228,22 +259,37 @@ function SchoolPortal() {
 
         {orders.length > 0 && (
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Canlı Üretim Hunisi (Son Sipariş)</h2>
+            <h2 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
+              Canlı Üretim Hunisi (Son Sipariş)
+            </h2>
             <div className="flex flex-col sm:flex-row justify-between gap-4">
               {funnelStages.map((stage, idx) => {
                 const Icon = stage.icon;
                 const isCompleted = idx <= currentStageIndex;
                 const isCurrent = idx === currentStageIndex;
                 return (
-                  <div key={stage.id} className="flex flex-1 flex-col items-center gap-2 text-center">
-                    <div className={cn(
-                      "flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors",
-                      isCurrent ? "border-primary bg-primary/20 text-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]" :
-                        isCompleted ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
-                    )}>
+                  <div
+                    key={stage.id}
+                    className="flex flex-1 flex-col items-center gap-2 text-center"
+                  >
+                    <div
+                      className={cn(
+                        "flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors",
+                        isCurrent
+                          ? "border-primary bg-primary/20 text-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]"
+                          : isCompleted
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground",
+                      )}
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className={cn("text-xs font-semibold", isCompleted ? "text-foreground" : "text-muted-foreground")}>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold",
+                        isCompleted ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
                       {stage.label}
                     </span>
                   </div>
@@ -258,7 +304,13 @@ function SchoolPortal() {
             const qty = selection[item.id] ?? 0;
             const selected = qty > 0;
             return (
-              <div key={item.id} className={cn("flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors", selected ? "border-primary" : "border-border hover:border-primary/40")}>
+              <div
+                key={item.id}
+                className={cn(
+                  "flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+                  selected ? "border-primary" : "border-border hover:border-primary/40",
+                )}
+              >
                 <div className="relative flex h-40 items-center justify-center bg-background/80">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card">
@@ -277,24 +329,41 @@ function SchoolPortal() {
                 </div>
                 <div className="flex flex-1 flex-col gap-3 p-4">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{String(item.id).slice(0, 8).toUpperCase()}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {String(item.id).slice(0, 8).toUpperCase()}
+                    </p>
                     <h3 className="mt-0.5 text-sm font-semibold leading-snug">{item.name}</h3>
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-2xl font-bold text-primary">${item.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-primary">
+                      ${item.price.toFixed(2)}
+                    </span>
                   </div>
                   {selected ? (
                     <div className="flex items-center justify-between rounded-md border border-border bg-background/60 p-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-accent" onClick={() => dec(item.id)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 hover:bg-accent"
+                        onClick={() => dec(item.id)}
+                      >
                         <Minus className="h-4 w-4" />
                       </Button>
                       <span className="text-sm font-semibold">{qty} seçildi</span>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-accent" onClick={() => inc(item.id)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 hover:bg-accent"
+                        onClick={() => inc(item.id)}
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => inc(item.id)}>
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => inc(item.id)}
+                    >
                       Paket Seç
                     </Button>
                   )}
@@ -324,7 +393,14 @@ function SchoolPortal() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">${Number(o.total_price).toLocaleString()}</span>
-                    <Badge className={cn("border text-[10px] uppercase tracking-wider", o.order_status === "Completed" || o.order_status === "Shipped" ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-400" : "border-primary/30 bg-primary/15 text-primary")}>
+                    <Badge
+                      className={cn(
+                        "border text-[10px] uppercase tracking-wider",
+                        o.order_status === "Completed" || o.order_status === "Shipped"
+                          ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
+                          : "border-primary/30 bg-primary/15 text-primary",
+                      )}
+                    >
                       {o.order_status}
                     </Badge>
                   </div>
@@ -344,10 +420,15 @@ function SchoolPortal() {
               </span>
               <div>
                 <div className="font-semibold">{totalQty} ürün seçildi</div>
-                <div className="text-xs text-muted-foreground">Toplam ${totalPrice.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">
+                  Toplam ${totalPrice.toLocaleString()}
+                </div>
               </div>
             </div>
-            <Button onClick={() => setTray(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button
+              onClick={() => setTray(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
               Seçimi İncele
             </Button>
           </div>
@@ -360,35 +441,62 @@ function SchoolPortal() {
           <aside className="relative ml-auto flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h2 className="text-base font-semibold">Seçiminizi inceleyin</h2>
-              <button type="button" onClick={() => setTray(false)} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <button
+                type="button"
+                onClick={() => setTray(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {selectedItems.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">Henüz ürün seçilmedi.</p>
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Henüz ürün seçilmedi.
+                </p>
               ) : (
                 <ul className="space-y-3">
                   {selectedItems.map((item) => (
-                    <li key={item.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                    <li
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3"
+                    >
                       <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-card text-muted-foreground">
                         <Package className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="truncate text-sm font-semibold">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">${item.price.toFixed(2)} each</div>
+                        <div className="text-xs text-muted-foreground">
+                          ${item.price.toFixed(2)} each
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 rounded-md border border-border bg-card p-0.5">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => dec(item.id)}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => dec(item.id)}
+                        >
                           <Minus className="h-3.5 w-3.5" />
                         </Button>
-                        <span className="w-6 text-center text-sm font-semibold">{selection[item.id]}</span>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => inc(item.id)}>
+                        <span className="w-6 text-center text-sm font-semibold">
+                          {selection[item.id]}
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => inc(item.id)}
+                        >
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <button type="button" onClick={() => remove(item.id)} className="rounded-md p-1 text-muted-foreground hover:bg-accent">
+                      <button
+                        type="button"
+                        onClick={() => remove(item.id)}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+                      >
                         <X className="h-4 w-4" />
                       </button>
                     </li>
@@ -399,7 +507,9 @@ function SchoolPortal() {
 
             {selectedItems.length > 0 && (
               <div className="border-t border-border px-5 py-4 bg-background/30">
-                <label className="text-sm font-semibold mb-2 block">Özel Notlar (İkiz Öğrenciler vb.)</label>
+                <label className="text-sm font-semibold mb-2 block">
+                  Özel Notlar (İkiz Öğrenciler vb.)
+                </label>
                 <textarea
                   value={orderNote}
                   onChange={(e) => setOrderNote(e.target.value)}
@@ -436,7 +546,9 @@ function SchoolPortal() {
                 <Check className="h-7 w-7" />
               </span>
               <h2 className="text-xl font-bold">Seçim gönderildi</h2>
-              <p className="text-sm text-muted-foreground">Siparişiniz Albumevi'ne inceleme için gönderildi.</p>
+              <p className="text-sm text-muted-foreground">
+                Siparişiniz Albumevi'ne inceleme için gönderildi.
+              </p>
             </div>
             <div className="space-y-2 px-6 py-5 text-sm">
               <div className="flex items-center justify-between">
@@ -459,7 +571,10 @@ function SchoolPortal() {
               </div>
             </div>
             <div className="border-t border-border bg-background/40 px-6 py-4">
-              <Button onClick={() => setConfirm(null)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                onClick={() => setConfirm(null)}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              >
                 Tamam
               </Button>
             </div>

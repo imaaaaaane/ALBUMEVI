@@ -144,8 +144,14 @@ export const getFinanceSummary = createServerFn({ method: "GET" }).handler(async
   if (oErr) throw new Error(oErr.message);
   if (fErr) throw new Error(fErr.message);
 
-  const totalRevenue = (orders ?? []).reduce((s: number, o: any) => s + Number(o.total_price ?? 0), 0);
-  const totalPaid = (txs ?? []).reduce((s: number, t: any) => s + (t.type === 'payment' ? Number(t.amount ?? 0) : 0), 0);
+  const totalRevenue = (orders ?? []).reduce(
+    (s: number, o: any) => s + Number(o.total_price ?? 0),
+    0,
+  );
+  const totalPaid = (txs ?? []).reduce(
+    (s: number, t: any) => s + (t.type === "payment" ? Number(t.amount ?? 0) : 0),
+    0,
+  );
   const balanceDue = totalRevenue - totalPaid;
   const pendingOrders = (orders ?? []).filter((o: any) => o.order_status !== "Completed").length;
 

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { uploadFileToR2, getR2FileUrl } from "../lib/r2";
 import {
   Accordion,
   AccordionContent,
@@ -150,17 +151,12 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
         const fileName = `${Math.random().toString(36).substring(2, 10)}-${Date.now()}.${fileExt}`;
         const filePath = `${schoolSlug}/${newClassId}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("vsk_photos")
-          .upload(filePath, file);
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage.from("vsk_photos").getPublicUrl(filePath);
+        await uploadFileToR2(file, filePath);
 
         studentInserts.push({
           class_id: newClassId,
           name: originalName,
-          image_url: urlData.publicUrl,
+          image_url: filePath,
         });
       }
 
@@ -324,7 +320,11 @@ function ManageSchools() {
       const promises = students.map(async (student) => {
         if (!student.image_url) return;
         try {
-          const response = await fetch(student.image_url);
+          let urlToFetch = student.image_url;
+          if (!urlToFetch.startsWith("http")) {
+            urlToFetch = await getR2FileUrl(student.image_url);
+          }
+          const response = await fetch(urlToFetch);
           const blob = await response.blob();
 
           const ext = student.image_url.split(".").pop() || "jpg";

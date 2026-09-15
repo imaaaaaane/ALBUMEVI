@@ -418,7 +418,9 @@ function EbatlamaView() {
 
   const handleAddItem = () => {
     const newItem = {
-      id: crypto.randomUUID() || Date.now().toString() + '-' + Math.random().toString(36).substring(2, 9),
+      id:
+        crypto.randomUUID() ||
+        Date.now().toString() + "-" + Math.random().toString(36).substring(2, 9),
       sira: items.length + 1,
       parcaAdi: "",
       boy: "",
@@ -460,7 +462,7 @@ function EbatlamaView() {
         sira: index + 1,
       }));
     setItems(newItems);
-    
+
     const updates = newItems
       .filter((i) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(i.id))
       .map((i) => ({ id: i.id, sira: i.sira }));
@@ -642,7 +644,9 @@ function EbatlamaView() {
             className="h-24 w-auto object-contain rounded-2xl shadow-xl shadow-black/50"
           />
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ebatlama</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Ebatlama
+            </h1>
             <p className="text-[#A67C52] text-lg font-medium mt-2 uppercase tracking-widest">
               Kesim Optimizasyonu
             </p>
@@ -767,7 +771,9 @@ function EbatlamaView() {
                 <div className="w-12 h-12 rounded-xl bg-[#A67C52]/20 flex items-center justify-center">
                   <LayoutGrid className="w-6 h-6 text-[#A67C52]" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ebatlama Listesi</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Ebatlama Listesi
+                </h2>
               </div>
 
               <Button
@@ -797,120 +803,117 @@ function EbatlamaView() {
                   <Droppable droppableId="ebatlamaList">
                     {(provided) => (
                       <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                        {plateSize ?
-                          items.map((item, index) => {
-                            const birimM2 = calcM2(item.boy, item.en);
-                            const adetNum = parseNumber(item.adet);
-                            const toplamM2 = birimM2 * adetNum;
+                        {plateSize
+                          ? items.map((item, index) => {
+                              const birimM2 = calcM2(item.boy, item.en);
+                              const adetNum = parseNumber(item.adet);
+                              const toplamM2 = birimM2 * adetNum;
 
-                            return (
-                              <Draggable
-                                key={item.id}
-                                draggableId={item.id}
-                                index={index}
-                              >
-                                {(provided, snapshot) => (
-                                  <tr
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    className={`border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${snapshot.isDragging ? "bg-gray-100 shadow-2xl z-50 dark:bg-white/10" : ""}`}
-                                  >
-                                    <td className="px-2 py-3 text-center">
-                                      <div
-                                        {...provided.dragHandleProps}
-                                        className="text-slate-400 hover:text-slate-600 dark:text-white/70 cursor-grab active:cursor-grabbing flex justify-center"
-                                      >
-                                        <GripVertical className="w-4 h-4" />
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <Input
-                                        type="text"
-                                        value={item.parcaAdi || ""}
-                                        onChange={(e) =>
-                                          handleItemChange(item.id, "parcaAdi", e.target.value)
-                                        }
-                                        onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
-                                        placeholder="Örn: Kapak"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <Input
-                                        type="number"
-                                        step="any"
-                                        min="0"
-                                        value={item.boy}
-                                        onChange={(e) =>
-                                          handleItemChange(item.id, "boy", e.target.value)
-                                        }
-                                        onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
-                                        placeholder="Boy"
-                                      />
-                                    </td>
-                                    <td className="px-1 py-3 text-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleSwapDimensions(item.id)}
-                                        className="h-8 w-8 text-slate-400 hover:text-[#A67C52] hover:bg-[#A67C52]/10 transition-colors"
-                                        title="Boy ve En'i Değiştir"
-                                      >
-                                        <ArrowRightLeft className="w-4 h-4" />
-                                      </Button>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        value={item.en}
-                                        onChange={(e) =>
-                                          handleItemChange(item.id, "en", e.target.value)
-                                        }
-                                        onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
-                                        placeholder="En"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <Input
-                                        type="number"
-                                        min="1"
-                                        value={item.adet}
-                                        onChange={(e) =>
-                                          handleItemChange(item.id, "adet", e.target.value)
-                                        }
-                                        onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
-                                        placeholder="Adet"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-medium text-slate-600 dark:text-white/70">
-                                      {birimM2.toFixed(4)}
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-white">
-                                      {toplamM2.toFixed(4)}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 h-10 w-10"
-                                        onClick={() => {
-                                          handleRemoveItem(item.id);
-                                          toast.success("Satır başarıyla silindi");
-                                        }}
-                                        disabled={items.length === 1}
-                                      >
-                                        <Trash2 className="w-5 h-5" />
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                )}
-                              </Draggable>
-                            );
-                          }) : null}
+                              return (
+                                <Draggable key={item.id} draggableId={item.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <tr
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      className={`border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${snapshot.isDragging ? "bg-gray-100 shadow-2xl z-50 dark:bg-white/10" : ""}`}
+                                    >
+                                      <td className="px-2 py-3 text-center">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="text-slate-400 hover:text-slate-600 dark:text-white/70 cursor-grab active:cursor-grabbing flex justify-center"
+                                        >
+                                          <GripVertical className="w-4 h-4" />
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <Input
+                                          type="text"
+                                          value={item.parcaAdi || ""}
+                                          onChange={(e) =>
+                                            handleItemChange(item.id, "parcaAdi", e.target.value)
+                                          }
+                                          onBlur={() => handleItemBlur(item.id)}
+                                          className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                          placeholder="Örn: Kapak"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <Input
+                                          type="number"
+                                          step="any"
+                                          min="0"
+                                          value={item.boy}
+                                          onChange={(e) =>
+                                            handleItemChange(item.id, "boy", e.target.value)
+                                          }
+                                          onBlur={() => handleItemBlur(item.id)}
+                                          className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                          placeholder="Boy"
+                                        />
+                                      </td>
+                                      <td className="px-1 py-3 text-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleSwapDimensions(item.id)}
+                                          className="h-8 w-8 text-slate-400 hover:text-[#A67C52] hover:bg-[#A67C52]/10 transition-colors"
+                                          title="Boy ve En'i Değiştir"
+                                        >
+                                          <ArrowRightLeft className="w-4 h-4" />
+                                        </Button>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={item.en}
+                                          onChange={(e) =>
+                                            handleItemChange(item.id, "en", e.target.value)
+                                          }
+                                          onBlur={() => handleItemBlur(item.id)}
+                                          className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                          placeholder="En"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          value={item.adet}
+                                          onChange={(e) =>
+                                            handleItemChange(item.id, "adet", e.target.value)
+                                          }
+                                          onBlur={() => handleItemBlur(item.id)}
+                                          className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                          placeholder="Adet"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 text-center font-medium text-slate-600 dark:text-white/70">
+                                        {birimM2.toFixed(4)}
+                                      </td>
+                                      <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-white">
+                                        {toplamM2.toFixed(4)}
+                                      </td>
+                                      <td className="px-4 py-3 text-center">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="text-red-500 hover:text-red-600 hover:bg-red-50 h-10 w-10"
+                                          onClick={() => {
+                                            handleRemoveItem(item.id);
+                                            toast.success("Satır başarıyla silindi");
+                                          }}
+                                          disabled={items.length === 1}
+                                        >
+                                          <Trash2 className="w-5 h-5" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Draggable>
+                              );
+                            })
+                          : null}
                         {provided.placeholder}
                       </tbody>
                     )}
@@ -1067,7 +1070,9 @@ function EbatlamaView() {
             <div className="w-12 h-12 rounded-xl bg-[#A67C5233] flex items-center justify-center">
               <Layers className="w-6 h-6 text-[#A67C52]" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Detaylı Kesim Şeması</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Detaylı Kesim Şeması
+            </h2>
           </div>
 
           <div className="flex items-center gap-4 bg-gray-50 dark:bg-white/5 p-1.5 rounded-xl border border-gray-200 dark:border-white/10">

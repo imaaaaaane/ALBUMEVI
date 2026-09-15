@@ -22,7 +22,7 @@ import {
   Scissors,
   Moon,
   Sun,
-  Box
+  Box,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -82,37 +82,35 @@ export function AppSidebar() {
     setIsSaving(true);
     try {
       let newAvatarUrl = avatarUrl;
-      
+
       if (editFile) {
-        const fileExt = editFile.name.split('.').pop();
+        const fileExt = editFile.name.split(".").pop();
         const filePath = `${user.id}-${Math.random()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
-          .from('avatars')
+          .from("avatars")
           .upload(filePath, editFile, { upsert: true });
-          
+
         if (uploadError) throw uploadError;
-        
-        const { data: urlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
-          
+
+        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
         newAvatarUrl = urlData.publicUrl;
       }
-      
+
       const payload: any = {
         full_name: editName,
-        avatar_url: newAvatarUrl
+        avatar_url: newAvatarUrl,
       };
-      
+
       // Prevent UUID 'all' string error
       if (teamId) {
         payload.team_id = teamId === "all" ? null : teamId;
       }
-      
-      const { error } = await (supabase as any).from('profiles').update(payload).eq('id', user.id);
-      
+
+      const { error } = await (supabase as any).from("profiles").update(payload).eq("id", user.id);
+
       if (error) throw error;
-      
+
       toast.success("Profil güncellendi.");
       await refreshProfile();
       setIsEditingProfile(false);
@@ -125,7 +123,13 @@ export function AppSidebar() {
 
   const activeItems = SIDEBAR_ITEMS.filter((item) => {
     if (role === "photographer") {
-      return ["/dashboard", "/dashboard/schools", "/dashboard/orders", "/dashboard/calendar", "/dashboard/notes"].includes(item.url);
+      return [
+        "/dashboard",
+        "/dashboard/schools",
+        "/dashboard/orders",
+        "/dashboard/calendar",
+        "/dashboard/notes",
+      ].includes(item.url);
     }
     return true; // Admin sees all
   });
@@ -140,7 +144,7 @@ export function AppSidebar() {
 
       localStorage.removeItem("albumevi_admin");
       localStorage.removeItem("albumevi_school");
-      
+
       await supabase.auth.signOut();
 
       if (ebatlamaItems) localStorage.setItem("ebatlama_items", ebatlamaItems);
@@ -154,14 +158,13 @@ export function AppSidebar() {
 
   const userDisplayName = fullName || user?.email || "Kullanıcı";
   const userDisplayNameLower = userDisplayName.toLowerCase();
-  
+
   let displayRole = "FOTOĞRAFÇILAR";
   if (userDisplayNameLower.includes("serhat")) {
     displayRole = "CEO";
   } else if (userDisplayNameLower.includes("imane")) {
     displayRole = "CO-CEO";
   }
-
 
   return (
     <Sidebar collapsible="icon" className="border-r border-white/5 bg-[#120E0E]">
@@ -170,7 +173,7 @@ export function AppSidebar() {
           <img src="/logo.jpg" alt="Albumevi Logo" className="h-8 w-auto object-contain" />
         </Link>
       </SidebarHeader>
-      
+
       <SidebarContent className="bg-[#120E0E] px-2 py-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[#4A4A4A] font-bold text-[10px] uppercase tracking-wider px-3 mb-2">
@@ -179,21 +182,18 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="gap-1.5">
               {activeItems.map((item) => {
-                const isActive = item.url === "/dashboard" 
-                  ? path === "/dashboard" || path === "/dashboard/"
-                  : path === item.url || path.startsWith(item.url);
+                const isActive =
+                  item.url === "/dashboard"
+                    ? path === "/dashboard" || path === "/dashboard/"
+                    : path === item.url || path.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className="group p-0 h-auto"
-                    >
-                      <Link 
-                        to={item.url} 
+                    <SidebarMenuButton asChild isActive={isActive} className="group p-0 h-auto">
+                      <Link
+                        to={item.url}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full ${
-                          isActive 
-                            ? "bg-[#A67C52] text-white font-bold shadow-[0_0_12px_rgba(166,124,82,0.3)]" 
+                          isActive
+                            ? "bg-[#A67C52] text-white font-bold shadow-[0_0_12px_rgba(166,124,82,0.3)]"
                             : "text-[#9E9696] hover:text-white hover:bg-white/5"
                         }`}
                       >
@@ -202,7 +202,9 @@ export function AppSidebar() {
                           whileTap={{ scale: 0.97 }}
                           className="flex items-center gap-3 w-full"
                         >
-                          <item.icon className={`h-4.5 w-4.5 transition-colors ${isActive ? "text-white" : "text-[#9E9696] group-hover:text-white"}`} />
+                          <item.icon
+                            className={`h-4.5 w-4.5 transition-colors ${isActive ? "text-white" : "text-[#9E9696] group-hover:text-white"}`}
+                          />
                           <span className="text-sm font-semibold">{item.title}</span>
                         </motion.div>
                       </Link>
@@ -224,16 +226,14 @@ export function AppSidebar() {
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="uppercase">{((fullName || user?.email || "K")[0])}</span>
+                    <span className="uppercase">{(fullName || user?.email || "K")[0]}</span>
                   )}
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Pencil className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1 leading-tight">
-                  <div className="truncate text-sm font-bold text-white">
-                    {userDisplayName}
-                  </div>
+                  <div className="truncate text-sm font-bold text-white">{userDisplayName}</div>
                   <div className="truncate text-xs text-[#9E9696] mt-0.5 font-semibold tracking-wider">
                     {displayRole}
                   </div>
@@ -247,10 +247,10 @@ export function AppSidebar() {
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label className="text-white/70">Ad Soyad</Label>
-                  <Input 
-                    placeholder="Adınız Soyadınız" 
-                    value={editName} 
-                    onChange={(e) => setEditName(e.target.value)} 
+                  <Input
+                    placeholder="Adınız Soyadınız"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
                     className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
                   />
                 </div>
@@ -274,14 +274,16 @@ export function AppSidebar() {
                       ) : (
                         <>
                           <p className="text-white font-medium">Fotoğrafı sürükleyin veya seçin</p>
-                          <p className="text-white/50 text-xs">Yeni bir profil fotoğrafı yükleyin.</p>
+                          <p className="text-white/50 text-xs">
+                            Yeni bir profil fotoğrafı yükleyin.
+                          </p>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
-                <Button 
-                  onClick={handleSaveProfile} 
+                <Button
+                  onClick={handleSaveProfile}
                   disabled={isSaving}
                   className="w-full bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl"
                 >
@@ -291,10 +293,13 @@ export function AppSidebar() {
             </DialogContent>
           </Dialog>
         </div>
-        
+
         <SidebarMenu>
           <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton onClick={signOut} className="flex-1 flex items-center gap-2 p-0 h-auto">
+            <SidebarMenuButton
+              onClick={signOut}
+              className="flex-1 flex items-center gap-2 p-0 h-auto"
+            >
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -304,7 +309,6 @@ export function AppSidebar() {
                 <span>Çıkış Yap</span>
               </motion.div>
             </SidebarMenuButton>
-            
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

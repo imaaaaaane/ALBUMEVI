@@ -23,13 +23,13 @@ export const Route = createFileRoute("/dashboard/notes")({
   component: NotesView,
 });
 
-type Note = { 
-  id: string; 
-  title: string; 
-  body: string; 
-  created_at: string; 
+type Note = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
   is_checked: boolean;
-  user_id: string; 
+  user_id: string;
 };
 
 function NotesView() {
@@ -53,10 +53,22 @@ function NotesView() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async (note: { title: string; body: string; authorName: string; team_id: string | null }) => {
+    mutationFn: async (note: {
+      title: string;
+      body: string;
+      authorName: string;
+      team_id: string | null;
+    }) => {
       const { data, error } = await supabaseClient
         .from("notes")
-        .insert([{ title: note.title, body: note.body, author_name: note.authorName, team_id: note.team_id }])
+        .insert([
+          {
+            title: note.title,
+            body: note.body,
+            author_name: note.authorName,
+            team_id: note.team_id,
+          },
+        ])
         .select()
         .single();
       if (error) throw error;
@@ -94,7 +106,7 @@ function NotesView() {
       if (previousNotes) {
         queryClient.setQueryData<Note[]>(
           ["admin_notes"],
-          previousNotes.map((n) => (n.id === id ? { ...n, is_checked } : n))
+          previousNotes.map((n) => (n.id === id ? { ...n, is_checked } : n)),
         );
       }
       return { previousNotes };
@@ -116,12 +128,20 @@ function NotesView() {
       return;
     }
     if (!form.title.trim()) return;
-    addMutation.mutate({ title: form.title.trim(), body: form.body.trim(), authorName, team_id: teamId });
+    addMutation.mutate({
+      title: form.title.trim(),
+      body: form.body.trim(),
+      authorName,
+      team_id: teamId,
+    });
   };
 
   const fmtDate = (ts: string) => {
     return new Date(ts).toLocaleDateString(lang === "TR" ? "tr-TR" : "en-US", {
-      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -130,41 +150,77 @@ function NotesView() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Notlarım</h1>
-          <p className="text-sm text-[#9E9696] mt-1">Kişisel notlarınızı ve hatırlatıcılarınızı burada düzenli tutun.</p>
+          <p className="text-sm text-[#9E9696] mt-1">
+            Kişisel notlarınızı ve hatırlatıcılarınızı burada düzenli tutun.
+          </p>
         </div>
-        <Button onClick={() => setOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl h-10 px-6 shadow-lg shadow-[#A67C52]/20">
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl h-10 px-6 shadow-lg shadow-[#A67C52]/20"
+        >
           <Plus className="mr-2 h-4 w-4" /> Yeni Not Oluştur
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-[#A67C52]" /></div>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-[#A67C52]" />
+        </div>
       ) : notes.length === 0 ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#1a1a1e] bg-[#131316] py-24 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#A67C52]/10 text-[#A67C52] mb-5"><Notebook className="h-8 w-8" /></div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#1a1a1e] bg-[#131316] py-24 text-center"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#A67C52]/10 text-[#A67C52] mb-5">
+            <Notebook className="h-8 w-8" />
+          </div>
           <h3 className="text-xl font-bold text-white mb-2">Henüz bir not eklenmedi.</h3>
-          <p className="text-[#9E9696] max-w-sm mb-6 text-sm leading-relaxed">Düşüncelerinizi ve hatırlatıcılarınızı organize etmeye başlayın.</p>
+          <p className="text-[#9E9696] max-w-sm mb-6 text-sm leading-relaxed">
+            Düşüncelerinizi ve hatırlatıcılarınızı organize etmeye başlayın.
+          </p>
         </motion.div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-3">
           {notes.map((n, i) => (
-            <motion.div key={n.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className={`group relative flex flex-col justify-between rounded-2xl border bg-[#131316] p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${n.is_checked ? "border-[#A67C52]" : "border-[#1a1a1e] hover:border-[#A67C52]"}`}>
+            <motion.div
+              key={n.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className={`group relative flex flex-col justify-between rounded-2xl border bg-[#131316] p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${n.is_checked ? "border-[#A67C52]" : "border-[#1a1a1e] hover:border-[#A67C52]"}`}
+            >
               <div className="absolute right-4 top-4 flex items-center gap-2">
-                <button onClick={() => toggleMutation.mutate({ id: n.id, is_checked: !n.is_checked })} className={`p-1.5 rounded-full transition-colors ${n.is_checked ? "text-[#A67C52]" : "text-[#9E9696] hover:text-[#A67C52]"}`}>
+                <button
+                  onClick={() => toggleMutation.mutate({ id: n.id, is_checked: !n.is_checked })}
+                  className={`p-1.5 rounded-full transition-colors ${n.is_checked ? "text-[#A67C52]" : "text-[#9E9696] hover:text-[#A67C52]"}`}
+                >
                   <CheckCircle2 className="h-5 w-5" />
                 </button>
-                <button onClick={() => deleteMutation.mutate(n.id)} className="p-2 text-[#9E9696] opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"><Trash2 className="h-4 w-4" /></button>
+                <button
+                  onClick={() => deleteMutation.mutate(n.id)}
+                  className="p-2 text-[#9E9696] opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
               <div className="pr-12">
                 <div className="flex items-center gap-2 text-[#A67C52] mb-3">
-                  <StickyNote className="h-4 w-4" /><span className="text-[10px] font-bold uppercase tracking-widest">Not</span>
-                  {n.is_checked && <span className="rounded-full bg-[#A67C52]/10 px-2 py-0.5 text-[10px] font-bold text-[#A67C52]">Gözden Geçirildi</span>}
+                  <StickyNote className="h-4 w-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Not</span>
+                  {n.is_checked && (
+                    <span className="rounded-full bg-[#A67C52]/10 px-2 py-0.5 text-[10px] font-bold text-[#A67C52]">
+                      Gözden Geçirildi
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-lg font-bold text-white">{n.title}</h3>
                 <p className="mt-3 text-sm text-[#9E9696] leading-relaxed">{n.body}</p>
               </div>
-              <div className="mt-6 border-t border-[#1a1a1e] pt-4 text-xs text-[#9E9696] flex items-center gap-2"><Calendar className="h-3 w-3" />{fmtDate(n.created_at)}</div>
+              <div className="mt-6 border-t border-[#1a1a1e] pt-4 text-xs text-[#9E9696] flex items-center gap-2">
+                <Calendar className="h-3 w-3" />
+                {fmtDate(n.created_at)}
+              </div>
             </motion.div>
           ))}
         </div>
@@ -172,7 +228,9 @@ function NotesView() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-[#131316] border-[#1a1a1e] text-white">
-          <DialogHeader><DialogTitle>Yeni Not Oluştur</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Yeni Not Oluştur</DialogTitle>
+          </DialogHeader>
           <div className="grid gap-4 py-4">
             <select
               value={authorName}
@@ -180,16 +238,35 @@ function NotesView() {
               className="bg-[#12100E] border border-white/10 text-white rounded-xl px-4 py-3 w-full outline-none focus:border-[#D4B8A8] focus:ring-1 focus:ring-[#D4B8A8] appearance-none"
               required
             >
-              <option value="" disabled>Notu Yazan (Seçiniz...)</option>
+              <option value="" disabled>
+                Notu Yazan (Seçiniz...)
+              </option>
               <option value="AMINE HIMMICH">AMINE HIMMICH</option>
               <option value="MUSTAFA ASLAN">MUSTAFA ASLAN</option>
               <option value="DELIL TENHA">DELIL TENHA</option>
               <option value="ZINAR TENHA">ZINAR TENHA</option>
             </select>
-            <Input placeholder="Başlık" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]" />
-            <Textarea placeholder="Not içeriği..." value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] min-h-[120px]" />
+            <Input
+              placeholder="Başlık"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52]"
+            />
+            <Textarea
+              placeholder="Not içeriği..."
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
+              className="bg-[#0A0A0A] border-[#1a1a1e] focus-visible:ring-[#A67C52] min-h-[120px]"
+            />
           </div>
-          <DialogFooter><Button onClick={() => setOpen(false)} variant="ghost" className="text-[#9E9696]">Vazgeç</Button><Button onClick={handleAdd} className="bg-[#A67C52] hover:bg-[#A67C52]/90">Kaydet</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={() => setOpen(false)} variant="ghost" className="text-[#9E9696]">
+              Vazgeç
+            </Button>
+            <Button onClick={handleAdd} className="bg-[#A67C52] hover:bg-[#A67C52]/90">
+              Kaydet
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

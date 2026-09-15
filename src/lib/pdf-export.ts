@@ -13,7 +13,7 @@ export type ExportPDFParams = {
 
 export const exportToPDF = (params: ExportPDFParams) => {
   const { title, subtitle, columns, data, summary, filename } = params;
-  
+
   const doc = new jsPDF("p", "pt", "a4");
 
   // Add Roboto font to support Turkish characters
@@ -31,7 +31,7 @@ export const exportToPDF = (params: ExportPDFParams) => {
   doc.setTextColor(19, 19, 22); // #131316
   doc.setFont("Roboto", "normal");
   doc.text("ALBÜMEVİ", 40, cursorY);
-  
+
   doc.setFontSize(10);
   doc.setTextColor(102, 102, 102); // #666
   doc.text("Premium Albüm Üretimi", 40, cursorY + 15);
@@ -41,7 +41,7 @@ export const exportToPDF = (params: ExportPDFParams) => {
   doc.setFontSize(16);
   doc.setTextColor(19, 19, 22);
   doc.text(title, pageWidth - 40, cursorY, { align: "right" });
-  
+
   doc.setFontSize(10);
   doc.setTextColor(102, 102, 102);
   doc.text(`Tarih: ${today}`, pageWidth - 40, cursorY + 15, { align: "right" });
@@ -52,7 +52,7 @@ export const exportToPDF = (params: ExportPDFParams) => {
   doc.setDrawColor(166, 124, 82); // #A67C52
   doc.setLineWidth(2);
   doc.line(40, cursorY, pageWidth - 40, cursorY);
-  
+
   cursorY += 25;
 
   // Subtitle / Firm Name
@@ -60,7 +60,7 @@ export const exportToPDF = (params: ExportPDFParams) => {
     doc.setFontSize(10);
     doc.setTextColor(166, 124, 82);
     doc.text("Cari / Belge Sahibi", 40, cursorY);
-    
+
     cursorY += 15;
     doc.setFontSize(14);
     doc.setTextColor(17, 17, 17); // #111
@@ -73,26 +73,26 @@ export const exportToPDF = (params: ExportPDFParams) => {
     startY: cursorY,
     head: [columns],
     body: data,
-    theme: 'grid',
+    theme: "grid",
     styles: {
       font: "Roboto",
       fontSize: 9,
       textColor: [55, 65, 81],
       lineColor: [229, 231, 235],
-      lineWidth: 1
+      lineWidth: 1,
     },
     headStyles: {
       fillColor: [19, 19, 22],
       textColor: [255, 255, 255],
-      fontStyle: 'normal'
+      fontStyle: "normal",
     },
     alternateRowStyles: {
-      fillColor: [249, 250, 251]
+      fillColor: [249, 250, 251],
     },
     columnStyles: {
       // Right-align the last column (usually amounts)
-      [columns.length - 1]: { halign: 'right' }
-    }
+      [columns.length - 1]: { halign: "right" },
+    },
   });
 
   // Calculate position after table
@@ -105,7 +105,7 @@ export const exportToPDF = (params: ExportPDFParams) => {
 
     summary.forEach((item, index) => {
       const isLast = index === summary.length - 1;
-      
+
       // Draw border top for everything except the first
       if (index > 0 && !isLast) {
         doc.setDrawColor(229, 231, 235);
@@ -117,12 +117,12 @@ export const exportToPDF = (params: ExportPDFParams) => {
       doc.setFontSize(10);
       doc.setTextColor(isLast ? 17 : 102, isLast ? 17 : 102, isLast ? 17 : 102);
       doc.text(item.label, summaryX, cursorY);
-      
+
       // Value
       doc.setFontSize(isLast ? 14 : 11);
       doc.setTextColor(isLast ? 166 : 17, isLast ? 124 : 17, isLast ? 82 : 17);
       doc.text(String(item.value), pageWidth - 40, cursorY, { align: "right" });
-      
+
       cursorY += 22;
     });
   }
@@ -134,7 +134,12 @@ export const exportToPDF = (params: ExportPDFParams) => {
   doc.setDrawColor(229, 231, 235);
   doc.setLineWidth(1);
   doc.line(40, pageHeight - 40, pageWidth - 40, pageHeight - 40);
-  doc.text("Bu belge ALBÜMEVİ otomasyon sistemi tarafından elektronik olarak oluşturulmuştur.", pageWidth / 2, pageHeight - 25, { align: "center" });
+  doc.text(
+    "Bu belge ALBÜMEVİ otomasyon sistemi tarafından elektronik olarak oluşturulmuştur.",
+    pageWidth / 2,
+    pageHeight - 25,
+    { align: "center" },
+  );
 
   doc.save(filename);
 };

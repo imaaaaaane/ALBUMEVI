@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Bell, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
     if (typeof window !== "undefined") {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         throw redirect({ to: "/admin-login" });
       }
@@ -19,8 +20,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardLayout() {
-
-
   return (
     <div className="albumevi-dark">
       <SidebarProvider>
@@ -36,8 +35,7 @@ function DashboardLayout() {
                   className="h-9 border-border bg-card pl-9 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
                 />
               </div>
-              <div className="ml-auto flex items-center gap-3">
-              </div>
+              <div className="ml-auto flex items-center gap-3"></div>
             </header>
             <main className="flex-1 p-6">
               <Outlet />

@@ -1,7 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
-import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ImagePlus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,9 +71,22 @@ function StatCard({
   );
 }
 
-
-function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }: { p: any; onEdit: () => void; onDelete: () => void; onUploadImage: (file: File) => void; isUploading: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+function SortableProductCard({
+  p,
+  onEdit,
+  onDelete,
+  onUploadImage,
+  isUploading,
+}: {
+  p: any;
+  onEdit: () => void;
+  onDelete: () => void;
+  onUploadImage: (file: File) => void;
+  isUploading: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: p.id,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPreviewPage, setSelectedPreviewPage] = useState("1");
 
@@ -71,7 +98,7 @@ function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }
   };
 
   return (
-    <motion.div 
+    <motion.div
       ref={setNodeRef}
       style={style}
       {...attributes}
@@ -80,12 +107,15 @@ function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }
       animate={{ opacity: 1, y: 0 }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl transition-all duration-300 hover:border-[#A67C52]/50 hover:bg-white/10 relative cursor-grab active:cursor-grabbing h-full"
     >
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20" onPointerDown={(e) => e.stopPropagation()}>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
-          accept="image/*" 
+      <div
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -110,59 +140,71 @@ function SortableProductCard({ p, onEdit, onDelete, onUploadImage, isUploading }
         >
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-6 w-6 p-1 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-md"
           onClick={onDelete}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
-      
+
       {p.image_url ? (
         <div className="h-28 w-full bg-black/40 overflow-hidden relative border-b border-white/5">
-           <img src={p.image_url} alt={p.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-           <h3 className="absolute bottom-2 left-0 w-full text-xs font-bold text-center truncate px-2 text-white">
-             {p.name}
-           </h3>
+          <img
+            src={p.image_url}
+            alt={p.name}
+            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+          <h3 className="absolute bottom-2 left-0 w-full text-xs font-bold text-center truncate px-2 text-white">
+            {p.name}
+          </h3>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-3 h-28 bg-black/20 border-b border-white/5 relative">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] mb-1.5">
             <Package className="h-4 w-4" />
           </div>
-          <h3 className="text-xs font-bold text-center truncate w-full px-1">
-            {p.name}
-          </h3>
+          <h3 className="text-xs font-bold text-center truncate w-full px-1">{p.name}</h3>
         </div>
       )}
-      
+
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex items-center justify-between mb-0.5">
           <div className="text-[10px] opacity-70">Sayfa Fiyatı</div>
-          <select 
-            value={selectedPreviewPage} 
+          <select
+            value={selectedPreviewPage}
             onChange={(e) => setSelectedPreviewPage(e.target.value)}
             onPointerDown={(e) => e.stopPropagation()}
             className="bg-black/40 border border-white/10 text-white rounded text-[9px] px-1 py-0.5 outline-none focus:ring-1 focus:ring-[#A67C52] cursor-pointer"
           >
             {[...Array(10)].map((_, i) => (
-              <option key={i+1} value={String(i+1)} className="bg-[#131316]">{i+1} Sayfa</option>
+              <option key={i + 1} value={String(i + 1)} className="bg-[#131316]">
+                {i + 1} Sayfa
+              </option>
             ))}
           </select>
         </div>
-        <div className="text-xs font-semibold text-[#A67C52] mb-2">{Number(p.sayfa_fiyatlari?.[selectedPreviewPage] || p.base_price || 0).toLocaleString()} ₺</div>
-        
+        <div className="text-xs font-semibold text-[#A67C52] mb-2">
+          {Number(p.sayfa_fiyatlari?.[selectedPreviewPage] || p.base_price || 0).toLocaleString()} ₺
+        </div>
+
         <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
           <div>
-            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Satılan</span>
+            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">
+              Satılan
+            </span>
             <span className="font-medium text-[#A67C52] text-[10px]">{p.sold_count || 0} Adet</span>
           </div>
           <div>
-            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">Gelir</span>
-            <span className="font-medium text-[#A67C52] text-[10px]">{Number(p.total_revenue || 0).toLocaleString()} ₺</span>
+            <span className="text-white/60 group-hover:text-white transition-colors block text-[9px]">
+              Gelir
+            </span>
+            <span className="font-medium text-[#A67C52] text-[10px]">
+              {Number(p.total_revenue || 0).toLocaleString()} ₺
+            </span>
           </div>
         </div>
       </div>
@@ -174,11 +216,36 @@ function Inventory() {
   const { teamId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const initialFiyatlari: Record<string, string> = {"1":"0","2":"0","3":"0","4":"0","5":"0","6":"0","7":"0","8":"0","9":"0","10":"0"};
+  const initialFiyatlari: Record<string, string> = {
+    "1": "0",
+    "2": "0",
+    "3": "0",
+    "4": "0",
+    "5": "0",
+    "6": "0",
+    "7": "0",
+    "8": "0",
+    "9": "0",
+    "10": "0",
+  };
   const [form, setForm] = useState({ name: "", base_price: "", sayfa_fiyatlari: initialFiyatlari });
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<{ id: string; name: string; base_price: string; image_url: string | null; file: File | null; sayfa_fiyatlari: Record<string, string> }>({ id: "", name: "", base_price: "", image_url: null, file: null, sayfa_fiyatlari: initialFiyatlari });
+  const [editForm, setEditForm] = useState<{
+    id: string;
+    name: string;
+    base_price: string;
+    image_url: string | null;
+    file: File | null;
+    sayfa_fiyatlari: Record<string, string>;
+  }>({
+    id: "",
+    name: "",
+    base_price: "",
+    image_url: null,
+    file: null,
+    sayfa_fiyatlari: initialFiyatlari,
+  });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -190,14 +257,24 @@ function Inventory() {
         { data: stData, error: stError },
         { data: cData, error: cError },
         { data: albumeviSales, error: aError },
-        { data: ordersData, error: oError }
+        { data: ordersData, error: oError },
       ] = await Promise.all([
-        (supabase as any).from("products").select("id, name, base_price, created_at, image_url, sira, sayfa_fiyatlari").order("sira", { ascending: true }).order("created_at", { ascending: true }),
-        (supabase as any).from("school_products").select("school_id, product_id, custom_price").order("id", { ascending: true }),
-        (supabase as any).from("students").select("id, class_id, selection").not("selection", "is", null),
+        (supabase as any)
+          .from("products")
+          .select("id, name, base_price, created_at, image_url, sira, sayfa_fiyatlari")
+          .order("sira", { ascending: true })
+          .order("created_at", { ascending: true }),
+        (supabase as any)
+          .from("school_products")
+          .select("school_id, product_id, custom_price")
+          .order("id", { ascending: true }),
+        (supabase as any)
+          .from("students")
+          .select("id, class_id, selection")
+          .not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id"),
         (supabase as any).from("albumevi_sales").select("product_id, quantity"),
-        (supabase as any).from("orders").select("package_name, quantity")
+        (supabase as any).from("orders").select("package_name, quantity"),
       ]);
 
       if (pError) throw new Error(pError.message);
@@ -217,12 +294,12 @@ function Inventory() {
         if (!schoolMappings.has(sp.school_id)) {
           schoolMappings.set(sp.school_id, {
             paket1: { id: sp.product_id, price: sp.custom_price },
-            paket2: null
+            paket2: null,
           });
         } else {
           const mapping = schoolMappings.get(sp.school_id);
           if (!mapping.paket2) {
-             mapping.paket2 = { id: sp.product_id, price: sp.custom_price };
+            mapping.paket2 = { id: sp.product_id, price: sp.custom_price };
           }
         }
       });
@@ -230,19 +307,19 @@ function Inventory() {
       (stData ?? []).forEach((st: any) => {
         const schoolId = classMap.get(st.class_id);
         if (!schoolId) return;
-        
+
         const mapping = schoolMappings.get(schoolId);
         if (!mapping) return;
-        
+
         let selectedProduct = null;
         if (st.selection === "paket1") selectedProduct = mapping.paket1;
         if (st.selection === "paket2") selectedProduct = mapping.paket2;
-        
+
         if (selectedProduct) {
-           const pStat = productsWithStats.find((p: any) => p.id === selectedProduct.id);
-           if (pStat) {
-              pStat.sold_count += 1;
-           }
+          const pStat = productsWithStats.find((p: any) => p.id === selectedProduct.id);
+          if (pStat) {
+            pStat.sold_count += 1;
+          }
         }
       });
 
@@ -250,15 +327,17 @@ function Inventory() {
       (albumeviSales ?? []).forEach((sale: any) => {
         const pStat = productsWithStats.find((p: any) => p.id === sale.product_id);
         if (pStat) {
-          pStat.sold_count += (sale.quantity || 1);
+          pStat.sold_count += sale.quantity || 1;
         }
       });
 
       // Aggregate from orders (matches by package_name)
       (ordersData ?? []).forEach((order: any) => {
-        const pStat = productsWithStats.find((p: any) => (p.name || "").toLowerCase() === (order.package_name || "").toLowerCase());
+        const pStat = productsWithStats.find(
+          (p: any) => (p.name || "").toLowerCase() === (order.package_name || "").toLowerCase(),
+        );
         if (pStat) {
-          pStat.sold_count += (order.quantity || 1);
+          pStat.sold_count += order.quantity || 1;
         }
       });
 
@@ -267,43 +346,46 @@ function Inventory() {
         p.total_revenue = (p.sold_count || 0) * (p.base_price || 0);
       });
 
-      
       // Intelligent Dimension Sorting
       productsWithStats.sort((a: any, b: any) => {
         const siraA = a.sira || 0;
         const siraB = b.sira || 0;
-        
+
         // If either has been manually reordered
         if (siraA > 0 || siraB > 0) {
-           return (siraA === 0 ? 99999 : siraA) - (siraB === 0 ? 99999 : siraB);
+          return (siraA === 0 ? 99999 : siraA) - (siraB === 0 ? 99999 : siraB);
         }
 
         // Both sira 0 -> sort by parsed dimensions
         const extractDim = (name: string) => {
-           if (!name) return 0;
-           const match = name.match(/(\d+)\s*[xX*]\s*(\d+)/);
-           if (match) {
-               return parseFloat(match[1]) * parseFloat(match[2]);
-           }
-           return 0;
+          if (!name) return 0;
+          const match = name.match(/(\d+)\s*[xX*]\s*(\d+)/);
+          if (match) {
+            return parseFloat(match[1]) * parseFloat(match[2]);
+          }
+          return 0;
         };
 
         const dimA = extractDim(a.name);
         const dimB = extractDim(b.name);
 
         if (dimA && dimB && dimA !== dimB) {
-           return dimA - dimB;
+          return dimA - dimB;
         }
-        
+
         return (a.name || "").localeCompare(b.name || "");
       });
-      
+
       return productsWithStats;
     },
   });
 
   const addMutation = useMutation({
-    mutationFn: async (input: { name: string; base_price: number; sayfa_fiyatlari: Record<string, string> }) => {
+    mutationFn: async (input: {
+      name: string;
+      base_price: number;
+      sayfa_fiyatlari: Record<string, string>;
+    }) => {
       const { data, error } = await (supabase as any)
         .from("products")
         .insert({
@@ -314,7 +396,7 @@ function Inventory() {
         })
         .select()
         .single();
-      
+
       if (error) throw new Error(error.message);
       return data;
     },
@@ -328,35 +410,47 @@ function Inventory() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; base_price: number; image_url: string | null; file: File | null; sayfa_fiyatlari: Record<string, string> }) => {
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      base_price: number;
+      image_url: string | null;
+      file: File | null;
+      sayfa_fiyatlari: Record<string, string>;
+    }) => {
       await supabase.auth.getSession();
-      
+
       let finalImageUrl = input.image_url;
-      
+
       if (input.file) {
-        const fileExt = input.file.name.split('.').pop();
+        const fileExt = input.file.name.split(".").pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-        
+
         const { error: uploadError } = await (supabase as any).storage
-          .from('urun-resimleri')
+          .from("urun-resimleri")
           .upload(fileName, input.file);
-          
+
         if (uploadError) throw new Error(`Resim yüklenemedi: ${uploadError.message}`);
-        
-        const { data: { publicUrl } } = (supabase as any).storage
-          .from('urun-resimleri')
-          .getPublicUrl(fileName);
-          
+
+        const {
+          data: { publicUrl },
+        } = (supabase as any).storage.from("urun-resimleri").getPublicUrl(fileName);
+
         finalImageUrl = publicUrl;
       }
-      
+
       const { data, error } = await (supabase as any)
         .from("products")
-        .update({ name: input.name, base_price: input.base_price, image_url: finalImageUrl, sayfa_fiyatlari: input.sayfa_fiyatlari })
+        .update({
+          name: input.name,
+          base_price: input.base_price,
+          image_url: finalImageUrl,
+          sayfa_fiyatlari: input.sayfa_fiyatlari,
+        })
         .eq("id", input.id)
         .select()
         .single();
-      
+
       if (error) throw new Error(`Güncelleme başarısız: ${error.message}`);
       return data;
     },
@@ -380,7 +474,6 @@ function Inventory() {
     onError: (e: Error) => toast.error(e.message || "Ürün silinemedi"),
   });
 
-  
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -389,33 +482,33 @@ function Inventory() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
 
   const uploadImageMutation = useMutation({
     mutationFn: async ({ id, file }: { id: string; file: File }) => {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${id}-${Math.random()}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
-        .from('urun-resimleri')
+        .from("urun-resimleri")
         .upload(fileName, file);
-        
+
       if (uploadError) throw new Error(`Resim yüklenemedi: ${uploadError.message}`);
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('urun-resimleri')
-        .getPublicUrl(fileName);
-        
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("urun-resimleri").getPublicUrl(fileName);
+
       const { error: updateError } = await (supabase as any)
-        .from('products')
+        .from("products")
         .update({ image_url: publicUrl })
-        .eq('id', id);
-        
+        .eq("id", id);
+
       if (updateError) throw new Error(`Veritabanı güncellenemedi: ${updateError.message}`);
-      
+
       return publicUrl;
     },
     onSuccess: () => {
@@ -426,16 +519,16 @@ function Inventory() {
     onError: (e: any) => {
       toast.error(e.message);
       setUploadingImageId(null);
-    }
+    },
   });
 
   const updateSiraMutation = useMutation({
     mutationFn: async (updates: { id: string; sira: number }[]) => {
-      const updatePromises = updates.map(u => 
-        (supabase as any).from("products").update({ sira: u.sira }).eq("id", u.id)
+      const updatePromises = updates.map((u) =>
+        (supabase as any).from("products").update({ sira: u.sira }).eq("id", u.id),
       );
       const results = await Promise.all(updatePromises);
-      const error = results.find(r => r.error)?.error;
+      const error = results.find((r) => r.error)?.error;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -443,37 +536,37 @@ function Inventory() {
     },
     onError: (err: any) => {
       toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
-    }
+    },
   });
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       const oldIndex = products.findIndex((p: any) => p.id === active.id);
       const newIndex = products.findIndex((p: any) => p.id === over.id);
-      
+
       const newArray = arrayMove(products, oldIndex, newIndex);
-      
+
       // Update cache optimistically
       qc.setQueryData(["products"], newArray);
-      
+
       const updates = newArray.map((item: any, index: number) => ({
         id: item.id,
-        sira: index + 1
+        sira: index + 1,
       }));
-      
+
       updateSiraMutation.mutate(updates);
     }
   };
 
   const totalProducts = products.length;
-  
+
   let totalRevenueAll = 0;
   let totalSoldAll = 0;
   products.forEach((p: any) => {
-     totalRevenueAll += p.total_revenue || 0;
-     totalSoldAll += p.sold_count || 0;
+    totalRevenueAll += p.total_revenue || 0;
+    totalSoldAll += p.sold_count || 0;
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -483,7 +576,11 @@ function Inventory() {
       toast.error("Lütfen isim ve fiyat alanlarını doldurun");
       return;
     }
-    addMutation.mutate({ name: form.name.trim(), base_price: price, sayfa_fiyatlari: form.sayfa_fiyatlari });
+    addMutation.mutate({
+      name: form.name.trim(),
+      base_price: price,
+      sayfa_fiyatlari: form.sayfa_fiyatlari,
+    });
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -493,7 +590,14 @@ function Inventory() {
       toast.error("Lütfen isim ve geçerli bir fiyat girin");
       return;
     }
-    updateMutation.mutate({ id: editForm.id, name: editForm.name.trim(), base_price: price, image_url: editForm.image_url, file: editForm.file, sayfa_fiyatlari: editForm.sayfa_fiyatlari });
+    updateMutation.mutate({
+      id: editForm.id,
+      name: editForm.name.trim(),
+      base_price: price,
+      image_url: editForm.image_url,
+      file: editForm.file,
+      sayfa_fiyatlari: editForm.sayfa_fiyatlari,
+    });
   };
 
   return (
@@ -516,8 +620,20 @@ function Inventory() {
       {/* Stats row */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Toplam Ürün" value={String(totalProducts)} icon={Package} />
-        <StatCard label="Genel Toplam Gelir" value={`${totalRevenueAll.toLocaleString()} ₺`} icon={DollarSign} />
-        <StatCard label="Son Güncelleme" value={products.length ? new Date(products[products.length - 1]?.created_at).toLocaleDateString("tr-TR") : "-"} icon={Clock} />
+        <StatCard
+          label="Genel Toplam Gelir"
+          value={`${totalRevenueAll.toLocaleString()} ₺`}
+          icon={DollarSign}
+        />
+        <StatCard
+          label="Son Güncelleme"
+          value={
+            products.length
+              ? new Date(products[products.length - 1]?.created_at).toLocaleDateString("tr-TR")
+              : "-"
+          }
+          icon={Clock}
+        />
       </div>
 
       {/* Products grid */}
@@ -528,14 +644,39 @@ function Inventory() {
           </div>
         ) : (
           <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={products.map((p: any) => p.id)} strategy={rectSortingStrategy}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={products.map((p: any) => p.id)}
+                strategy={rectSortingStrategy}
+              >
                 {products.map((p: any) => (
-                  <SortableProductCard 
-                    key={p.id} 
-                    p={p} 
+                  <SortableProductCard
+                    key={p.id}
+                    p={p}
                     onEdit={() => {
-                      setEditForm({ id: p.id, name: p.name, base_price: p.base_price?.toString() || "0", image_url: p.image_url || null, file: null, sayfa_fiyatlari: p.sayfa_fiyatlari || {"1":"0","2":"0","3":"0","4":"0","5":"0","6":"0","7":"0","8":"0","9":"0","10":"0"} });
+                      setEditForm({
+                        id: p.id,
+                        name: p.name,
+                        base_price: p.base_price?.toString() || "0",
+                        image_url: p.image_url || null,
+                        file: null,
+                        sayfa_fiyatlari: p.sayfa_fiyatlari || {
+                          "1": "0",
+                          "2": "0",
+                          "3": "0",
+                          "4": "0",
+                          "5": "0",
+                          "6": "0",
+                          "7": "0",
+                          "8": "0",
+                          "9": "0",
+                          "10": "0",
+                        },
+                      });
                       setEditOpen(true);
                     }}
                     onDelete={() => {
@@ -577,7 +718,9 @@ function Inventory() {
         <DialogContent className="border-white/10 bg-[#131316] text-white max-w-sm rounded-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Yeni Ürün Ekle</DialogTitle>
-            <DialogDescription className="text-white/50">Sisteme yeni bir paket veya ürün tanımlayın.</DialogDescription>
+            <DialogDescription className="text-white/50">
+              Sisteme yeni bir paket veya ürün tanımlayın.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5 mt-4">
             <div className="space-y-2">
@@ -592,7 +735,7 @@ function Inventory() {
             <div className="space-y-2">
               <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
               <Input
-                type="number" 
+                type="number"
                 step="0.01"
                 min="0"
                 placeholder="250"
@@ -612,10 +755,15 @@ function Inventory() {
                       step="0.01"
                       min="0"
                       value={form.sayfa_fiyatlari[String(i + 1)] || "0"}
-                      onChange={(e) => setForm({ 
-                        ...form, 
-                        sayfa_fiyatlari: { ...form.sayfa_fiyatlari, [String(i + 1)]: e.target.value } 
-                      })}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          sayfa_fiyatlari: {
+                            ...form.sayfa_fiyatlari,
+                            [String(i + 1)]: e.target.value,
+                          },
+                        })
+                      }
                       className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
                     />
                   </div>
@@ -623,10 +771,10 @@ function Inventory() {
               </div>
             </div>
             <DialogFooter className="mt-8">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => setOpen(false)} 
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
                 className="text-white/50 hover:text-white hover:bg-white/5 h-12 px-6 rounded-xl"
               >
                 İptal
@@ -648,10 +796,11 @@ function Inventory() {
         <DialogContent className="border-white/10 bg-[#131316] text-white max-w-sm rounded-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Ürünü Düzenle</DialogTitle>
-            <DialogDescription className="text-white/50">{editForm.name} için fiyat ve resim güncelleyin.</DialogDescription>
+            <DialogDescription className="text-white/50">
+              {editForm.name} için fiyat ve resim güncelleyin.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-5 mt-4">
-            
             <div className="space-y-2">
               <Label className="text-white/70">Ürün Adı</Label>
               <Input
@@ -673,10 +822,15 @@ function Inventory() {
                       step="0.01"
                       min="0"
                       value={editForm.sayfa_fiyatlari[String(i + 1)] || "0"}
-                      onChange={(e) => setEditForm({ 
-                        ...editForm, 
-                        sayfa_fiyatlari: { ...editForm.sayfa_fiyatlari, [String(i + 1)]: e.target.value } 
-                      })}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          sayfa_fiyatlari: {
+                            ...editForm.sayfa_fiyatlari,
+                            [String(i + 1)]: e.target.value,
+                          },
+                        })
+                      }
                       className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
                     />
                   </div>
@@ -688,10 +842,10 @@ function Inventory() {
               <div className="flex items-center gap-4">
                 {editForm.image_url || editForm.file ? (
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
-                    <img 
-                      src={editForm.file ? URL.createObjectURL(editForm.file) : editForm.image_url!} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover" 
+                    <img
+                      src={editForm.file ? URL.createObjectURL(editForm.file) : editForm.image_url!}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
                     />
                     <button
                       type="button"
@@ -731,7 +885,7 @@ function Inventory() {
             <div className="space-y-2">
               <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
               <Input
-                type="number" 
+                type="number"
                 step="0.01"
                 min="0"
                 placeholder="250"
@@ -741,10 +895,10 @@ function Inventory() {
               />
             </div>
             <DialogFooter className="mt-8">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => setEditOpen(false)} 
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditOpen(false)}
                 className="text-white/50 hover:text-white hover:bg-white/5 h-12 px-6 rounded-xl"
               >
                 İptal
@@ -763,4 +917,3 @@ function Inventory() {
     </div>
   );
 }
-

@@ -10,12 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/page-transition";
 import { Loader2, Eye, Package, Calendar, CheckCircle2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,27 +35,27 @@ interface AggregatedOrder {
   totalPrice: number;
 }
 
-function OrderDetailsModal({ 
-  order, 
-  isOpen, 
-  onClose 
-}: { 
-  order: AggregatedOrder | null; 
-  isOpen: boolean; 
-  onClose: () => void 
+function OrderDetailsModal({
+  order,
+  isOpen,
+  onClose,
+}: {
+  order: AggregatedOrder | null;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
   const qc = useQueryClient();
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!order) throw new Error("Sipariş bulunamadı");
-      
+
       const { data: school, error: fetchErr } = await (supabase as any)
         .from("schools")
         .select("package_statuses")
         .eq("id", order.schoolId)
         .single();
-        
+
       if (fetchErr) throw fetchErr;
 
       const currentStatuses = school.package_statuses || {};
@@ -70,19 +65,19 @@ function OrderDetailsModal({
         .from("schools")
         .update({ package_statuses: updatedStatuses })
         .eq("id", order.schoolId);
-        
+
       if (error) throw error;
       return newStatus;
     },
     onSuccess: (newStatus) => {
       toast.success("Sipariş durumu güncellendi");
       qc.invalidateQueries({ queryKey: ["aggregated_orders"] });
-      // Modalı kapatmak yerine, sadece state güncellensin diye bir şey yapmıyoruz. 
+      // Modalı kapatmak yerine, sadece state güncellensin diye bir şey yapmıyoruz.
       // Query invalidate edildiği için dışarıdaki data yenilenecek, modal açık kalabilir.
     },
     onError: (e: any) => {
       toast.error("Durum güncellenemedi: " + e.message);
-    }
+    },
   });
 
   if (!order) return null;
@@ -103,37 +98,51 @@ function OrderDetailsModal({
         <div className="space-y-6 py-4">
           <div className="bg-black/40 border border-white/10 p-5 rounded-2xl flex justify-between items-center">
             <div>
-              <h3 className="text-[#A67C52] font-semibold text-xs tracking-wider uppercase mb-1">Okul Adı</h3>
+              <h3 className="text-[#A67C52] font-semibold text-xs tracking-wider uppercase mb-1">
+                Okul Adı
+              </h3>
               <p className="text-xl font-bold leading-none">{order.schoolName}</p>
             </div>
-            
+
             <div className="flex flex-col items-end">
-               <h3 className="text-[#A67C52] font-semibold text-xs tracking-wider uppercase mb-2">Sipariş Durumu</h3>
-               <select
-                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-[#A67C52] transition-all cursor-pointer hover:bg-white/10"
-                 value={order.status}
-                 onChange={handleStatusChange}
-                 disabled={updateStatusMutation.isPending}
-               >
-                 <option value="Sipariş Yok" className="bg-[#131316]">Sipariş Yok</option>
-                 <option value="Bekliyor" className="bg-[#131316]">Bekliyor</option>
-                 <option value="Hazırlanıyor" className="bg-[#131316]">Hazırlanıyor</option>
-                 <option value="Kargoya Verildi" className="bg-[#131316]">Kargoya Verildi</option>
-                 <option value="Tamamlandı" className="bg-[#131316]">Tamamlandı</option>
-               </select>
+              <h3 className="text-[#A67C52] font-semibold text-xs tracking-wider uppercase mb-2">
+                Sipariş Durumu
+              </h3>
+              <select
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm font-medium text-white outline-none focus:ring-2 focus:ring-[#A67C52] transition-all cursor-pointer hover:bg-white/10"
+                value={order.status}
+                onChange={handleStatusChange}
+                disabled={updateStatusMutation.isPending}
+              >
+                <option value="Sipariş Yok" className="bg-[#131316]">
+                  Sipariş Yok
+                </option>
+                <option value="Bekliyor" className="bg-[#131316]">
+                  Bekliyor
+                </option>
+                <option value="Hazırlanıyor" className="bg-[#131316]">
+                  Hazırlanıyor
+                </option>
+                <option value="Kargoya Verildi" className="bg-[#131316]">
+                  Kargoya Verildi
+                </option>
+                <option value="Tamamlandı" className="bg-[#131316]">
+                  Tamamlandı
+                </option>
+              </select>
             </div>
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white/50 uppercase tracking-wider px-1">Hazırlanacak Ürünler</h4>
-            
+            <h4 className="text-xs font-bold text-white/50 uppercase tracking-wider px-1">
+              Hazırlanacak Ürünler
+            </h4>
+
             <div className="space-y-2">
               {order.package1Quantity > 0 && (
                 <div className="flex items-center justify-between bg-[#151515] hover:bg-white/5 transition-colors border border-white/5 p-4 rounded-xl">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">
-                      {order.package1Name}
-                    </span>
+                    <span className="font-semibold text-white">{order.package1Name}</span>
                     <span className="text-xs text-white/40 mt-0.5">
                       {order.package1Quantity} Adet x {order.package1Price} ₺
                     </span>
@@ -147,9 +156,7 @@ function OrderDetailsModal({
               {order.package2Quantity > 0 && (
                 <div className="flex items-center justify-between bg-[#151515] hover:bg-white/5 transition-colors border border-white/5 p-4 rounded-xl">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">
-                      {order.package2Name}
-                    </span>
+                    <span className="font-semibold text-white">{order.package2Name}</span>
                     <span className="text-xs text-white/40 mt-0.5">
                       {order.package2Quantity} Adet x {order.package2Price} ₺
                     </span>
@@ -159,7 +166,7 @@ function OrderDetailsModal({
                   </div>
                 </div>
               )}
-              
+
               {order.package1Quantity === 0 && order.package2Quantity === 0 && (
                 <div className="text-center py-6 text-white/40 text-sm border border-white/5 border-dashed rounded-xl">
                   Bu okul için henüz bir paket seçimi yapılmamış.
@@ -167,10 +174,10 @@ function OrderDetailsModal({
               )}
             </div>
           </div>
-          
+
           <div className="pt-4 mt-2 border-t border-white/10 flex items-center justify-between px-1">
-             <span className="text-lg text-white/70 font-medium">Toplam Tutar</span>
-             <span className="text-2xl font-bold text-[#A67C52]">{order.totalPrice} ₺</span>
+            <span className="text-lg text-white/70 font-medium">Toplam Tutar</span>
+            <span className="text-2xl font-bold text-[#A67C52]">{order.totalPrice} ₺</span>
           </div>
         </div>
       </DialogContent>
@@ -188,9 +195,7 @@ function ManageOrders() {
     queryFn: async () => {
       setFetchError(null);
       try {
-        const { data, error } = await supabase
-          .from("schools")
-          .select(`
+        const { data, error } = await supabase.from("schools").select(`
             id, name, created_at, is_active, package_statuses,
             classes (
               students ( selection )
@@ -198,9 +203,13 @@ function ManageOrders() {
           `);
 
         if (error) throw error;
-        
-        const { data: spData } = await (supabase as any).from("school_products").select("school_id, product_id, custom_price");
-        const { data: pData } = await (supabase as any).from("products").select("id, name, base_price");
+
+        const { data: spData } = await (supabase as any)
+          .from("school_products")
+          .select("school_id, product_id, custom_price");
+        const { data: pData } = await (supabase as any)
+          .from("products")
+          .select("id, name, base_price");
 
         const pMap = new Map();
         (pData || []).forEach((p: any) => pMap.set(p.id, p));
@@ -226,39 +235,39 @@ function ManageOrders() {
                 try {
                   parsed = JSON.parse(student.selection);
                 } catch {
-                  parsed = student.selection.split(',').filter(Boolean);
+                  parsed = student.selection.split(",").filter(Boolean);
                 }
                 if (parsed.includes("paket1")) p1Count++;
                 if (parsed.includes("paket2")) p2Count++;
               }
             });
           });
-          
+
           const sProds = spMap.get(school.id) || { paket1: null, paket2: null };
           const p1_sp = sProds.paket1;
           const p2_sp = sProds.paket2;
-          
+
           const p1 = p1_sp ? pMap.get(p1_sp.product_id) : null;
           const p2 = p2_sp ? pMap.get(p2_sp.product_id) : null;
 
           const p1Price = p1_sp?.custom_price || p1?.base_price || 0;
           const p2Price = p2_sp?.custom_price || p2?.base_price || 0;
-          
+
           const p1Name = p1?.name || "Paket 1";
           const p2Name = p2?.name || "Paket 2";
-          
-          const total = (p1Count * p1Price) + (p2Count * p2Price);
-          
+
+          const total = p1Count * p1Price + p2Count * p2Price;
+
           const globalStatus = school.package_statuses?.global_status;
           let computedStatus = globalStatus;
           if (!computedStatus) {
-             computedStatus = (p1Count > 0 || p2Count > 0) ? "Bekliyor" : "Sipariş Yok";
+            computedStatus = p1Count > 0 || p2Count > 0 ? "Bekliyor" : "Sipariş Yok";
           }
 
           results.push({
             schoolId: school.id,
             schoolName: school.name,
-            orderDate: new Date(school.created_at).toLocaleDateString('tr-TR'),
+            orderDate: new Date(school.created_at).toLocaleDateString("tr-TR"),
             status: computedStatus,
             package1Name: p1Name,
             package1Price: p1Price,
@@ -266,7 +275,7 @@ function ManageOrders() {
             package2Name: p2Name,
             package2Price: p2Price,
             package2Quantity: p2Count,
-            totalPrice: total
+            totalPrice: total,
           });
         });
         return results;
@@ -296,13 +305,18 @@ function ManageOrders() {
               <TableHead className="text-white/50 font-semibold py-4">Sipariş Tarihi</TableHead>
               <TableHead className="text-white/50 font-semibold py-4">Toplam Tutar</TableHead>
               <TableHead className="text-white/50 font-semibold py-4">Durum</TableHead>
-              <TableHead className="text-right text-white/50 font-semibold py-4">İşlemler</TableHead>
+              <TableHead className="text-right text-white/50 font-semibold py-4">
+                İşlemler
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {fetchError ? (
               <TableRow className="border-white/10 hover:bg-transparent">
-                <TableCell colSpan={5} className="text-center py-12 text-rose-500 font-semibold text-lg">
+                <TableCell
+                  colSpan={5}
+                  className="text-center py-12 text-rose-500 font-semibold text-lg"
+                >
                   Veri çekme hatası: {fetchError}
                 </TableCell>
               </TableRow>
@@ -321,35 +335,34 @@ function ManageOrders() {
               </TableRow>
             ) : (
               aggregatedOrders.map((o) => (
-                <TableRow 
-                  key={o.schoolId} 
+                <TableRow
+                  key={o.schoolId}
                   className="border-white/10 hover:bg-white/5 transition-colors cursor-pointer group"
                   onClick={() => {
                     setSelectedOrder(o);
                     setIsModalOpen(true);
                   }}
                 >
-                  <TableCell className="font-semibold text-white py-4">
-                    {o.schoolName}
-                  </TableCell>
+                  <TableCell className="font-semibold text-white py-4">{o.schoolName}</TableCell>
                   <TableCell className="text-white/70">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-white/40" />
                       {o.orderDate}
                     </div>
                   </TableCell>
-                  <TableCell className="font-bold text-[#A67C52]">
-                    {o.totalPrice} ₺
-                  </TableCell>
+                  <TableCell className="font-bold text-[#A67C52]">{o.totalPrice} ₺</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-[#A67C52]/10 text-[#A67C52] border-[#A67C52]/20 font-normal">
+                    <Badge
+                      variant="outline"
+                      className="bg-[#A67C52]/10 text-[#A67C52] border-[#A67C52]/20 font-normal"
+                    >
                       {o.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-white/50 group-hover:text-white group-hover:bg-white/10"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -366,10 +379,10 @@ function ManageOrders() {
         </Table>
       </div>
 
-      <OrderDetailsModal 
-        order={selectedOrder} 
-        isOpen={!!selectedOrder} 
-        onClose={() => setSelectedOrder(null)} 
+      <OrderDetailsModal
+        order={selectedOrder}
+        isOpen={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
       />
     </PageTransition>
   );

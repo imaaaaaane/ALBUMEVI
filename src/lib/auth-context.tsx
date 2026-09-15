@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("role, team_id, full_name, avatar_url")
         .eq("id", user.id)
         .single();
-        
+
       if (profile) {
         setRole((profile as any).role);
         setTeamId((profile as any).team_id);
@@ -55,17 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initializeAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (session?.user) {
           if (mounted) setUser(session.user);
-          
+
           const { data: profile } = await supabase
             .from("profiles" as any)
             .select("role, team_id, full_name, avatar_url")
             .eq("id", session.user.id)
             .single();
-            
+
           if (profile && mounted) {
             setRole((profile as any).role);
             setTeamId((profile as any).team_id);
@@ -82,7 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       if (session?.user) {
         setUser(session.user);
@@ -114,7 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, teamId, fullName, avatarUrl, isLoading, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, role, teamId, fullName, avatarUrl, isLoading, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

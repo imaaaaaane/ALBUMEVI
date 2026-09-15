@@ -32,11 +32,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   TrendingUp,
   TrendingDown,
@@ -169,21 +165,36 @@ const getConvertedAmount = (amount: number, currency?: string, rates?: Record<st
   return val * rate;
 };
 
-const getFirmPaid = (f: Firm, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getFirmDebt = (f: Firm, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getFirmRemaining = (f: Firm, rates?: Record<string, number>) => getFirmDebt(f, rates) - getFirmPaid(f, rates);
+const getFirmPaid = (f: Firm, rates?: Record<string, number>) =>
+  f.transactions
+    .filter((tx) => tx.type === "payment")
+    .reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
+const getFirmDebt = (f: Firm, rates?: Record<string, number>) =>
+  f.transactions
+    .filter((tx) => tx.type === "debt")
+    .reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
+const getFirmRemaining = (f: Firm, rates?: Record<string, number>) =>
+  getFirmDebt(f, rates) - getFirmPaid(f, rates);
 
 const getEmployeeSalary = (f: Employee) => Number(f.total_debt || 0);
 const getEmployeePaid = (f: Employee) => Number(f.total_paid || 0);
 const getEmployeeRemaining = (f: Employee) => getEmployeeSalary(f) - getEmployeePaid(f);
 
-const getExpensePaid = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_paid, f.currency, rates);
-const getExpenseDebt = (f: Expense, rates?: Record<string, number>) => getConvertedAmount(f.total_debt, f.currency, rates);
-const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) => getExpenseDebt(f, rates) - getExpensePaid(f, rates);
+const getExpensePaid = (f: Expense, rates?: Record<string, number>) =>
+  getConvertedAmount(f.total_paid, f.currency, rates);
+const getExpenseDebt = (f: Expense, rates?: Record<string, number>) =>
+  getConvertedAmount(f.total_debt, f.currency, rates);
+const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) =>
+  getExpenseDebt(f, rates) - getExpensePaid(f, rates);
 
-const getSchoolPaid = (f: School, rates?: Record<string, number>) => getConvertedAmount((f.paid_amount || 0) + (f.total_contribution || 0), f.currency, rates);
-const getSchoolDebt = (f: School, rates?: Record<string, number>) => f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getSchoolRemaining = (f: School, rates?: Record<string, number>) => getSchoolDebt(f, rates) - getSchoolPaid(f, rates);
+const getSchoolPaid = (f: School, rates?: Record<string, number>) =>
+  getConvertedAmount((f.paid_amount || 0) + (f.total_contribution || 0), f.currency, rates);
+const getSchoolDebt = (f: School, rates?: Record<string, number>) =>
+  f.transactions
+    .filter((tx) => tx.type === "debt")
+    .reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
+const getSchoolRemaining = (f: School, rates?: Record<string, number>) =>
+  getSchoolDebt(f, rates) - getSchoolPaid(f, rates);
 
 function AccountingDashboard() {
   const navigate = useNavigate();
@@ -197,13 +208,13 @@ function AccountingDashboard() {
     }
   }, [role, navigate]);
 
-  const [view, setView] = useState<"overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski" | "sarf">("overview");
+  const [view, setView] = useState<
+    "overview" | "firmalar" | "maaslar" | "ortak_giderler" | "okullar" | "baski" | "sarf"
+  >("overview");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const [isAddCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-
-
 
   const queryClient = useQueryClient();
 
@@ -241,8 +252,6 @@ function AccountingDashboard() {
     return amount * rate;
   };
 
-
-
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["finance_products"],
     queryFn: async () => {
@@ -267,7 +276,13 @@ function AccountingDashboard() {
         .select("id, supplier_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: true });
 
-      if (tErr) return suppliers.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
+      if (tErr)
+        return suppliers.map((s) => ({
+          id: s.id,
+          name: s.name,
+          currency: s.currency as any,
+          transactions: [],
+        }));
 
       return suppliers.map((s) => ({
         id: s.id,
@@ -285,7 +300,7 @@ function AccountingDashboard() {
             currency: t.currency,
           })),
       }));
-    }
+    },
   });
 
   const totalSarfPaid = suppliersData.reduce((sum, s) => sum + getFirmPaid(s, exchangeRates), 0);
@@ -307,10 +322,8 @@ function AccountingDashboard() {
     },
     onError: (error) => {
       toast.error("Bölüm eklenirken hata oluştu: " + error.message);
-    }
+    },
   });
-
-
 
   // 1. Fetch Firms & Transactions from new English DB Schema
   const { data: firmsData = [] } = useQuery<Firm[]>({
@@ -328,7 +341,13 @@ function AccountingDashboard() {
         .select("id, firm_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: true });
 
-      if (tErr) return firms.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, transactions: [] }));
+      if (tErr)
+        return firms.map((s) => ({
+          id: s.id,
+          name: s.name,
+          currency: s.currency as any,
+          transactions: [],
+        }));
 
       console.log("Firms Raw:", firms);
       console.log("Firm Transactions Raw:", transactions);
@@ -350,11 +369,14 @@ function AccountingDashboard() {
             currency: t.currency,
           })),
       }));
-    }
+    },
   });
 
   // Calculate dynamic outstanding firms balance to show in card
-  const totalRemainingFirms = firmsData.reduce((sum, f) => sum + getFirmRemaining(f, exchangeRates), 0);
+  const totalRemainingFirms = firmsData.reduce(
+    (sum, f) => sum + getFirmRemaining(f, exchangeRates),
+    0,
+  );
   const totalPaidFirms = firmsData.reduce((sum, f) => sum + getFirmPaid(f, exchangeRates), 0);
 
   // Fetch Employees & Transactions
@@ -395,11 +417,14 @@ function AccountingDashboard() {
             createdAt: t.created_at,
           })),
       }));
-    }
+    },
   });
 
   const totalPaidEmployees = employeesData.reduce((sum, f) => sum + getEmployeePaid(f), 0);
-  const totalRemainingEmployees = employeesData.reduce((sum, f) => sum + getEmployeeRemaining(f), 0);
+  const totalRemainingEmployees = employeesData.reduce(
+    (sum, f) => sum + getEmployeeRemaining(f),
+    0,
+  );
 
   // Fetch Common Expenses
   const { data: expensesData = [] } = useQuery<Expense[]>({
@@ -419,7 +444,7 @@ function AccountingDashboard() {
         total_paid: Number(s.total_paid) || 0,
         sira: s.sira,
       }));
-    }
+    },
   });
 
   const { data: schoolsData = [] } = useQuery<School[]>({
@@ -427,7 +452,9 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: schools, error: sErr } = await supabaseClient
         .from("schools")
-        .select("id, name, currency, created_at, paid_amount, remaining_amount, contribution_per_student")
+        .select(
+          "id, name, currency, created_at, paid_amount, remaining_amount, contribution_per_student",
+        )
         .order("created_at", { ascending: false });
       if (sErr) return [];
 
@@ -440,12 +467,25 @@ function AccountingDashboard() {
         .from("orders")
         .select("id, school_id, order_status");
 
-      if (tErr) return schools.map(s => ({ id: s.id, name: s.name, currency: s.currency as any, paid_amount: Number(s.paid_amount) || 0, remaining_amount: Number(s.remaining_amount) || 0, contribution_per_student: 0, total_contribution: 0, total_orders: 0, transactions: [] }));
+      if (tErr)
+        return schools.map((s) => ({
+          id: s.id,
+          name: s.name,
+          currency: s.currency as any,
+          paid_amount: Number(s.paid_amount) || 0,
+          remaining_amount: Number(s.remaining_amount) || 0,
+          contribution_per_student: 0,
+          total_contribution: 0,
+          total_orders: 0,
+          transactions: [],
+        }));
 
       return schools.map((s) => {
-        const schoolOrders = (ordersData || []).filter((o: any) => o.school_id === s.id && o.order_status !== 'Cancelled');
+        const schoolOrders = (ordersData || []).filter(
+          (o: any) => o.school_id === s.id && o.order_status !== "Cancelled",
+        );
         const contribution = (Number(s.contribution_per_student) || 0) * schoolOrders.length;
-        
+
         return {
           id: s.id,
           name: s.name,
@@ -457,17 +497,17 @@ function AccountingDashboard() {
           total_orders: schoolOrders.length,
           transactions: transactions
             .filter((t) => String(t.school_id) === String(s.id))
-          .map((t) => ({
-            id: t.id,
-            date: new Date(t.created_at).toISOString().split("T")[0],
-            type: t.transaction_type as "debt" | "payment",
-            amount: Number(t.amount),
-            desc: t.description ?? "",
-            createdAt: t.created_at,
-          })),
+            .map((t) => ({
+              id: t.id,
+              date: new Date(t.created_at).toISOString().split("T")[0],
+              type: t.transaction_type as "debt" | "payment",
+              amount: Number(t.amount),
+              desc: t.description ?? "",
+              createdAt: t.created_at,
+            })),
         };
       });
-    }
+    },
   });
 
   const { data: printExpensesData = [] } = useQuery({
@@ -481,31 +521,55 @@ function AccountingDashboard() {
       const { data, error } = await q;
       if (error) throw error;
       return data;
-    }
+    },
   });
 
-  const totalPaidBaski = printExpensesData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const totalPaidBaski = printExpensesData.reduce(
+    (sum, item) => sum + (Number(item.amount) || 0),
+    0,
+  );
 
-  const commonExpensesList = expensesData.filter(e => e.name.toLowerCase() !== "baskı" && e.name.toLowerCase() !== "baski");
-  const totalPaidExpenses = commonExpensesList.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
-  const totalRemainingExpenses = commonExpensesList.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
+  const commonExpensesList = expensesData.filter(
+    (e) => e.name.toLowerCase() !== "baskı" && e.name.toLowerCase() !== "baski",
+  );
+  const totalPaidExpenses = commonExpensesList.reduce(
+    (sum, f) => sum + getExpensePaid(f, exchangeRates),
+    0,
+  );
+  const totalRemainingExpenses = commonExpensesList.reduce(
+    (sum, f) => sum + getExpenseRemaining(f, exchangeRates),
+    0,
+  );
 
   const totalPaidSchools = schoolsData.reduce((sum, f) => sum + getSchoolPaid(f, exchangeRates), 0);
-  const totalRemainingSchools = schoolsData.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
+  const totalRemainingSchools = schoolsData.reduce(
+    (sum, f) => sum + getSchoolRemaining(f, exchangeRates),
+    0,
+  );
 
   // Categories list dynamically calculated from database aggregates
   const categories: CategoryItem[] = [
     { id: "cat-1", title: "FİRMALAR", amount: totalPaidFirms, change: "+8%", isPositive: true },
-    { id: "sarf-malzemeler", title: "SARF MALZEMELER", amount: totalSarfPaid, change: "+0%", isPositive: false },
-    { id: "cat-2", title: "ORTAK GİDERLER", amount: totalPaidExpenses, change: "-3%", isPositive: false },
+    {
+      id: "sarf-malzemeler",
+      title: "SARF MALZEMELER",
+      amount: totalSarfPaid,
+      change: "+0%",
+      isPositive: false,
+    },
+    {
+      id: "cat-2",
+      title: "ORTAK GİDERLER",
+      amount: totalPaidExpenses,
+      change: "-3%",
+      isPositive: false,
+    },
     { id: "cat-4", title: "BASKI", amount: totalPaidBaski, change: "+5%", isPositive: false },
     { id: "cat-3", title: "MAAŞLAR", amount: totalPaidEmployees, change: "-2%", isPositive: false },
     { id: "cat-5", title: "OKULLAR", amount: totalPaidSchools, change: "+15%", isPositive: true },
   ];
 
   const combinedTx: TransactionItem[] = [];
-
-
 
   firmsData.forEach((f) => {
     f.transactions.forEach((tx) => {
@@ -559,7 +623,9 @@ function AccountingDashboard() {
     : sortedCombinedTx.slice(0, 5);
 
   // Dynamic Budget Breakdown based strictly on real-time database totals (Firms, Common Expenses, Employees, Schools)
-  const dbCategories = categories.filter((c) => ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id));
+  const dbCategories = categories.filter((c) =>
+    ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id),
+  );
   const breakdownItems: BreakdownItem[] = dbCategories.map((c, i) => {
     const colors = ["#A67C52", "#C01C1C", "#9E9696", "#E57373", "#D0A36D", "#6D4C41", "#8D6E63"];
     const totalAmount = dbCategories.reduce((sum, item) => sum + item.amount, 0);
@@ -644,7 +710,8 @@ function AccountingDashboard() {
             {isRatesError && (
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                Döviz kurları alınamadı. Dövizli firmaların Kalan Borç hesaplamaları geçici olarak 0 görünecektir.
+                Döviz kurları alınamadı. Dövizli firmaların Kalan Borç hesaplamaları geçici olarak 0
+                görünecektir.
               </div>
             )}
 
@@ -669,14 +736,24 @@ function AccountingDashboard() {
                     amount={c.amount}
                     change={c.change}
                     isPositive={c.isPositive}
-                    isActive={isActive || ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id)}
-                    isPortal={["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(c.id)}
+                    isActive={
+                      isActive ||
+                      ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "sarf-malzemeler"].includes(
+                        c.id,
+                      )
+                    }
+                    isPortal={[
+                      "cat-1",
+                      "cat-2",
+                      "cat-3",
+                      "cat-4",
+                      "cat-5",
+                      "sarf-malzemeler",
+                    ].includes(c.id)}
                     onClick={handleClick}
                   />
                 );
               })}
-
-
             </div>
 
             {/* Lower Columns */}
@@ -701,12 +778,44 @@ function AccountingDashboard() {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2 }}
           >
-            {view === "sarf" && <SarfListView suppliers={suppliersData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
-            {view === "firmalar" && <FirmsListView firms={firmsData} products={products} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
-            {view === "maaslar" && <EmployeesListView employees={employeesData} onBack={() => setView("overview")} />}
-            {view === "ortak_giderler" && <ExpensesListView expenses={expensesData} exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
-            {view === "okullar" && <OkullarListView schools={schoolsData} exchangeRates={exchangeRates} isRatesError={isRatesError} onBack={() => setView("overview")} />}
-            {view === "baski" && <BaskiListView exchangeRates={exchangeRates} onBack={() => setView("overview")} />}
+            {view === "sarf" && (
+              <SarfListView
+                suppliers={suppliersData}
+                exchangeRates={exchangeRates}
+                isRatesError={isRatesError}
+                onBack={() => setView("overview")}
+              />
+            )}
+            {view === "firmalar" && (
+              <FirmsListView
+                firms={firmsData}
+                products={products}
+                exchangeRates={exchangeRates}
+                isRatesError={isRatesError}
+                onBack={() => setView("overview")}
+              />
+            )}
+            {view === "maaslar" && (
+              <EmployeesListView employees={employeesData} onBack={() => setView("overview")} />
+            )}
+            {view === "ortak_giderler" && (
+              <ExpensesListView
+                expenses={expensesData}
+                exchangeRates={exchangeRates}
+                onBack={() => setView("overview")}
+              />
+            )}
+            {view === "okullar" && (
+              <OkullarListView
+                schools={schoolsData}
+                exchangeRates={exchangeRates}
+                isRatesError={isRatesError}
+                onBack={() => setView("overview")}
+              />
+            )}
+            {view === "baski" && (
+              <BaskiListView exchangeRates={exchangeRates} onBack={() => setView("overview")} />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -752,8 +861,6 @@ function AccountingDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
     </PageTransition>
   );
 }
@@ -770,16 +877,25 @@ interface CategoryCardProps {
   onClick: () => void;
 }
 
-function CategoryCard({ title, amount, change, isPositive, isActive, isPortal, onClick }: CategoryCardProps) {
+function CategoryCard({
+  title,
+  amount,
+  change,
+  isPositive,
+  isActive,
+  isPortal,
+  onClick,
+}: CategoryCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl p-5 border transition-all cursor-pointer ${isActive
+      className={`relative overflow-hidden rounded-2xl p-5 border transition-all cursor-pointer ${
+        isActive
           ? "bg-[#131316] border-[#A67C52] shadow-[0_0_15px_rgba(166,124,82,0.15)]"
           : "bg-[#131316] border-white/5 hover:border-white/10"
-        }`}
+      }`}
     >
       <div className="flex flex-col justify-between h-full gap-4">
         <div>
@@ -791,8 +907,14 @@ function CategoryCard({ title, amount, change, isPositive, isActive, isPortal, o
           </h3>
         </div>
         <div className="flex justify-between items-end">
-          <div className={`flex items-center gap-1 text-xs font-semibold ${isPositive ? "text-[#12B76A]" : "text-[#A67C52]"}`}>
-            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+          <div
+            className={`flex items-center gap-1 text-xs font-semibold ${isPositive ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+          >
+            {isPositive ? (
+              <TrendingUp className="w-3.5 h-3.5" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5" />
+            )}
             <span>{change}</span>
           </div>
           {isPortal && (
@@ -813,18 +935,24 @@ interface TransactionListProps {
   onClearFilter: () => void;
 }
 
-function TransactionList({ transactions, activeCategoryName, onClearFilter }: TransactionListProps) {
+function TransactionList({
+  transactions,
+  activeCategoryName,
+  onClearFilter,
+}: TransactionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const filteredTransactions = transactions
     .filter((tx) => tx.desc.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.desc.localeCompare(b.desc, 'tr'));
+    .sort((a, b) => a.desc.localeCompare(b.desc, "tr"));
 
   return (
     <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
       <div className="flex justify-between items-start gap-4">
         <div>
           <h3 className="text-lg font-bold text-white">Son İşlemler</h3>
-          <p className="text-xs text-[#9E9696] font-medium mt-0.5">Bölüm ve firma kayıtlarının canlı akışı</p>
+          <p className="text-xs text-[#9E9696] font-medium mt-0.5">
+            Bölüm ve firma kayıtlarının canlı akışı
+          </p>
         </div>
         {activeCategoryName && (
           <Badge
@@ -840,11 +968,11 @@ function TransactionList({ transactions, activeCategoryName, onClearFilter }: Tr
 
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input 
-          type="text" 
-          placeholder="İşlem ara..." 
-          value={searchQuery} 
-          onChange={(e) => setSearchQuery(e.target.value)} 
+        <Input
+          type="text"
+          placeholder="İşlem ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 h-11 bg-white/5 border-white/10 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
         />
       </div>
@@ -867,8 +995,11 @@ function TransactionList({ transactions, activeCategoryName, onClearFilter }: Tr
                   <p className="text-sm font-semibold text-white">{tx.desc}</p>
                   <p className="text-xs text-[#9E9696] font-medium">{tx.date}</p>
                 </div>
-                <span className={`text-sm font-bold ${isIncome ? "text-[#12B76A]" : "text-[#A67C52]"}`}>
-                  {isIncome ? "+" : "-"}{Math.abs(tx.amount).toLocaleString()} ₺
+                <span
+                  className={`text-sm font-bold ${isIncome ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                >
+                  {isIncome ? "+" : "-"}
+                  {Math.abs(tx.amount).toLocaleString()} ₺
                 </span>
               </motion.div>
             );
@@ -884,7 +1015,9 @@ function MonthlyBreakdown({ items }: { items: BreakdownItem[] }) {
     <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
       <div>
         <h3 className="text-lg font-bold text-white">Bütçe Dağılımı</h3>
-        <p className="text-xs text-[#9E9696] font-medium mt-0.5">Departmanlara göre genel harcama oranı</p>
+        <p className="text-xs text-[#9E9696] font-medium mt-0.5">
+          Departmanlara göre genel harcama oranı
+        </p>
       </div>
 
       <div className="space-y-5">
@@ -906,7 +1039,6 @@ function MonthlyBreakdown({ items }: { items: BreakdownItem[] }) {
     </div>
   );
 }
-
 
 // ───────── Sarf Malzemeler (Tedarikçi) ListView Component ─────────
 
@@ -942,14 +1074,18 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
-  
+
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
-      case "USD": return "$";
-      case "EUR": return "€";
-      case "TRY": default: return "₺";
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "TRY":
+      default:
+        return "₺";
     }
   };
 
@@ -964,9 +1100,6 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     return amount;
   };
 
-
-
-  
   const getGroupedTotals = (supplier: Firm) => {
     const totals: Record<string, { paid: number; debt: number; remaining: number }> = {};
     supplier.transactions.forEach((tx: any) => {
@@ -975,19 +1108,24 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       if (tx.type === "payment") totals[cur].paid += Number(tx.amount);
       if (tx.type === "debt") totals[cur].debt += Number(tx.amount);
     });
-    Object.keys(totals).forEach(cur => {
+    Object.keys(totals).forEach((cur) => {
       totals[cur].remaining = totals[cur].debt - totals[cur].paid;
     });
     return totals;
   };
 
-  const renderGroupedAmounts = (supplier: Firm, field: "paid" | "debt" | "remaining", colorClass: string) => {
+  const renderGroupedAmounts = (
+    supplier: Firm,
+    field: "paid" | "debt" | "remaining",
+    colorClass: string,
+  ) => {
     const totals = getGroupedTotals(supplier);
     const keys = Object.keys(totals);
-    if (keys.length === 0) return <span className={`font-mono text-sm font-bold block mt-0.5 ${colorClass}`}>0 ₺</span>;
+    if (keys.length === 0)
+      return <span className={`font-mono text-sm font-bold block mt-0.5 ${colorClass}`}>0 ₺</span>;
     return (
       <div className="mt-0.5 space-y-0.5">
-        {keys.map(cur => (
+        {keys.map((cur) => (
           <span key={cur} className={`font-mono text-sm font-bold block ${colorClass}`}>
             {totals[cur][field].toLocaleString()} {getCurrencySymbol(cur)}
           </span>
@@ -998,7 +1136,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
   const handleExportListPDF = () => {
     const columns = ["Tedarikçi Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
-    
+
     let sumPaid = 0;
     let sumRemaining = 0;
 
@@ -1018,14 +1156,14 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     data.push([
       "GENEL TOPLAM",
       `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
-      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
     ]);
 
     exportToPDF({
       title: "Tedarikçi (Sarf) Genel Raporu",
       columns,
       data,
-      filename: `Sarf_Malzemeler_Genel_Raporu.pdf`
+      filename: `Sarf_Malzemeler_Genel_Raporu.pdf`,
     });
   };
 
@@ -1034,7 +1172,13 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const totalRemaining = suppliers.reduce((sum, f) => sum + getFirmRemaining(f, exchangeRates), 0);
 
   const addSupplierMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number; desc: string }) => {
+    mutationFn: async (input: {
+      name: string;
+      currency: string;
+      taken: number;
+      rest: number;
+      desc: string;
+    }) => {
       const { data: supplier, error: sErr } = await supabaseClient
         .from("suppliers")
         .insert({ name: input.name, currency: input.currency, description: input.desc })
@@ -1044,12 +1188,20 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
       if (input.taken > 0) {
         await supabaseClient.from("supplier_transactions").insert({
-          supplier_id: supplier.id, transaction_type: "debt", amount: input.taken, description: "İlk Borç Kaydı", currency: input.currency
+          supplier_id: supplier.id,
+          transaction_type: "debt",
+          amount: input.taken,
+          description: "İlk Borç Kaydı",
+          currency: input.currency,
         });
       }
       if (input.rest > 0) {
         await supabaseClient.from("supplier_transactions").insert({
-          supplier_id: supplier.id, transaction_type: "payment", amount: input.rest, description: "İlk Ödeme Kaydı", currency: input.currency
+          supplier_id: supplier.id,
+          transaction_type: "payment",
+          amount: input.rest,
+          description: "İlk Ödeme Kaydı",
+          currency: input.currency,
         });
       }
       return supplier;
@@ -1058,21 +1210,42 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
       toast.success("Suppliera eklendi");
       setIsAddSupplierOpen(false);
-      setNewSupplierName(""); setNewSupplierDesc(""); setNewSupplierTaken(""); setNewSupplierRest(""); setNewSupplierCurrency("TRY");
+      setNewSupplierName("");
+      setNewSupplierDesc("");
+      setNewSupplierTaken("");
+      setNewSupplierRest("");
+      setNewSupplierCurrency("TRY");
     },
   });
 
   const editSupplierMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; takenDiff: number; restDiff: number }) => {
-      await supabaseClient.from("suppliers").update({ name: input.name, currency: input.currency }).eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      currency: string;
+      takenDiff: number;
+      restDiff: number;
+    }) => {
+      await supabaseClient
+        .from("suppliers")
+        .update({ name: input.name, currency: input.currency })
+        .eq("id", input.id);
       if (input.takenDiff !== 0) {
         await supabaseClient.from("supplier_transactions").insert({
-          supplier_id: input.id, transaction_type: "debt", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Borç)", currency: input.currency
+          supplier_id: input.id,
+          transaction_type: "debt",
+          amount: input.takenDiff,
+          description: "Bakiye Düzenlemesi (Borç)",
+          currency: input.currency,
         });
       }
       if (input.restDiff !== 0) {
         await supabaseClient.from("supplier_transactions").insert({
-          supplier_id: input.id, transaction_type: "payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)", currency: input.currency
+          supplier_id: input.id,
+          transaction_type: "payment",
+          amount: input.restDiff,
+          description: "Bakiye Düzenlemesi (Ödenen)",
+          currency: input.currency,
         });
       }
     },
@@ -1088,35 +1261,68 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       await supabaseClient.from("supplier_transactions").delete().eq("supplier_id", id);
       await supabaseClient.from("suppliers").delete().eq("id", id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers_ledger"] }); toast.success("Suppliera silindi"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
+      toast.success("Suppliera silindi");
+    },
   });
 
   const addTxMutation = useMutation({
-    mutationFn: async (input: { supplier_id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+    mutationFn: async (input: {
+      supplier_id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+    }) => {
       await supabaseClient.from("supplier_transactions").insert({
-        supplier_id: input.supplier_id, transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+        supplier_id: input.supplier_id,
+        transaction_type: input.type,
+        amount: input.amount,
+        description: input.desc,
+        currency: input.currency,
+        created_at: new Date(input.date).toISOString(),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
       toast.success("İşlem kaydedildi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
-      
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
+
       setEditTxId(null);
     },
   });
 
   const editTxMutation = useMutation({
-    mutationFn: async (input: { id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
-      await supabaseClient.from("supplier_transactions").update({
-        transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
-      }).eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+    }) => {
+      await supabaseClient
+        .from("supplier_transactions")
+        .update({
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: new Date(input.date).toISOString(),
+        })
+        .eq("id", input.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
       toast.success("İşlem güncellendi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
-      
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
+
       setEditTxId(null);
     },
   });
@@ -1134,21 +1340,34 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSupplierName.trim()) return;
-    addSupplierMutation.mutate({ name: newSupplierName.trim(), currency: newSupplierCurrency, taken: parseFloat(newSupplierTaken) || 0, rest: parseFloat(newSupplierRest) || 0, desc: newSupplierDesc.trim() });
+    addSupplierMutation.mutate({
+      name: newSupplierName.trim(),
+      currency: newSupplierCurrency,
+      taken: parseFloat(newSupplierTaken) || 0,
+      rest: parseFloat(newSupplierRest) || 0,
+      desc: newSupplierDesc.trim(),
+    });
   };
 
   const handleEditSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editSupplierId || !editSupplierName.trim()) return;
-    const supplier = suppliers.find(f => f.id === editSupplierId);
+    const supplier = suppliers.find((f) => f.id === editSupplierId);
     if (!supplier) return;
-    const currentTaken = supplier.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const currentRest = supplier.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentTaken = supplier.transactions
+      .filter((tx) => tx.type === "debt")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentRest = supplier.transactions
+      .filter((tx) => tx.type === "payment")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
     const newTaken = parseFloat(editSupplierTaken) || 0;
     const newRest = parseFloat(editSupplierRest) || 0;
     editSupplierMutation.mutate({
-      id: editSupplierId, name: editSupplierName.trim(), currency: editSupplierCurrency,
-      takenDiff: newTaken - currentTaken, restDiff: newRest - currentRest
+      id: editSupplierId,
+      name: editSupplierName.trim(),
+      currency: editSupplierCurrency,
+      takenDiff: newTaken - currentTaken,
+      restDiff: newRest - currentRest,
     });
   };
 
@@ -1156,21 +1375,31 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     e.preventDefault();
     if (!selectedSupplierId) return;
 
-    
-    let finalAmount = parseFloat(newTxAmount) || 0;
-    let finalDesc = newTxDesc.trim();
+    const finalAmount = parseFloat(newTxAmount) || 0;
+    const finalDesc = newTxDesc.trim();
 
     if (finalAmount <= 0) return toast.error("Geçerli bir tutar giriniz.");
     if (!finalDesc) return toast.error("Açıklama zorunludur.");
 
     if (editTxId) {
-      editTxMutation.mutate({ id: editTxId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+      editTxMutation.mutate({
+        id: editTxId,
+        type: newTxType,
+        amount: finalAmount,
+        desc: finalDesc,
+        date: newTxDate,
+        currency: newTxCurrency,
+      });
     } else {
-      addTxMutation.mutate({ supplier_id: selectedSupplierId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+      addTxMutation.mutate({
+        supplier_id: selectedSupplierId,
+        type: newTxType,
+        amount: finalAmount,
+        desc: finalDesc,
+        date: newTxDate,
+        currency: newTxCurrency,
+      });
     }
-
-
-
   };
 
   const handleEditTransaction = (tx: any) => {
@@ -1181,7 +1410,6 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     setNewTxCurrency(tx.currency || "TRY");
     setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
     setIsAddTxOpen(true);
-     
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -1196,14 +1424,9 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     const data = selectedSupplier.transactions.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedSupplier.currency)}`;
-      return [
-        new Date(tx.date).toLocaleDateString("tr-TR"),
-        typeStr,
-        tx.desc || "",
-        amountStr
-      ];
+      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
     });
-    
+
     const paid = getFirmPaid(selectedSupplier, exchangeRates);
     const taken = getFirmDebt(selectedSupplier, exchangeRates);
     const remaining = getFirmRemaining(selectedSupplier, exchangeRates);
@@ -1216,39 +1439,52 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       summary: [
         { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
         { label: "Toplam Ödenen", value: `${paid.toLocaleString()} ₺` },
-        { label: "Kalan Borç Bakiye", value: `${remaining.toLocaleString()} ₺` }
+        { label: "Kalan Borç Bakiye", value: `${remaining.toLocaleString()} ₺` },
       ],
-      filename: `${selectedSupplier.name.replace(/ /g, "_")}_Tedarikci_Islem_Gecmisi.pdf`
+      filename: `${selectedSupplier.name.replace(/ /g, "_")}_Tedarikci_Islem_Gecmisi.pdf`,
     });
   };
 
   const selectedSupplier = suppliers.find((f) => f.id === selectedSupplierId);
   const filteredSuppliers = suppliers
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   if (selectedSupplier) {
     return (
       <div className="flex flex-col h-full bg-[#131316] text-white rounded-3xl border border-white/5">
         <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedSupplierId(null)} className="text-[#9E9696] hover:text-white hover:bg-white/5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedSupplierId(null)}
+              className="text-[#9E9696] hover:text-white hover:bg-white/5"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">TEDARİKÇİ DETAY PANELİ</span>
-              <h3 className="text-xl font-extrabold text-white leading-tight">{selectedSupplier.name}</h3>
+              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">
+                TEDARİKÇİ DETAY PANELİ
+              </span>
+              <h3 className="text-xl font-extrabold text-white leading-tight">
+                {selectedSupplier.name}
+              </h3>
             </div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
           <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen Toplam</span>
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+              Ödenen Toplam
+            </span>
             {renderGroupedAmounts(selectedSupplier, "paid", "text-[#12B76A] text-lg")}
           </div>
           <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+              Toplam Borç
+            </span>
             {renderGroupedAmounts(selectedSupplier, "debt", "text-white text-lg")}
           </div>
           {(() => {
@@ -1260,18 +1496,23 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                   KALAN ÖDEME
                 </span>
                 {keys.length === 0 ? (
-                   <span className="font-mono text-sm font-bold block mt-1 text-white/70">0 ₺</span>
+                  <span className="font-mono text-sm font-bold block mt-1 text-white/70">0 ₺</span>
                 ) : (
                   <div className="mt-1 space-y-0.5">
-                    {keys.map(cur => {
+                    {keys.map((cur) => {
                       const netBalance = -totals[cur].remaining;
                       const isPositive = netBalance > 0;
                       const isNegative = netBalance < 0;
-                      const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                      const color = isPositive
+                        ? "text-emerald-500"
+                        : isNegative
+                          ? "text-red-500"
+                          : "text-white/70";
                       const sign = isPositive ? "+ " : isNegative ? "- " : "";
                       return (
                         <span key={cur} className={`font-mono text-lg font-bold block ${color}`}>
-                          {sign}{Math.abs(netBalance).toLocaleString()} {getCurrencySymbol(cur)}
+                          {sign}
+                          {Math.abs(netBalance).toLocaleString()} {getCurrencySymbol(cur)}
                         </span>
                       );
                     })}
@@ -1281,20 +1522,30 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             );
           })()}
         </div>
-        
+
         <div className="flex-1 p-6 space-y-4">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
             <div className="flex items-center gap-2">
-              <Button onClick={handleExportSupplierPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10">
+              <Button
+                onClick={handleExportSupplierPDF}
+                className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10"
+              >
                 <Download className="w-4 h-4 mr-2 text-[#A67C52]" /> PDF İndir
               </Button>
-              <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+              <Button
+                onClick={() => {
+                  setNewTxType("debt");
+                  setEditTxId(null);
+                  setIsAddTxOpen(true);
+                }}
+                className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4"
+              >
                 <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
               </Button>
             </div>
           </div>
-          
+
           <div className="space-y-3">
             {selectedSupplier.transactions.length === 0 && (
               <div className="text-center p-8 text-sm text-[#9E9696] bg-white/5 rounded-xl border border-white/5">
@@ -1304,25 +1555,54 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             {selectedSupplier.transactions.map((tx) => {
               const isTaken = tx.type === "debt";
               return (
-                <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
-                      {isTaken ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
+                    >
+                      {isTaken ? (
+                        <ArrowUpRight className="w-5 h-5" />
+                      ) : (
+                        <ArrowDownRight className="w-5 h-5" />
+                      )}
                     </div>
                     <div>
                       <span className="text-sm font-bold text-white block">{tx.desc}</span>
-                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
+                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">
+                        {tx.date}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>
-                      {isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedSupplier.currency, exchangeRates).toLocaleString()} ₺
+                    <span
+                      className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
+                    >
+                      {isTaken ? "+" : "-"}
+                      {getConvertedAmount(
+                        tx.amount,
+                        tx.currency || selectedSupplier.currency,
+                        exchangeRates,
+                      ).toLocaleString()}{" "}
+                      ₺
                     </span>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditTransaction(tx)}
+                        className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx.id)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteTransaction(tx.id)}
+                        className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -1334,22 +1614,28 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
         </div>
 
         {/* İŞLEM EKLE MODAL */}
-        <Dialog open={isAddTxOpen} onOpenChange={(open) => {
-          setIsAddTxOpen(open);
-          if (!open) {
-            setEditTxId(null);
-            setNewTxAmount("");
-            setNewTxDesc("");
-            
-          }
-        }}>
+        <Dialog
+          open={isAddTxOpen}
+          onOpenChange={(open) => {
+            setIsAddTxOpen(open);
+            if (!open) {
+              setEditTxId(null);
+              setNewTxAmount("");
+              setNewTxDesc("");
+            }
+          }}
+        >
           <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-md p-6 overflow-hidden">
             <form onSubmit={handleAddTx} className="space-y-6">
               <div>
-                <DialogTitle className="text-xl font-bold text-white">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle>
-                <p className="text-xs text-[#9E9696] mt-1">{selectedSupplier.name} supplierası için</p>
+                <DialogTitle className="text-xl font-bold text-white">
+                  {editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}
+                </DialogTitle>
+                <p className="text-xs text-[#9E9696] mt-1">
+                  {selectedSupplier.name} supplierası için
+                </p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
@@ -1357,53 +1643,101 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("debt");  setNewTxDesc(""); }}
+                      onClick={() => {
+                        setNewTxType("debt");
+                        setNewTxDesc("");
+                      }}
                     >
                       Satış / Borç
                     </button>
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); }}
+                      onClick={() => {
+                        setNewTxType("payment");
+                        setNewTxAmount("");
+                        setNewTxDesc("");
+                      }}
                     >
                       Ödeme / Tahsilat
                     </button>
                   </div>
                 </div>
 
-                
-
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tutar</Label>
                     <div className="flex gap-2">
-                      <Input required type="number"  min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)}  className="h-11 border-white/10 text-white rounded-xl flex-1 font-mono bg-white/5" />
-                      <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR" | "USD") => setNewTxCurrency(v as any)}>
+                      <Input
+                        required
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newTxAmount}
+                        onChange={(e) => setNewTxAmount(e.target.value)}
+                        className="h-11 border-white/10 text-white rounded-xl flex-1 font-mono bg-white/5"
+                      />
+                      <Select
+                        value={newTxCurrency}
+                        onValueChange={(v: "TRY" | "EUR" | "USD") => setNewTxCurrency(v as any)}
+                      >
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-[#111111] border-white/10 text-white">
                           <SelectItem value="TRY">TRY</SelectItem>
-                          <SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tarih</Label>
-                    <Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                    <Input
+                      type="date"
+                      required
+                      value={newTxDate}
+                      onChange={(e) => setNewTxDate(e.target.value)}
+                      className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                    />
                   </div>
                 </div>
-                
+
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-[#9E9696]">{newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}</Label>
-                  <Input required={newTxType === "payment"} placeholder={newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"} value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="bg-white/5 border-white/10 rounded-xl h-11 text-white" />
+                  <Label className="text-xs text-[#9E9696]">
+                    {newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}
+                  </Label>
+                  <Input
+                    required={newTxType === "payment"}
+                    placeholder={
+                      newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"
+                    }
+                    value={newTxDesc}
+                    onChange={(e) => setNewTxDesc(e.target.value)}
+                    className="bg-white/5 border-white/10 rounded-xl h-11 text-white"
+                  />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1">İptal</Button>
-                <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending || (!newTxAmount && newTxType === "payment")} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddTxOpen(false)}
+                  className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1"
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    addTxMutation.isPending ||
+                    editTxMutation.isPending ||
+                    (!newTxAmount && newTxType === "payment")
+                  }
+                  className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1"
+                >
                   {editTxId ? "Güncelle" : "Kaydet"}
                 </Button>
               </div>
@@ -1418,19 +1752,34 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Supplieralar (Cari Hesap)</h1>
-            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Suppliera cari hesap borç ve ödeme bakiye takipleri.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">
+              Supplieralar (Cari Hesap)
+            </h1>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">
+              Suppliera cari hesap borç ve ödeme bakiye takipleri.
+            </p>
           </div>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex gap-3">
-          <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+          <Button
+            onClick={handleExportListPDF}
+            className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]"
+          >
             <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
           </Button>
-          <Button onClick={() => setIsAddSupplierOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+          <Button
+            onClick={() => setIsAddSupplierOpen(true)}
+            className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]"
+          >
             <Plus className="mr-2 h-4 w-4" /> Suppliera Ekle
           </Button>
         </motion.div>
@@ -1438,40 +1787,62 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
       {isRatesError && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları alınamadı.
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları
+          alınamadı.
         </div>
       )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input type="text" placeholder="Suppliera ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+        <Input
+          type="text"
+          placeholder="Suppliera ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
       </div>
 
       <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h3 className="font-bold text-white text-lg">Cari Suppliera Listesi</h3>
-          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{suppliers.length} Suppliera</Badge>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">
+            {suppliers.length} Suppliera
+          </Badge>
         </div>
 
         <div className="divide-y divide-white/5">
           {filteredSuppliers.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Hiçbir kayıtlı suppliera bulunamadı.</div>
+            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">
+              Hiçbir kayıtlı suppliera bulunamadı.
+            </div>
           ) : (
             filteredSuppliers.map((f) => {
-              
               return (
-                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedSupplierId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                <motion.div
+                  key={f.id}
+                  whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }}
+                  whileTap={{ scale: 0.995 }}
+                  onClick={() => setSelectedSupplierId(f.id)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors"
+                >
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                      <Users className="w-5 h-5 text-[#9E9696]" />
+                    </div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
+                        ID: {f.id.substring(0, 8).toUpperCase()}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
                     <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                          Ödenen
+                        </span>
                         {renderGroupedAmounts(f, "paid", "text-[#12B76A]")}
                       </div>
                       <div>
@@ -1484,18 +1855,29 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                                 KALAN ÖDEME
                               </span>
                               {keys.length === 0 ? (
-                                <span className="font-mono text-sm font-bold block mt-0.5 text-white/70">0 ₺</span>
+                                <span className="font-mono text-sm font-bold block mt-0.5 text-white/70">
+                                  0 ₺
+                                </span>
                               ) : (
                                 <div className="mt-0.5 space-y-0.5">
-                                  {keys.map(cur => {
+                                  {keys.map((cur) => {
                                     const netBalance = -totals[cur].remaining;
                                     const isPositive = netBalance > 0;
                                     const isNegative = netBalance < 0;
-                                    const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                                    const color = isPositive
+                                      ? "text-emerald-500"
+                                      : isNegative
+                                        ? "text-red-500"
+                                        : "text-white/70";
                                     const sign = isPositive ? "+ " : isNegative ? "- " : "";
                                     return (
-                                      <span key={cur} className={`font-mono text-sm font-bold block ${color}`}>
-                                        {sign}{Math.abs(netBalance).toLocaleString()} {getCurrencySymbol(cur)}
+                                      <span
+                                        key={cur}
+                                        className={`font-mono text-sm font-bold block ${color}`}
+                                      >
+                                        {sign}
+                                        {Math.abs(netBalance).toLocaleString()}{" "}
+                                        {getCurrencySymbol(cur)}
                                       </span>
                                     );
                                   })}
@@ -1507,17 +1889,37 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        setEditSupplierId(f.id);
-                        setEditSupplierName(f.name);
-                        setEditSupplierCurrency(f.currency as any || "TRY");
-                        setEditSupplierRest(f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                        setEditSupplierTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditSupplierId(f.id);
+                          setEditSupplierName(f.name);
+                          setEditSupplierCurrency((f.currency as any) || "TRY");
+                          setEditSupplierRest(
+                            f.transactions
+                              .filter((tx) => tx.type === "payment")
+                              .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+                              .toString(),
+                          );
+                          setEditSupplierTaken(
+                            f.transactions
+                              .filter((tx) => tx.type === "debt")
+                              .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+                              .toString(),
+                          );
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
+                      >
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu supplierayı silmek istediğinizden emin misiniz?")) deleteSupplierMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Bu supplierayı silmek istediğinizden emin misiniz?"))
+                            deleteSupplierMutation.mutate(f.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
+                      >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
@@ -1530,21 +1932,38 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
-            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
-              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
+            <div
+              onClick={() => setBreakdownType("paid")}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+            >
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN
+              </span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">
+                {Math.round(totalPaid).toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
-                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                <div
+                  onClick={() => setBreakdownType("remaining")}
+                  className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+                >
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -1555,16 +1974,30 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
       <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-4">
             {suppliers.map((f) => {
-              const amount = breakdownType === "paid" ? getFirmPaid(f, exchangeRates) : getFirmRemaining(f, exchangeRates);
+              const amount =
+                breakdownType === "paid"
+                  ? getFirmPaid(f, exchangeRates)
+                  : getFirmRemaining(f, exchangeRates);
               if (amount === 0) return null;
               return (
-                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                >
                   <span className="font-bold text-white text-sm">{f.name}</span>
                   <div className="text-right">
-                    <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                    <span
+                      className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                    >
+                      {amount.toLocaleString()} ₺
+                    </span>
                   </div>
                 </div>
               );
@@ -1575,21 +2008,39 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
       <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Suppliera Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Suppliera Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddSupplier}>
             <div className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Suppliera Adı</Label>
-                <Input required value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  required
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-                <Input value={newSupplierDesc} onChange={(e) => setNewSupplierDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Açıklama (İsteğe bağlı)
+                </Label>
+                <Input
+                  value={newSupplierDesc}
+                  onChange={(e) => setNewSupplierDesc(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
-                <Select value={newSupplierCurrency} onValueChange={(v: any) => setNewSupplierCurrency(v)}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                <Select
+                  value={newSupplierCurrency}
+                  onValueChange={(v: any) => setNewSupplierCurrency(v)}
+                >
+                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent className="bg-[#131316] border-white/10 text-white">
                     <SelectItem value="TRY">TRY (₺)</SelectItem>
                     <SelectItem value="USD">USD ($)</SelectItem>
@@ -1598,17 +2049,48 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
-                <Input type="number"  min="0" placeholder="0" value={newSupplierRest} onChange={(e) => setNewSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Ödenen (İlk) {getCurrencySymbol(newSupplierCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newSupplierRest}
+                  onChange={(e) => setNewSupplierRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newSupplierCurrency)}</Label>
-                <Input type="number"  min="0" placeholder="0" value={newSupplierTaken} onChange={(e) => setNewSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Borçlanma (İlk) {getCurrencySymbol(newSupplierCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newSupplierTaken}
+                  onChange={(e) => setNewSupplierTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddSupplierOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={addSupplierMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddSupplierOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={addSupplierMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Kaydet
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1616,41 +2098,83 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
       <Dialog open={!!editSupplierId} onOpenChange={(open) => !open && setEditSupplierId(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Supplierayı Düzenle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Supplierayı Düzenle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleEditSupplier} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Suppliera Adı</Label>
-              <Input required value={editSupplierName} onChange={(e) => setEditSupplierName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                value={editSupplierName}
+                onChange={(e) => setEditSupplierName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
-              <Select value={editSupplierCurrency} onValueChange={(v: any) => setEditSupplierCurrency(v)}>
-                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+              <Select
+                value={editSupplierCurrency}
+                onValueChange={(v: any) => setEditSupplierCurrency(v)}
+              >
+                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent className="bg-[#131316] border-white/10 text-white">
-                  <SelectItem value="TRY">TRY (₺)</SelectItem><SelectItem value="USD">USD ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="TRY">TRY (₺)</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
-                <Input type="number"  min="0" value={editSupplierRest} onChange={(e) => setEditSupplierRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Ödenen (Toplam) {getCurrencySymbol(editSupplierCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editSupplierRest}
+                  onChange={(e) => setEditSupplierRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editSupplierCurrency)}</Label>
-                <Input type="number" step="any" min="0" value={editSupplierTaken} onChange={(e) => setEditSupplierTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Borçlanma (Toplam) {getCurrencySymbol(editSupplierCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editSupplierTaken}
+                  onChange={(e) => setEditSupplierTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setEditSupplierId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={editSupplierMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditSupplierId(null)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={editSupplierMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Güncelle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
-
   );
 }
 // ───────── Personel (Maaşlar) ListView Component ─────────
@@ -1659,8 +2183,6 @@ interface EmployeesListViewProps {
   employees: Employee[];
   onBack: () => void;
 }
-
-
 
 // ───────── Firmalar (Cari Hesap) ListView Component ─────────
 
@@ -1672,7 +2194,13 @@ interface FirmsListViewProps {
   onBack: () => void;
 }
 
-function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }: FirmsListViewProps) {
+function FirmsListView({
+  firms,
+  products,
+  exchangeRates,
+  isRatesError,
+  onBack,
+}: FirmsListViewProps) {
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFirmId, setSelectedFirmId] = useState<string | null>(null);
@@ -1698,14 +2226,20 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
-  const [lineItems, setLineItems] = useState<{ id: string, productId: string, quantity: number, price: number, sayfa_sayisi?: string }[]>([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
+  const [lineItems, setLineItems] = useState<
+    { id: string; productId: string; quantity: number; price: number; sayfa_sayisi?: string }[]
+  >([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
-      case "USD": return "$";
-      case "EUR": return "€";
-      case "TRY": default: return "₺";
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "TRY":
+      default:
+        return "₺";
     }
   };
 
@@ -1720,11 +2254,9 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     return amount;
   };
 
-
-
   const handleExportListPDF = () => {
     const columns = ["Firma Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
-    
+
     let sumPaid = 0;
     let sumRemaining = 0;
 
@@ -1744,14 +2276,14 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     data.push([
       "GENEL TOPLAM",
       `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
-      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
     ]);
 
     exportToPDF({
       title: "Firma (Cari Hesap) Genel Raporu",
       columns,
       data,
-      filename: `Firma_Genel_Raporu.pdf`
+      filename: `Firma_Genel_Raporu.pdf`,
     });
   };
 
@@ -1760,7 +2292,13 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   const totalRemaining = firms.reduce((sum, f) => sum + getFirmRemaining(f, exchangeRates), 0);
 
   const addFirmMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; taken: number; rest: number; desc: string }) => {
+    mutationFn: async (input: {
+      name: string;
+      currency: string;
+      taken: number;
+      rest: number;
+      desc: string;
+    }) => {
       const { data: supplier, error: sErr } = await supabaseClient
         .from("firms")
         .insert({ name: input.name, currency: input.currency, description: input.desc })
@@ -1770,12 +2308,20 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
       if (input.taken > 0) {
         await supabaseClient.from("firm_transactions").insert({
-          firm_id: supplier.id, transaction_type: "debt", amount: input.taken, description: "İlk Borç Kaydı", currency: input.currency
+          firm_id: supplier.id,
+          transaction_type: "debt",
+          amount: input.taken,
+          description: "İlk Borç Kaydı",
+          currency: input.currency,
         });
       }
       if (input.rest > 0) {
         await supabaseClient.from("firm_transactions").insert({
-          firm_id: supplier.id, transaction_type: "payment", amount: input.rest, description: "İlk Ödeme Kaydı", currency: input.currency
+          firm_id: supplier.id,
+          transaction_type: "payment",
+          amount: input.rest,
+          description: "İlk Ödeme Kaydı",
+          currency: input.currency,
         });
       }
       return supplier;
@@ -1784,21 +2330,42 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("Firma eklendi");
       setIsAddFirmOpen(false);
-      setNewFirmName(""); setNewFirmDesc(""); setNewFirmTaken(""); setNewFirmRest(""); setNewFirmCurrency("TRY");
+      setNewFirmName("");
+      setNewFirmDesc("");
+      setNewFirmTaken("");
+      setNewFirmRest("");
+      setNewFirmCurrency("TRY");
     },
   });
 
   const editFirmMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; takenDiff: number; restDiff: number }) => {
-      await supabaseClient.from("firms").update({ name: input.name, currency: input.currency }).eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      currency: string;
+      takenDiff: number;
+      restDiff: number;
+    }) => {
+      await supabaseClient
+        .from("firms")
+        .update({ name: input.name, currency: input.currency })
+        .eq("id", input.id);
       if (input.takenDiff !== 0) {
         await supabaseClient.from("firm_transactions").insert({
-          firm_id: input.id, transaction_type: "debt", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Borç)", currency: input.currency
+          firm_id: input.id,
+          transaction_type: "debt",
+          amount: input.takenDiff,
+          description: "Bakiye Düzenlemesi (Borç)",
+          currency: input.currency,
         });
       }
       if (input.restDiff !== 0) {
         await supabaseClient.from("firm_transactions").insert({
-          firm_id: input.id, transaction_type: "payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)", currency: input.currency
+          firm_id: input.id,
+          transaction_type: "payment",
+          amount: input.restDiff,
+          description: "Bakiye Düzenlemesi (Ödenen)",
+          currency: input.currency,
         });
       }
     },
@@ -1814,34 +2381,69 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
       await supabaseClient.from("firm_transactions").delete().eq("firm_id", id);
       await supabaseClient.from("firms").delete().eq("id", id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["firms_ledger"] }); toast.success("Firma silindi"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["firms_ledger"] });
+      toast.success("Firma silindi");
+    },
   });
 
   const addTxMutation = useMutation({
-    mutationFn: async (input: { firm_id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+    mutationFn: async (input: {
+      firm_id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+    }) => {
       await supabaseClient.from("firm_transactions").insert({
-        firm_id: input.firm_id, transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+        firm_id: input.firm_id,
+        transaction_type: input.type,
+        amount: input.amount,
+        description: input.desc,
+        currency: input.currency,
+        created_at: new Date(input.date).toISOString(),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem kaydedildi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount("");
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
+      setNewTxDiscount("");
       setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
       setEditTxId(null);
     },
   });
 
   const editTxMutation = useMutation({
-    mutationFn: async (input: { id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
-      await supabaseClient.from("firm_transactions").update({
-        transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
-      }).eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+    }) => {
+      await supabaseClient
+        .from("firm_transactions")
+        .update({
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: new Date(input.date).toISOString(),
+        })
+        .eq("id", input.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem güncellendi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount("");
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
+      setNewTxDiscount("");
       setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
       setEditTxId(null);
     },
@@ -1860,21 +2462,34 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   const handleAddFirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFirmName.trim()) return;
-    addFirmMutation.mutate({ name: newFirmName.trim(), currency: newFirmCurrency, taken: parseFloat(newFirmTaken) || 0, rest: parseFloat(newFirmRest) || 0, desc: newFirmDesc.trim() });
+    addFirmMutation.mutate({
+      name: newFirmName.trim(),
+      currency: newFirmCurrency,
+      taken: parseFloat(newFirmTaken) || 0,
+      rest: parseFloat(newFirmRest) || 0,
+      desc: newFirmDesc.trim(),
+    });
   };
 
   const handleEditFirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editFirmId || !editFirmName.trim()) return;
-    const firm = firms.find(f => f.id === editFirmId);
+    const firm = firms.find((f) => f.id === editFirmId);
     if (!firm) return;
-    const currentTaken = firm.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const currentRest = firm.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentTaken = firm.transactions
+      .filter((tx) => tx.type === "debt")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentRest = firm.transactions
+      .filter((tx) => tx.type === "payment")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
     const newTaken = parseFloat(editFirmTaken) || 0;
     const newRest = parseFloat(editFirmRest) || 0;
     editFirmMutation.mutate({
-      id: editFirmId, name: editFirmName.trim(), currency: editFirmCurrency,
-      takenDiff: newTaken - currentTaken, restDiff: newRest - currentRest
+      id: editFirmId,
+      name: editFirmName.trim(),
+      currency: editFirmCurrency,
+      takenDiff: newTaken - currentTaken,
+      restDiff: newRest - currentRest,
     });
   };
 
@@ -1886,16 +2501,22 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     let finalDesc = newTxDesc.trim();
 
     if (newTxType === "debt" && lineItems.length > 0) {
-      const validItems = lineItems.filter(item => item.productId !== "");
+      const validItems = lineItems.filter((item) => item.productId !== "");
       if (validItems.length > 0) {
         const discountVal = parseFloat(newTxDiscount) || 0;
-        finalAmount = Math.max(0, validItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) - discountVal);
-        
-        const productsSummary = validItems.map(item => {
-          const pName = products.find((p: any) => p.id === item.productId)?.name || "Bilinmeyen Ürün";
-          return `${item.quantity}x ${pName}`;
-        }).join(", ");
-        
+        finalAmount = Math.max(
+          0,
+          validItems.reduce((sum, item) => sum + item.price * item.quantity, 0) - discountVal,
+        );
+
+        const productsSummary = validItems
+          .map((item) => {
+            const pName =
+              products.find((p: any) => p.id === item.productId)?.name || "Bilinmeyen Ürün";
+            return `${item.quantity}x ${pName}`;
+          })
+          .join(", ");
+
         finalDesc = finalDesc ? `${productsSummary} - ${finalDesc}` : productsSummary;
         if (discountVal > 0) {
           finalDesc += ` (İndirim: ${discountVal} ₺)`;
@@ -1907,9 +2528,23 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     if (!finalDesc) return toast.error("Açıklama veya ürün seçimi zorunludur.");
 
     if (editTxId) {
-      editTxMutation.mutate({ id: editTxId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+      editTxMutation.mutate({
+        id: editTxId,
+        type: newTxType,
+        amount: finalAmount,
+        desc: finalDesc,
+        date: newTxDate,
+        currency: newTxCurrency,
+      });
     } else {
-      addTxMutation.mutate({ firm_id: selectedFirmId, type: newTxType, amount: finalAmount, desc: finalDesc, date: newTxDate, currency: newTxCurrency });
+      addTxMutation.mutate({
+        firm_id: selectedFirmId,
+        type: newTxType,
+        amount: finalAmount,
+        desc: finalDesc,
+        date: newTxDate,
+        currency: newTxCurrency,
+      });
     }
   };
 
@@ -1921,7 +2556,7 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     setNewTxCurrency(tx.currency || "TRY");
     setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
     setIsAddTxOpen(true);
-    setLineItems([]); 
+    setLineItems([]);
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -1930,32 +2565,42 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     }
   };
 
-  const addLineItem = () => setLineItems([...lineItems, { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
-  const removeLineItem = (id: string) => setLineItems(lineItems.filter(item => item.id !== id));
-  
-  const updateLineItem = (id: string, field: "productId" | "quantity" | "sayfa_sayisi", value: any) => {
-    setLineItems(lineItems.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        if (field === "productId" || field === "sayfa_sayisi") {
-          const prod = products.find((p: any) => p.id === updated.productId);
-          if (prod) {
-            const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "1"];
-            const p = customPrice ? parseFloat(customPrice) : prod.base_price;
-            updated.price = isNaN(p) || p === 0 ? prod.base_price : p;
-          } else {
-            updated.price = 0;
+  const addLineItem = () =>
+    setLineItems([
+      ...lineItems,
+      { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" },
+    ]);
+  const removeLineItem = (id: string) => setLineItems(lineItems.filter((item) => item.id !== id));
+
+  const updateLineItem = (
+    id: string,
+    field: "productId" | "quantity" | "sayfa_sayisi",
+    value: any,
+  ) => {
+    setLineItems(
+      lineItems.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === "productId" || field === "sayfa_sayisi") {
+            const prod = products.find((p: any) => p.id === updated.productId);
+            if (prod) {
+              const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "1"];
+              const p = customPrice ? parseFloat(customPrice) : prod.base_price;
+              updated.price = isNaN(p) || p === 0 ? prod.base_price : p;
+            } else {
+              updated.price = 0;
+            }
           }
+          return updated;
         }
-        return updated;
-      }
-      return item;
-    }));
+        return item;
+      }),
+    );
   };
 
   useEffect(() => {
     if (newTxType === "debt") {
-      const sum = lineItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const sum = lineItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
       const discount = parseFloat(newTxDiscount) || 0;
       const total = Math.max(0, sum - discount);
       setNewTxAmount(total.toString());
@@ -1967,17 +2612,12 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
   const handleExportFirmPDF = () => {
     if (!selectedFirm) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const data = selectedFirm.transactions.map(tx => {
+    const data = selectedFirm.transactions.map((tx) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency)}`;
-      return [
-        new Date(tx.date).toLocaleDateString("tr-TR"),
-        typeStr,
-        tx.desc || "",
-        amountStr
-      ];
+      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
     });
-    
+
     const paid = getFirmPaid(selectedFirm, exchangeRates);
     const taken = getFirmDebt(selectedFirm, exchangeRates);
     const remaining = taken - paid;
@@ -1990,46 +2630,67 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
       summary: [
         { label: "Toplam Borçlandırma", value: `${taken.toLocaleString()} ₺` },
         { label: "Toplam Ödenen", value: `${paid.toLocaleString()} ₺` },
-        { label: "Kalan Bakiye", value: `${remaining.toLocaleString()} ₺` }
+        { label: "Kalan Bakiye", value: `${remaining.toLocaleString()} ₺` },
       ],
-      filename: `${selectedFirm.name.replace(/ /g, "_")}_Islem_Gecmisi.pdf`
+      filename: `${selectedFirm.name.replace(/ /g, "_")}_Islem_Gecmisi.pdf`,
     });
   };
 
   const filteredFirms = firms
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   if (selectedFirm) {
     return (
       <div className="flex flex-col h-full bg-[#131316] text-white rounded-3xl border border-white/5">
         <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedFirmId(null)} className="text-[#9E9696] hover:text-white hover:bg-white/5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedFirmId(null)}
+              className="text-[#9E9696] hover:text-white hover:bg-white/5"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">FİRMA DETAY PANELİ</span>
-              <h3 className="text-xl font-extrabold text-white leading-tight">{selectedFirm.name}</h3>
+              <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">
+                FİRMA DETAY PANELİ
+              </span>
+              <h3 className="text-xl font-extrabold text-white leading-tight">
+                {selectedFirm.name}
+              </h3>
             </div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
           <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen Toplam</span>
-            <span className="font-mono text-lg font-bold text-[#12B76A] block mt-1">{getFirmPaid(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+              Ödenen Toplam
+            </span>
+            <span className="font-mono text-lg font-bold text-[#12B76A] block mt-1">
+              {getFirmPaid(selectedFirm, exchangeRates).toLocaleString()} ₺
+            </span>
           </div>
           <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
-            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
-            <span className="font-mono text-lg font-bold text-white block mt-1">{getFirmDebt(selectedFirm, exchangeRates).toLocaleString()} ₺</span>
+            <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+              Toplam Borç
+            </span>
+            <span className="font-mono text-lg font-bold text-white block mt-1">
+              {getFirmDebt(selectedFirm, exchangeRates).toLocaleString()} ₺
+            </span>
           </div>
           {(() => {
             const rem = getFirmRemaining(selectedFirm, exchangeRates);
             const netBalance = -rem;
             const isPositive = netBalance > 0;
             const isNegative = netBalance < 0;
-            const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+            const color = isPositive
+              ? "text-emerald-500"
+              : isNegative
+                ? "text-red-500"
+                : "text-white/70";
             const sign = isPositive ? "+ " : isNegative ? "- " : "";
             return (
               <div className="p-4 bg-white/5 border border-white/5 rounded-xl text-center">
@@ -2037,26 +2698,37 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                   KALAN ÖDEME
                 </span>
                 <span className={`font-mono text-lg font-bold block mt-1 ${color}`}>
-                  {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                  {sign}
+                  {Math.abs(netBalance).toLocaleString()} ₺
                 </span>
               </div>
             );
           })()}
         </div>
-        
+
         <div className="flex-1 p-6 space-y-4">
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-lg">İşlem Geçmişi</h4>
             <div className="flex items-center gap-2">
-              <Button onClick={handleExportFirmPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10">
+              <Button
+                onClick={handleExportFirmPDF}
+                className="bg-white/5 hover:bg-white/10 text-white font-bold h-10 rounded-xl px-4 border border-white/10"
+              >
                 <Download className="w-4 h-4 mr-2 text-[#A67C52]" /> PDF İndir
               </Button>
-              <Button onClick={() => { setNewTxType("debt"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4">
+              <Button
+                onClick={() => {
+                  setNewTxType("debt");
+                  setEditTxId(null);
+                  setIsAddTxOpen(true);
+                }}
+                className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4"
+              >
                 <PlusCircle className="w-4 h-4 mr-2" /> İşlem Ekle
               </Button>
             </div>
           </div>
-          
+
           <div className="space-y-3">
             {selectedFirm.transactions.length === 0 && (
               <div className="text-center p-8 text-sm text-[#9E9696] bg-white/5 rounded-xl border border-white/5">
@@ -2066,25 +2738,54 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
             {selectedFirm.transactions.map((tx) => {
               const isTaken = tx.type === "debt";
               return (
-                <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
-                      {isTaken ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
+                    >
+                      {isTaken ? (
+                        <ArrowUpRight className="w-5 h-5" />
+                      ) : (
+                        <ArrowDownRight className="w-5 h-5" />
+                      )}
                     </div>
                     <div>
                       <span className="text-sm font-bold text-white block">{tx.desc}</span>
-                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
+                      <span className="text-xs text-[#9E9696] font-medium mt-1 block">
+                        {tx.date}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>
-                      {isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedFirm.currency, exchangeRates).toLocaleString()} ₺
+                    <span
+                      className={`font-mono text-lg font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
+                    >
+                      {isTaken ? "+" : "-"}
+                      {getConvertedAmount(
+                        tx.amount,
+                        tx.currency || selectedFirm.currency,
+                        exchangeRates,
+                      ).toLocaleString()}{" "}
+                      ₺
                     </span>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditTransaction(tx)}
+                        className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx.id)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteTransaction(tx.id)}
+                        className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -2096,23 +2797,30 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
         </div>
 
         {/* İŞLEM EKLE MODAL */}
-        <Dialog open={isAddTxOpen} onOpenChange={(open) => {
-          setIsAddTxOpen(open);
-          if (!open) {
-            setEditTxId(null);
-            setNewTxAmount("");
-            setNewTxDiscount("");
-            setNewTxDesc("");
-            setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
-          }
-        }}>
+        <Dialog
+          open={isAddTxOpen}
+          onOpenChange={(open) => {
+            setIsAddTxOpen(open);
+            if (!open) {
+              setEditTxId(null);
+              setNewTxAmount("");
+              setNewTxDiscount("");
+              setNewTxDesc("");
+              setLineItems([
+                { id: Math.random().toString(), productId: "", quantity: 1, price: 0 },
+              ]);
+            }
+          }}
+        >
           <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-md p-6 overflow-hidden">
             <form onSubmit={handleAddTx} className="space-y-6">
               <div>
-                <DialogTitle className="text-xl font-bold text-white">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-white">
+                  {editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}
+                </DialogTitle>
                 <p className="text-xs text-[#9E9696] mt-1">{selectedFirm.name} firması için</p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
@@ -2120,14 +2828,31 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("debt"); setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]); setNewTxDesc(""); }}
+                      onClick={() => {
+                        setNewTxType("debt");
+                        setLineItems([
+                          {
+                            id: Math.random().toString(),
+                            productId: "",
+                            quantity: 1,
+                            price: 0,
+                            sayfa_sayisi: "1",
+                          },
+                        ]);
+                        setNewTxDesc("");
+                      }}
                     >
                       Satış / Borç
                     </button>
                     <button
                       type="button"
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
-                      onClick={() => { setNewTxType("payment"); setNewTxAmount(""); setNewTxDesc(""); setNewTxDiscount(""); }}
+                      onClick={() => {
+                        setNewTxType("payment");
+                        setNewTxAmount("");
+                        setNewTxDesc("");
+                        setNewTxDiscount("");
+                      }}
                     >
                       Ödeme / Tahsilat
                     </button>
@@ -2149,14 +2874,18 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                                   className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white"
                                 >
                                   {item.productId
-                                    ? products.find((p: any) => p.id === item.productId)?.name || "Ürün Seç..."
+                                    ? products.find((p: any) => p.id === item.productId)?.name ||
+                                      "Ürün Seç..."
                                     : "Ürün Seç..."}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-[300px] p-0 bg-[#111111] border-white/10 text-white">
                                 <Command className="bg-[#111111]">
-                                  <CommandInput placeholder="Ürün ara..." className="text-white border-none focus:ring-0" />
+                                  <CommandInput
+                                    placeholder="Ürün ara..."
+                                    className="text-white border-none focus:ring-0"
+                                  />
                                   <CommandList>
                                     <CommandEmpty>Ürün bulunamadı.</CommandEmpty>
                                     <CommandGroup>
@@ -2166,14 +2895,16 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                                           value={p.name + " " + p.id}
                                           onSelect={() => {
                                             updateLineItem(item.id, "productId", p.id);
-                                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                            document.dispatchEvent(
+                                              new KeyboardEvent("keydown", { key: "Escape" }),
+                                            );
                                           }}
                                           className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
                                         >
                                           <Check
                                             className={cn(
                                               "mr-2 h-4 w-4 text-[#A67C52]",
-                                              item.productId === p.id ? "opacity-100" : "opacity-0"
+                                              item.productId === p.id ? "opacity-100" : "opacity-0",
                                             )}
                                           />
                                           {p.name} ({p.base_price} ₺)
@@ -2187,13 +2918,20 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                           </div>
                           <div className="w-20">
                             <Input
-                              type="number"  min="1" value={item.quantity}
-                              onChange={(e) => updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 1)}
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                updateLineItem(item.id, "quantity", parseFloat(e.target.value) || 1)
+                              }
                               className="bg-white/5 border-white/10 rounded-xl h-11 text-white text-center px-1"
                             />
                           </div>
                           <div className="w-20">
-                            <Select value={item.sayfa_sayisi || "1"} onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}>
+                            <Select
+                              value={item.sayfa_sayisi || "1"}
+                              onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}
+                            >
                               <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11 px-2">
                                 <SelectValue placeholder="Sayfa" />
                               </SelectTrigger>
@@ -2207,14 +2945,26 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                             </Select>
                           </div>
                           {lineItems.length > 1 && (
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="h-11 w-11 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-xl shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeLineItem(item.id)}
+                              className="h-11 w-11 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-xl shrink-0"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
                       ))}
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={addLineItem} className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl h-9 mt-1 border-dashed">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addLineItem}
+                      className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl h-9 mt-1 border-dashed"
+                    >
                       <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
                     </Button>
                   </div>
@@ -2223,7 +2973,15 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                 {newTxType === "debt" && (
                   <div className="space-y-1.5 pb-2">
                     <Label className="text-xs text-[#9E9696]">İndirim (₺)</Label>
-                    <Input type="number" min="0" step="0.01" placeholder="0" value={newTxDiscount} onChange={(e) => setNewTxDiscount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl font-mono" />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0"
+                      value={newTxDiscount}
+                      onChange={(e) => setNewTxDiscount(e.target.value)}
+                      className="h-11 border-white/10 bg-white/5 text-white rounded-xl font-mono"
+                    />
                   </div>
                 )}
 
@@ -2231,8 +2989,20 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tutar</Label>
                     <div className="flex gap-2">
-                      <Input required type="number"  min="0" step="0.01" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} readOnly={newTxType === "debt"} className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`} />
-                      <Select value={newTxCurrency} onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}>
+                      <Input
+                        required
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newTxAmount}
+                        onChange={(e) => setNewTxAmount(e.target.value)}
+                        readOnly={newTxType === "debt"}
+                        className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`}
+                      />
+                      <Select
+                        value={newTxCurrency}
+                        onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}
+                      >
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
@@ -2245,19 +3015,50 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-[#9E9696]">Tarih</Label>
-                    <Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                    <Input
+                      type="date"
+                      required
+                      value={newTxDate}
+                      onChange={(e) => setNewTxDate(e.target.value)}
+                      className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                    />
                   </div>
                 </div>
-                
+
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-[#9E9696]">{newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}</Label>
-                  <Input required={newTxType === "payment"} placeholder={newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"} value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="bg-white/5 border-white/10 rounded-xl h-11 text-white" />
+                  <Label className="text-xs text-[#9E9696]">
+                    {newTxType === "debt" ? "Açıklama Notu (Opsiyonel)" : "Açıklama"}
+                  </Label>
+                  <Input
+                    required={newTxType === "payment"}
+                    placeholder={
+                      newTxType === "debt" ? "İsteğe bağlı ek not..." : "İşlem açıklaması"
+                    }
+                    value={newTxDesc}
+                    onChange={(e) => setNewTxDesc(e.target.value)}
+                    className="bg-white/5 border-white/10 rounded-xl h-11 text-white"
+                  />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1">İptal</Button>
-                <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending || (!newTxAmount && newTxType === "payment")} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddTxOpen(false)}
+                  className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl flex-1"
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    addTxMutation.isPending ||
+                    editTxMutation.isPending ||
+                    (!newTxAmount && newTxType === "payment")
+                  }
+                  className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl flex-1"
+                >
                   {editTxId ? "Güncelle" : "Kaydet"}
                 </Button>
               </div>
@@ -2272,22 +3073,37 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Firmalar (Cari Hesap)</h1>
-            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Firma cari hesap borç ve ödeme bakiye takipleri.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">
+              Firmalar (Cari Hesap)
+            </h1>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">
+              Firma cari hesap borç ve ödeme bakiye takipleri.
+            </p>
           </div>
         </div>
         <div className="flex gap-3">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+            <Button
+              onClick={handleExportListPDF}
+              className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]"
+            >
               <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={() => setIsAddFirmOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+            <Button
+              onClick={() => setIsAddFirmOpen(true)}
+              className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]"
+            >
               <Plus className="mr-2 h-4 w-4" /> Firma Ekle
             </Button>
           </motion.div>
@@ -2296,49 +3112,78 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
       {isRatesError && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları alınamadı.
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları
+          alınamadı.
         </div>
       )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input type="text" placeholder="Firma ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+        <Input
+          type="text"
+          placeholder="Firma ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
       </div>
 
       <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h3 className="font-bold text-white text-lg">Cari Firma Listesi</h3>
-          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{firms.length} Firma</Badge>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">
+            {firms.length} Firma
+          </Badge>
         </div>
 
         <div className="divide-y divide-white/5">
           {filteredFirms.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Hiçbir kayıtlı firma bulunamadı.</div>
+            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">
+              Hiçbir kayıtlı firma bulunamadı.
+            </div>
           ) : (
             filteredFirms.map((f) => {
               const paid = getFirmPaid(f, exchangeRates);
               const remaining = getFirmRemaining(f, exchangeRates);
               return (
-                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedFirmId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                <motion.div
+                  key={f.id}
+                  whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }}
+                  whileTap={{ scale: 0.995 }}
+                  onClick={() => setSelectedFirmId(f.id)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors"
+                >
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                      <Users className="w-5 h-5 text-[#9E9696]" />
+                    </div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
+                        ID: {f.id.substring(0, 8).toUpperCase()}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
                     <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                          Ödenen
+                        </span>
+                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                          {paid.toLocaleString()} ₺
+                        </span>
                       </div>
                       <div>
                         {(() => {
                           const netBalance = -remaining;
                           const isPositive = netBalance > 0;
                           const isNegative = netBalance < 0;
-                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const color = isPositive
+                            ? "text-emerald-500"
+                            : isNegative
+                              ? "text-red-500"
+                              : "text-white/70";
                           const sign = isPositive ? "+ " : isNegative ? "- " : "";
                           return (
                             <>
@@ -2346,7 +3191,8 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                                 KALAN ÖDEME
                               </span>
                               <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                                {sign}
+                                {Math.abs(netBalance).toLocaleString()} ₺
                               </span>
                             </>
                           );
@@ -2354,17 +3200,37 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        setEditFirmId(f.id);
-                        setEditFirmName(f.name);
-                        setEditFirmCurrency(f.currency as any || "TRY");
-                        setEditFirmRest(f.transactions.filter((tx) => tx.type === "payment").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                        setEditFirmTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditFirmId(f.id);
+                          setEditFirmName(f.name);
+                          setEditFirmCurrency((f.currency as any) || "TRY");
+                          setEditFirmRest(
+                            f.transactions
+                              .filter((tx) => tx.type === "payment")
+                              .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+                              .toString(),
+                          );
+                          setEditFirmTaken(
+                            f.transactions
+                              .filter((tx) => tx.type === "debt")
+                              .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+                              .toString(),
+                          );
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
+                      >
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu firmayı silmek istediğinizden emin misiniz?")) deleteFirmMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Bu firmayı silmek istediğinizden emin misiniz?"))
+                            deleteFirmMutation.mutate(f.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
+                      >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
@@ -2377,21 +3243,38 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
-            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
-              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
+            <div
+              onClick={() => setBreakdownType("paid")}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+            >
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN
+              </span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">
+                {Math.round(totalPaid).toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
-                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                <div
+                  onClick={() => setBreakdownType("remaining")}
+                  className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+                >
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -2402,16 +3285,30 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
       <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-4">
             {firms.map((f) => {
-              const amount = breakdownType === "paid" ? getFirmPaid(f, exchangeRates) : getFirmRemaining(f, exchangeRates);
+              const amount =
+                breakdownType === "paid"
+                  ? getFirmPaid(f, exchangeRates)
+                  : getFirmRemaining(f, exchangeRates);
               if (amount === 0) return null;
               return (
-                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                >
                   <span className="font-bold text-white text-sm">{f.name}</span>
                   <div className="text-right">
-                    <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                    <span
+                      className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                    >
+                      {amount.toLocaleString()} ₺
+                    </span>
                   </div>
                 </div>
               );
@@ -2422,21 +3319,36 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
       <Dialog open={isAddFirmOpen} onOpenChange={setIsAddFirmOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Firma Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Firma Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddFirm}>
             <div className="space-y-4 pt-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Firma Adı</Label>
-                <Input required value={newFirmName} onChange={(e) => setNewFirmName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  required
+                  value={newFirmName}
+                  onChange={(e) => setNewFirmName(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-                <Input value={newFirmDesc} onChange={(e) => setNewFirmDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Açıklama (İsteğe bağlı)
+                </Label>
+                <Input
+                  value={newFirmDesc}
+                  onChange={(e) => setNewFirmDesc(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
                 <Select value={newFirmCurrency} onValueChange={(v: any) => setNewFirmCurrency(v)}>
-                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent className="bg-[#131316] border-white/10 text-white">
                     <SelectItem value="TRY">TRY (₺)</SelectItem>
                     <SelectItem value="USD">USD ($)</SelectItem>
@@ -2445,17 +3357,48 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newFirmCurrency)}</Label>
-                <Input type="number"  min="0" placeholder="0" value={newFirmRest} onChange={(e) => setNewFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Ödenen (İlk) {getCurrencySymbol(newFirmCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newFirmRest}
+                  onChange={(e) => setNewFirmRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (İlk) {getCurrencySymbol(newFirmCurrency)}</Label>
-                <Input type="number"  min="0" placeholder="0" value={newFirmTaken} onChange={(e) => setNewFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Borçlanma (İlk) {getCurrencySymbol(newFirmCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newFirmTaken}
+                  onChange={(e) => setNewFirmTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddFirmOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={addFirmMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddFirmOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={addFirmMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Kaydet
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2463,44 +3406,82 @@ function FirmsListView({ firms, products, exchangeRates, isRatesError, onBack }:
 
       <Dialog open={!!editFirmId} onOpenChange={(open) => !open && setEditFirmId(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Firmayı Düzenle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Firmayı Düzenle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleEditFirm} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Firma Adı</Label>
-              <Input required value={editFirmName} onChange={(e) => setEditFirmName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                value={editFirmName}
+                onChange={(e) => setEditFirmName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
               <Select value={editFirmCurrency} onValueChange={(v: any) => setEditFirmCurrency(v)}>
-                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent className="bg-[#131316] border-white/10 text-white">
-                  <SelectItem value="TRY">TRY (₺)</SelectItem><SelectItem value="USD">USD ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="TRY">TRY (₺)</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editFirmCurrency)}</Label>
-                <Input type="number"  min="0" value={editFirmRest} onChange={(e) => setEditFirmRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Ödenen (Toplam) {getCurrencySymbol(editFirmCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editFirmRest}
+                  onChange={(e) => setEditFirmRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Borçlanma (Toplam) {getCurrencySymbol(editFirmCurrency)}</Label>
-                <Input type="number" step="any" min="0" value={editFirmTaken} onChange={(e) => setEditFirmTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Borçlanma (Toplam) {getCurrencySymbol(editFirmCurrency)}
+                </Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editFirmTaken}
+                  onChange={(e) => setEditFirmTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setEditFirmId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={editFirmMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditFirmId(null)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={editFirmMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Güncelle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
-
   );
 }
-
 
 // ───────── Personel (Maaşlar) ListView Component ─────────
 
@@ -2530,17 +3511,17 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const [paymentEmployeeId, setPaymentEmployeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDesc, setPaymentDesc] = useState("");
-  const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">("salary_payment");
+  const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">(
+    "salary_payment",
+  );
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
-
-
   const handleExportListPDF = () => {
     const columns = ["Personel Adı", "Ödenen Maaş (₺)", "Kalan Bakiye (₺)"];
-    
+
     let sumPaid = 0;
     let sumRemaining = 0;
 
@@ -2560,14 +3541,14 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     data.push([
       "GENEL TOPLAM",
       `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
-      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
     ]);
 
     exportToPDF({
       title: "Personel Maaşları Genel Raporu",
       columns,
       data,
-      filename: `Personel_Maaslari_Genel_Raporu.pdf`
+      filename: `Personel_Maaslari_Genel_Raporu.pdf`,
     });
   };
 
@@ -2583,7 +3564,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           name: input.name,
           currency: "TRY",
           total_debt: input.taken,
-          total_paid: input.rest
+          total_paid: input.rest,
         })
         .select("id, name, currency")
         .single();
@@ -2595,27 +3576,46 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("Personel eklendi");
       setIsAddEmployeeOpen(false);
-      setNewEmployeeName(""); setNewEmployeeDesc(""); setNewEmployeeTaken(""); setNewEmployeeRest("");
+      setNewEmployeeName("");
+      setNewEmployeeDesc("");
+      setNewEmployeeTaken("");
+      setNewEmployeeRest("");
     },
   });
 
   const editEmployeeMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; takenDiff: number; restDiff: number; newTaken: number; newRest: number }) => {
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      takenDiff: number;
+      restDiff: number;
+      newTaken: number;
+      newRest: number;
+    }) => {
       const remaining = input.newTaken - input.newRest;
-      await supabaseClient.from("employees").update({
-        name: input.name,
-        total_debt: input.newTaken,
-        total_paid: input.newRest
-      }).eq("id", input.id);
+      await supabaseClient
+        .from("employees")
+        .update({
+          name: input.name,
+          total_debt: input.newTaken,
+          total_paid: input.newRest,
+        })
+        .eq("id", input.id);
 
       if (input.takenDiff !== 0) {
         await supabaseClient.from("salary_transactions").insert({
-          employee_id: input.id, transaction_type: "debt_addition", amount: input.takenDiff, description: "Bakiye Düzenlemesi (Maaş)"
+          employee_id: input.id,
+          transaction_type: "debt_addition",
+          amount: input.takenDiff,
+          description: "Bakiye Düzenlemesi (Maaş)",
         });
       }
       if (input.restDiff !== 0) {
         await supabaseClient.from("salary_transactions").insert({
-          employee_id: input.id, transaction_type: "salary_payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)"
+          employee_id: input.id,
+          transaction_type: "salary_payment",
+          amount: input.restDiff,
+          description: "Bakiye Düzenlemesi (Ödenen)",
         });
       }
     },
@@ -2628,16 +3628,39 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseClient.from("salary_transactions").delete().eq("employee_id", id).throwOnError();
+      await supabaseClient
+        .from("salary_transactions")
+        .delete()
+        .eq("employee_id", id)
+        .throwOnError();
       await supabaseClient.from("employees").delete().eq("id", id).throwOnError();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employees_ledger"] }); toast.success("Personel silindi"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees_ledger"] });
+      toast.success("Personel silindi");
+    },
   });
 
   const addTxMutation = useMutation({
-    mutationFn: async (input: { employee_id: string; type: string; amount: number; desc: string; date: string; currentSalary: number; currentPaid: number }) => {
-      const txData = { transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString() };
-      await supabaseClient.from("salary_transactions").insert({ ...txData, employee_id: input.employee_id }).throwOnError();
+    mutationFn: async (input: {
+      employee_id: string;
+      type: string;
+      amount: number;
+      desc: string;
+      date: string;
+      currentSalary: number;
+      currentPaid: number;
+    }) => {
+      const txData = {
+        transaction_type: input.type,
+        amount: input.amount,
+        description: input.desc,
+        created_at: new Date(input.date).toISOString(),
+      };
+      await supabaseClient
+        .from("salary_transactions")
+        .insert({ ...txData, employee_id: input.employee_id })
+        .throwOnError();
 
       let newSalary = input.currentSalary;
       let newPaid = input.currentPaid;
@@ -2648,23 +3671,47 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         newPaid += input.amount;
       }
 
-      await supabaseClient.from("employees").update({
-        total_debt: newSalary,
-        total_paid: newPaid
-      }).eq("id", input.employee_id).throwOnError();
+      await supabaseClient
+        .from("employees")
+        .update({
+          total_debt: newSalary,
+          total_paid: newPaid,
+        })
+        .eq("id", input.employee_id)
+        .throwOnError();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem kaydedildi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
     },
   });
 
   const editTxMutation = useMutation({
-    mutationFn: async (input: { id: string; employee_id: string; type: string; amount: number; desc: string; date: string; currentSalary: number; currentPaid: number; oldAmount: number; oldType: string }) => {
-      await supabaseClient.from("salary_transactions").update({
-        transaction_type: input.type, amount: input.amount, description: input.desc, created_at: new Date(input.date).toISOString()
-      }).eq("id", input.id).throwOnError();
+    mutationFn: async (input: {
+      id: string;
+      employee_id: string;
+      type: string;
+      amount: number;
+      desc: string;
+      date: string;
+      currentSalary: number;
+      currentPaid: number;
+      oldAmount: number;
+      oldType: string;
+    }) => {
+      await supabaseClient
+        .from("salary_transactions")
+        .update({
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          created_at: new Date(input.date).toISOString(),
+        })
+        .eq("id", input.id)
+        .throwOnError();
 
       let newSalary = input.currentSalary;
       let newPaid = input.currentPaid;
@@ -2675,24 +3722,44 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       if (input.type === "debt_addition") newSalary += input.amount;
       else newPaid += input.amount;
 
-      await supabaseClient.from("employees").update({ total_debt: newSalary, total_paid: newPaid }).eq("id", input.employee_id).throwOnError();
+      await supabaseClient
+        .from("employees")
+        .update({ total_debt: newSalary, total_paid: newPaid })
+        .eq("id", input.employee_id)
+        .throwOnError();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem güncellendi");
-      setIsAddTxOpen(false); setEditTxId(null); setNewTxAmount(""); setNewTxDesc("");
+      setIsAddTxOpen(false);
+      setEditTxId(null);
+      setNewTxAmount("");
+      setNewTxDesc("");
     },
   });
 
   const deleteTxMutation = useMutation({
-    mutationFn: async (input: { id: string; employee_id: string; amount: number; type: string; currentSalary: number; currentPaid: number }) => {
-      const { error: txErr } = await supabaseClient.from("salary_transactions").delete().eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      employee_id: string;
+      amount: number;
+      type: string;
+      currentSalary: number;
+      currentPaid: number;
+    }) => {
+      const { error: txErr } = await supabaseClient
+        .from("salary_transactions")
+        .delete()
+        .eq("id", input.id);
       if (txErr) throw new Error("İşlem silinemedi: " + txErr.message);
       let newSalary = input.currentSalary;
       let newPaid = input.currentPaid;
       if (input.type === "debt_addition") newSalary -= input.amount;
       else newPaid -= input.amount;
-      await supabaseClient.from("employees").update({ total_debt: newSalary, total_paid: newPaid }).eq("id", input.employee_id);
+      await supabaseClient
+        .from("employees")
+        .update({ total_debt: newSalary, total_paid: newPaid })
+        .eq("id", input.employee_id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
@@ -2701,13 +3768,25 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   });
 
   const addPaymentMutation = useMutation({
-    mutationFn: async (input: { employee_id: string; amount: number; currentPaid: number; description?: string }) => {
+    mutationFn: async (input: {
+      employee_id: string;
+      amount: number;
+      currentPaid: number;
+      description?: string;
+    }) => {
       await supabaseClient.from("salary_transactions").insert({
-        employee_id: input.employee_id, transaction_type: "salary_payment", amount: input.amount, description: input.description || "Hızlı Ödeme", created_at: new Date().toISOString()
+        employee_id: input.employee_id,
+        transaction_type: "salary_payment",
+        amount: input.amount,
+        description: input.description || "Hızlı Ödeme",
+        created_at: new Date().toISOString(),
       });
-      await supabaseClient.from("employees").update({
-        total_paid: input.currentPaid + input.amount
-      }).eq("id", input.employee_id);
+      await supabaseClient
+        .from("employees")
+        .update({
+          total_paid: input.currentPaid + input.amount,
+        })
+        .eq("id", input.employee_id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
@@ -2721,13 +3800,18 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const handleAddEmployee = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmployeeName.trim()) return;
-    addEmployeeMutation.mutate({ name: newEmployeeName.trim(), taken: parseFloat(newEmployeeTaken) || 0, rest: parseFloat(newEmployeeRest) || 0, desc: newEmployeeDesc.trim() });
+    addEmployeeMutation.mutate({
+      name: newEmployeeName.trim(),
+      taken: parseFloat(newEmployeeTaken) || 0,
+      rest: parseFloat(newEmployeeRest) || 0,
+      desc: newEmployeeDesc.trim(),
+    });
   };
 
   const handleEditEmployee = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editEmployeeId || !editEmployeeName.trim()) return;
-    const employee = employees.find(f => f.id === editEmployeeId);
+    const employee = employees.find((f) => f.id === editEmployeeId);
     if (!employee) return;
     const currentTaken = employee.total_debt || 0;
     const currentRest = employee.total_paid || 0;
@@ -2739,7 +3823,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       newTaken,
       newRest,
       takenDiff: newTaken - currentTaken,
-      restDiff: newRest - currentRest
+      restDiff: newRest - currentRest,
     });
   };
 
@@ -2750,12 +3834,19 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     if (!employee) return;
 
     if (editTxId) {
-      const tx = employee.transactions.find(t => t.id === editTxId);
+      const tx = employee.transactions.find((t) => t.id === editTxId);
       if (!tx) return;
       editTxMutation.mutate({
-        id: editTxId, employee_id: selectedEmployeeId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate,
-        currentSalary: employee.total_debt || 0, currentPaid: employee.total_paid || 0,
-        oldAmount: tx.amount, oldType: tx.type
+        id: editTxId,
+        employee_id: selectedEmployeeId,
+        type: newTxType,
+        amount: parseFloat(newTxAmount),
+        desc: newTxDesc.trim(),
+        date: newTxDate,
+        currentSalary: employee.total_debt || 0,
+        currentPaid: employee.total_paid || 0,
+        oldAmount: tx.amount,
+        oldType: tx.type,
       });
     } else {
       addTxMutation.mutate({
@@ -2765,7 +3856,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         desc: newTxDesc.trim(),
         date: newTxDate,
         currentSalary: employee.total_debt || 0,
-        currentPaid: employee.total_paid || 0
+        currentPaid: employee.total_paid || 0,
       });
     }
   };
@@ -2794,8 +3885,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         employee_id: selectedEmployeeId!,
         amount: tx.amount,
         type: tx.type,
-        currentSalary: employees.find(e => e.id === selectedEmployeeId)?.total_debt || 0,
-        currentPaid: employees.find(e => e.id === selectedEmployeeId)?.total_paid || 0
+        currentSalary: employees.find((e) => e.id === selectedEmployeeId)?.total_debt || 0,
+        currentPaid: employees.find((e) => e.id === selectedEmployeeId)?.total_paid || 0,
       });
     }
   };
@@ -2804,16 +3895,16 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     if (!selectedEmployee) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
     const data = selectedEmployee.transactions.map((tx: any) => {
-      const typeStr = tx.type === "debt_addition" ? "Maaş Tahakkuku (Yeni Borç)" : tx.type === "advance" ? "Avans" : "Maaş Ödemesi";
+      const typeStr =
+        tx.type === "debt_addition"
+          ? "Maaş Tahakkuku (Yeni Borç)"
+          : tx.type === "advance"
+            ? "Avans"
+            : "Maaş Ödemesi";
       const amountStr = `${tx.amount.toLocaleString()} ₺`;
-      return [
-        new Date(tx.date).toLocaleDateString("tr-TR"),
-        typeStr,
-        tx.desc || "",
-        amountStr
-      ];
+      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
     });
-    
+
     const paid = getEmployeePaid(selectedEmployee);
     const salary = getEmployeeSalary(selectedEmployee);
     const remaining = getEmployeeRemaining(selectedEmployee);
@@ -2826,31 +3917,43 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       summary: [
         { label: "Toplam Maaş", value: `${salary.toLocaleString()} ₺` },
         { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
-        { label: "Kalan Alacak", value: `${remaining.toLocaleString()} ₺` }
+        { label: "Kalan Alacak", value: `${remaining.toLocaleString()} ₺` },
       ],
-      filename: `${selectedEmployee.name.replace(/ /g, "_")}_Personel_Islem_Gecmisi.pdf`
+      filename: `${selectedEmployee.name.replace(/ /g, "_")}_Personel_Islem_Gecmisi.pdf`,
     });
   };
 
   const selectedEmployee = employees.find((f) => f.id === selectedEmployeeId);
   const filteredEmployees = employees
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Personel Maaşları</h1>
-            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Çalışan maaşları, avans ve ödeme takipleri.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">
+              Personel Maaşları
+            </h1>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">
+              Çalışan maaşları, avans ve ödeme takipleri.
+            </p>
           </div>
         </div>
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button onClick={() => setIsAddEmployeeOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+          <Button
+            onClick={() => setIsAddEmployeeOpen(true)}
+            className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]"
+          >
             <Plus className="mr-2 h-4 w-4" /> Personel Ekle
           </Button>
         </motion.div>
@@ -2858,43 +3961,71 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input type="text" placeholder="Personel ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+        <Input
+          type="text"
+          placeholder="Personel ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
       </div>
 
       <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h3 className="font-bold text-white text-lg">Aktif Personel Listesi</h3>
-          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{employees.length} Personel</Badge>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">
+            {employees.length} Personel
+          </Badge>
         </div>
 
         <div className="divide-y divide-white/5">
           {filteredEmployees.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Kayıtlı personel bulunamadı.</div>
+            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">
+              Kayıtlı personel bulunamadı.
+            </div>
           ) : (
             filteredEmployees.map((f) => {
               const paid = getEmployeePaid(f);
               const remaining = getEmployeeRemaining(f);
               return (
-                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedEmployeeId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                <motion.div
+                  key={f.id}
+                  whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }}
+                  whileTap={{ scale: 0.995 }}
+                  onClick={() => setSelectedEmployeeId(f.id)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors"
+                >
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                      <Users className="w-5 h-5 text-[#9E9696]" />
+                    </div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">Maaş Hesabı</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
+                        Maaş Hesabı
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
                     <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                          Ödenen
+                        </span>
+                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                          {paid.toLocaleString()} ₺
+                        </span>
                       </div>
                       <div>
                         {(() => {
                           const netBalance = -remaining;
                           const isPositive = netBalance > 0;
                           const isNegative = netBalance < 0;
-                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const color = isPositive
+                            ? "text-emerald-500"
+                            : isNegative
+                              ? "text-red-500"
+                              : "text-white/70";
                           const sign = isPositive ? "+ " : isNegative ? "- " : "";
                           return (
                             <>
@@ -2902,7 +4033,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                                 KALAN ÖDEME
                               </span>
                               <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                                {sign}
+                                {Math.abs(netBalance).toLocaleString()} ₺
                               </span>
                             </>
                           );
@@ -2910,22 +4042,36 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        setEditEmployeeId(f.id);
-                        setEditEmployeeName(f.name);
-                        setEditEmployeeRest(f.total_paid?.toString() || "0");
-                        setEditEmployeeTaken(f.total_debt?.toString() || "0");
-                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditEmployeeId(f.id);
+                          setEditEmployeeName(f.name);
+                          setEditEmployeeRest(f.total_paid?.toString() || "0");
+                          setEditEmployeeTaken(f.total_debt?.toString() || "0");
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
+                      >
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        setPaymentEmployeeId(f.id);
-                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-1" title="Ödeme Ekle">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPaymentEmployeeId(f.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-1"
+                        title="Ödeme Ekle"
+                      >
                         <Wallet className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu personeli silmek istediğinizden emin misiniz?")) deleteEmployeeMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Bu personeli silmek istediğinizden emin misiniz?"))
+                            deleteEmployeeMutation.mutate(f.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
+                      >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
@@ -2938,21 +4084,38 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
-            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN MAAŞ</span>
-              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{totalPaid.toLocaleString()} ₺</h4>
+            <div
+              onClick={() => setBreakdownType("paid")}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+            >
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN MAAŞ
+              </span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">
+                {totalPaid.toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
-                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                <div
+                  onClick={() => setBreakdownType("remaining")}
+                  className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+                >
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(netBalance).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -2963,15 +4126,27 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Maaş Detayları" : "Kalan Maaş Detayları"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {breakdownType === "paid" ? "Ödenen Maaş Detayları" : "Kalan Maaş Detayları"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-4">
             {employees.map((f) => {
-              const amount = breakdownType === "paid" ? getEmployeePaid(f) : getEmployeeRemaining(f);
+              const amount =
+                breakdownType === "paid" ? getEmployeePaid(f) : getEmployeeRemaining(f);
               if (amount === 0) return null;
               return (
-                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                >
                   <span className="font-bold text-white text-sm">{f.name}</span>
-                  <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                  <span
+                    className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                  >
+                    {amount.toLocaleString()} ₺
+                  </span>
                 </div>
               );
             })}
@@ -2981,29 +4156,71 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <Dialog open={isAddEmployeeOpen} onOpenChange={setIsAddEmployeeOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Personel Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Personel Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddEmployee} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Personel Adı</Label>
-              <Input required placeholder="Örn. İmane Himmich" value={newEmployeeName} onChange={(e) => setNewEmployeeName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                placeholder="Örn. İmane Himmich"
+                value={newEmployeeName}
+                onChange={(e) => setNewEmployeeName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-              <Input placeholder="Ek notlar..." value={newEmployeeDesc} onChange={(e) => setNewEmployeeDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                placeholder="Ek notlar..."
+                value={newEmployeeDesc}
+                onChange={(e) => setNewEmployeeDesc(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) ₺</Label>
-                <Input type="number"  min="0" placeholder="0" value={newEmployeeRest} onChange={(e) => setNewEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newEmployeeRest}
+                  onChange={(e) => setNewEmployeeRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Maaş Tanımlama (İlk) ₺</Label>
-                <Input type="number"  min="0" placeholder="0" value={newEmployeeTaken} onChange={(e) => setNewEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Maaş Tanımlama (İlk) ₺
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newEmployeeTaken}
+                  onChange={(e) => setNewEmployeeTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddEmployeeOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={addEmployeeMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddEmployeeOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={addEmployeeMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Kaydet
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3011,54 +4228,108 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <Dialog open={!!editEmployeeId} onOpenChange={(open) => !open && setEditEmployeeId(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Personeli Düzenle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Personeli Düzenle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleEditEmployee} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Personel Adı</Label>
-              <Input required value={editEmployeeName} onChange={(e) => setEditEmployeeName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                value={editEmployeeName}
+                onChange={(e) => setEditEmployeeName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) ₺</Label>
-                <Input type="number"  min="0" value={editEmployeeRest} onChange={(e) => setEditEmployeeRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  min="0"
+                  value={editEmployeeRest}
+                  onChange={(e) => setEditEmployeeRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-300">Maaş Tanımlama (Toplam) ₺</Label>
-                <Input type="number" step="any" min="0" value={editEmployeeTaken} onChange={(e) => setEditEmployeeTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Label className="text-sm font-semibold text-gray-300">
+                  Maaş Tanımlama (Toplam) ₺
+                </Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editEmployeeTaken}
+                  onChange={(e) => setEditEmployeeTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setEditEmployeeId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={editEmployeeMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditEmployeeId(null)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={editEmployeeMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Güncelle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedEmployeeId} onOpenChange={(open) => !open && setSelectedEmployeeId(null)}>
+      <Dialog
+        open={!!selectedEmployeeId}
+        onOpenChange={(open) => !open && setSelectedEmployeeId(null)}
+      >
         <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-lg p-0 overflow-hidden">
           {selectedEmployee && (
             <div className="flex flex-col h-full max-h-[85vh]">
               <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">PERSONEL DETAY PANELİ</span>
-                  <h3 className="text-xl font-extrabold text-white leading-tight">{selectedEmployee.name}</h3>
+                  <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">
+                    PERSONEL DETAY PANELİ
+                  </span>
+                  <h3 className="text-xl font-extrabold text-white leading-tight">
+                    {selectedEmployee.name}
+                  </h3>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{getEmployeePaid(selectedEmployee).toLocaleString()} ₺</span>
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Ödenen
+                  </span>
+                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                    {getEmployeePaid(selectedEmployee).toLocaleString()} ₺
+                  </span>
                 </div>
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Maaş</span>
-                  <span className="font-mono text-sm font-bold text-white block mt-0.5">{getEmployeeSalary(selectedEmployee).toLocaleString()} ₺</span>
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Toplam Maaş
+                  </span>
+                  <span className="font-mono text-sm font-bold text-white block mt-0.5">
+                    {getEmployeeSalary(selectedEmployee).toLocaleString()} ₺
+                  </span>
                 </div>
                 {(() => {
                   const netBalance = -getEmployeeRemaining(selectedEmployee);
                   const isPositive = netBalance > 0;
                   const isNegative = netBalance < 0;
-                  const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                  const color = isPositive
+                    ? "text-emerald-500"
+                    : isNegative
+                      ? "text-red-500"
+                      : "text-white/70";
                   const sign = isPositive ? "+ " : isNegative ? "- " : "";
                   return (
                     <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
@@ -3066,7 +4337,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                         KALAN ÖDEME
                       </span>
                       <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                        {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                        {sign}
+                        {Math.abs(netBalance).toLocaleString()} ₺
                       </span>
                     </div>
                   );
@@ -3076,10 +4348,22 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                 <div className="flex justify-between items-center">
                   <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={handleExportEmployeePDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                    <Button
+                      size="sm"
+                      onClick={handleExportEmployeePDF}
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+                    >
                       <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
                     </Button>
-                    <Button size="sm" onClick={() => { setNewTxType("debt_addition"); setEditTxId(null); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setNewTxType("debt_addition");
+                        setEditTxId(null);
+                        setIsAddTxOpen(true);
+                      }}
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+                    >
                       <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
                     </Button>
                   </div>
@@ -3094,14 +4378,19 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                     const isTaken = tx.type === "debt_addition";
                     const isAdvance = tx.type === "advance";
                     return (
-                      <div key={tx.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                      >
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
                             <ArrowDownRight className="w-5 h-5" />
                           </div>
                           <div>
                             <span className="text-sm font-bold text-white block">{tx.desc}</span>
-                            <span className="text-xs text-[#9E9696] font-medium mt-1 block">{tx.date}</span>
+                            <span className="text-xs text-[#9E9696] font-medium mt-1 block">
+                              {tx.date}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -3109,10 +4398,20 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                             {tx.amount.toLocaleString()} ₺
                           </span>
                           <div className="flex gap-1 ml-4">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditTransaction(tx)}
+                              className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTransaction(tx)} className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTransaction(tx)}
+                              className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -3129,27 +4428,72 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
       <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle className="text-lg font-bold">{editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}
+            </DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
             {/* İşlem Tipi seçimi kaldırıldı, basit form yapıldı */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number"  min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label>
+                <Input
+                  required
+                  type="number"
+                  min="1"
+                  value={newTxAmount}
+                  onChange={(e) => setNewTxAmount(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Tarih</Label>
+                <Input
+                  type="date"
+                  required
+                  value={newTxDate}
+                  onChange={(e) => setNewTxDate(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
-              <Input required placeholder="Açıklama..." value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                placeholder="Açıklama..."
+                value={newTxDesc}
+                onChange={(e) => setNewTxDesc(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
-              <Button type="submit" disabled={addTxMutation.isPending || editTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">{editTxId ? "Güncelle" : "Ekle"}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddTxOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                İptal
+              </Button>
+              <Button
+                type="submit"
+                disabled={addTxMutation.isPending || editTxMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                {editTxId ? "Güncelle" : "Ekle"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Hızlı Ödeme Modal */}
-      <Dialog open={!!paymentEmployeeId} onOpenChange={(open) => !open && setPaymentEmployeeId(null)}>
+      <Dialog
+        open={!!paymentEmployeeId}
+        onOpenChange={(open) => !open && setPaymentEmployeeId(null)}
+      >
         <DialogContent className="bg-[#0A0A0A] border-white/10 text-white sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Yeni Ödeme Ekle</DialogTitle>
@@ -3157,27 +4501,50 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
-              <Input type="number"  min="1" placeholder="Örn: 5000" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
+              <Input
+                type="number"
+                min="1"
+                placeholder="Örn: 5000"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="h-11 bg-white/5 border-white/10 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
-              <Input placeholder="Açıklama..." value={paymentDesc} onChange={(e) => setPaymentDesc(e.target.value)} className="h-11 bg-white/5 border-white/10 text-white rounded-xl" />
+              <Input
+                placeholder="Açıklama..."
+                value={paymentDesc}
+                onChange={(e) => setPaymentDesc(e.target.value)}
+                className="h-11 bg-white/5 border-white/10 text-white rounded-xl"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setPaymentEmployeeId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
-            <Button disabled={addPaymentMutation.isPending} onClick={() => {
-              if (!paymentAmount) return;
-              const emp = filteredEmployees.find(e => e.id === paymentEmployeeId);
-              if (emp && paymentEmployeeId) {
-                addPaymentMutation.mutate({
-                  employee_id: paymentEmployeeId,
-                  amount: parseFloat(paymentAmount),
-                  currentPaid: Number(emp.total_paid || 0),
-                  description: paymentDesc
-                });
-              }
-            }} className="h-11 bg-[#12B76A] hover:bg-[#12B76A]/90 text-white font-bold rounded-xl px-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPaymentEmployeeId(null)}
+              className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+            >
+              İptal
+            </Button>
+            <Button
+              disabled={addPaymentMutation.isPending}
+              onClick={() => {
+                if (!paymentAmount) return;
+                const emp = filteredEmployees.find((e) => e.id === paymentEmployeeId);
+                if (emp && paymentEmployeeId) {
+                  addPaymentMutation.mutate({
+                    employee_id: paymentEmployeeId,
+                    amount: parseFloat(paymentAmount),
+                    currentPaid: Number(emp.total_paid || 0),
+                    description: paymentDesc,
+                  });
+                }
+              }}
+              className="h-11 bg-[#12B76A] hover:bg-[#12B76A]/90 text-white font-bold rounded-xl px-6"
+            >
               Ödeme Kaydet
             </Button>
           </DialogFooter>
@@ -3186,7 +4553,6 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     </div>
   );
 }
-
 
 // ───────── Ortak Giderler ListView Component ─────────
 
@@ -3224,7 +4590,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
   const handleExportListPDF = () => {
     const columns = ["Gider Adı", "Ödenen (₺)", "Kalan Ödeme (₺)"];
-    
+
     let sumPaid = 0;
     let sumRemaining = 0;
 
@@ -3244,27 +4610,34 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     data.push([
       "GENEL TOPLAM",
       `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
-      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
     ]);
 
     exportToPDF({
       title: "Ortak Giderler Genel Raporu",
       columns,
       data,
-      filename: `Ortak_Giderler_Genel_Raporu.pdf`
+      filename: `Ortak_Giderler_Genel_Raporu.pdf`,
     });
   };
 
   const totalPaid = expenses.reduce((sum, f) => sum + getExpensePaid(f, exchangeRates), 0);
-  const totalRemaining = expenses.reduce((sum, f) => sum + getExpenseRemaining(f, exchangeRates), 0);
-
-
+  const totalRemaining = expenses.reduce(
+    (sum, f) => sum + getExpenseRemaining(f, exchangeRates),
+    0,
+  );
 
   const addExpenseMutation = useMutation({
     mutationFn: async (input: { name: string; taken: number; rest: number; desc: string }) => {
       const { data: expense, error: sErr } = await supabaseClient
         .from("common_expenses")
-        .insert({ name: input.name, currency: "TRY", total_debt: input.taken, total_paid: input.rest, description: input.desc })
+        .insert({
+          name: input.name,
+          currency: "TRY",
+          total_debt: input.taken,
+          total_paid: input.rest,
+          description: input.desc,
+        })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
@@ -3274,18 +4647,20 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
       qc.invalidateQueries({ queryKey: ["expenses_ledger"] });
       toast.success("Gider merkezi eklendi");
       setIsAddExpenseOpen(false);
-      setNewExpenseName(""); setNewExpenseDesc(""); setNewExpenseTaken(""); setNewExpenseRest("");
+      setNewExpenseName("");
+      setNewExpenseDesc("");
+      setNewExpenseTaken("");
+      setNewExpenseRest("");
     },
   });
 
-  
   const updateSiraMutation = useMutation({
     mutationFn: async (updates: { id: string; sira: number }[]) => {
-      const updatePromises = updates.map(u => 
-        supabaseClient.from("common_expenses").update({ sira: u.sira }).eq("id", u.id)
+      const updatePromises = updates.map((u) =>
+        supabaseClient.from("common_expenses").update({ sira: u.sira }).eq("id", u.id),
       );
       const results = await Promise.all(updatePromises);
-      const error = results.find(r => r.error)?.error;
+      const error = results.find((r) => r.error)?.error;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -3293,7 +4668,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     },
     onError: (err: any) => {
       toast.error(`Sıralama güncellenirken hata oluştu: ${err.message}`);
-    }
+    },
   });
 
   const onDragEnd = (result: DropResult) => {
@@ -3305,8 +4680,8 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     const sourceExpense = filteredExpenses[source.index];
     const destinationExpense = filteredExpenses[destination.index];
 
-    const sourceGlobalIndex = list.findIndex(e => e.id === sourceExpense.id);
-    const destGlobalIndex = list.findIndex(e => e.id === destinationExpense.id);
+    const sourceGlobalIndex = list.findIndex((e) => e.id === sourceExpense.id);
+    const destGlobalIndex = list.findIndex((e) => e.id === destinationExpense.id);
 
     const [moved] = list.splice(sourceGlobalIndex, 1);
     list.splice(destGlobalIndex, 0, moved);
@@ -3315,9 +4690,9 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
     const updates = list.map((item, index) => ({
       id: item.id,
-      sira: index
+      sira: index,
     }));
-    
+
     updateSiraMutation.mutate(updates);
   };
 
@@ -3325,7 +4700,10 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     mutationFn: async (id: string) => {
       await supabaseClient.from("common_expenses").delete().eq("id", id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses_ledger"] }); toast.success("Gider merkezi silindi"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses_ledger"] });
+      toast.success("Gider merkezi silindi");
+    },
   });
 
   const updateExpenseMutation = useMutation({
@@ -3346,7 +4724,12 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExpenseName.trim()) return;
-    addExpenseMutation.mutate({ name: newExpenseName.trim(), taken: parseFloat(newExpenseTaken) || 0, rest: parseFloat(newExpenseRest) || 0, desc: newExpenseDesc.trim() });
+    addExpenseMutation.mutate({
+      name: newExpenseName.trim(),
+      taken: parseFloat(newExpenseTaken) || 0,
+      rest: parseFloat(newExpenseRest) || 0,
+      desc: newExpenseDesc.trim(),
+    });
   };
 
   const handleUpdateExpense = (e: React.FormEvent) => {
@@ -3362,25 +4745,44 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
   const filteredExpenses = expenses
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Ortak Giderler</h1>
-            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Stüdyo ve operasyonel harcamaların takibi.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">
+              Ortak Giderler
+            </h1>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">
+              Stüdyo ve operasyonel harcamaların takibi.
+            </p>
           </div>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2">
-          <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex items-center gap-2"
+        >
+          <Button
+            onClick={handleExportListPDF}
+            className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]"
+          >
             <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
           </Button>
-          <Button onClick={() => setIsAddExpenseOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+          <Button
+            onClick={() => setIsAddExpenseOpen(true)}
+            className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]"
+          >
             <Plus className="mr-2 h-4 w-4" /> Gider Merkezi Ekle
           </Button>
         </motion.div>
@@ -3388,85 +4790,143 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input type="text" placeholder="Gider ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+        <Input
+          type="text"
+          placeholder="Gider ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
       </div>
 
       <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h3 className="font-bold text-white text-lg">Gider Merkezleri Listesi</h3>
-          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{expenses.length} Gider</Badge>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">
+            {expenses.length} Gider
+          </Badge>
         </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="expensesList">
             {(provided) => (
-              <div ref={provided.innerRef} {...provided.droppableProps} className="divide-y divide-white/5">
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="divide-y divide-white/5"
+              >
                 {filteredExpenses.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Kayıtlı gider merkezi bulunamadı.</div>
-          ) : (
-            filteredExpenses.map((f, index) => {
-              const paid = getExpensePaid(f, exchangeRates);
-              const remaining = getExpenseRemaining(f, exchangeRates);
-              return (
-                <Draggable key={f.id} draggableId={f.id.toString()} index={index}>
-                    {(provided, snapshot) => (
-                      <motion.div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        style={provided.draggableProps.style}
-                        key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedExpenseId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
-                  <div className="flex items-center gap-3.5">
-                    <div {...provided.dragHandleProps} className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing mr-2 flex items-center justify-center">
-                          <GripVertical className="w-5 h-5" />
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><Users className="w-5 h-5 text-[#9E9696]" /></div>
-                    <div>
-                      <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">Sabit / Değişken Gider</span>
-                    </div>
+                  <div className="text-center py-16 text-sm text-[#9E9696] font-medium">
+                    Kayıtlı gider merkezi bulunamadı.
                   </div>
-                  <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
-                    <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
-                      <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
-                      </div>
-                      <div>
-                        {(() => {
-                          const netBalance = -remaining;
-                          const isPositive = netBalance > 0;
-                          const isNegative = netBalance < 0;
-                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
-                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
-                          return (
-                            <>
-                              <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
-                                KALAN ÖDEME
-                              </span>
-                              <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex">
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedExpenseId(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
-                        <Edit2 className="w-4.5 h-4.5" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu gider merkezini silmek istediğinizden emin misiniz?")) deleteExpenseMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
-                        <Trash2 className="w-4.5 h-4.5" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-                    )}
-                  </Draggable>
-                );
-              })
-            )}
-            {provided.placeholder}
+                ) : (
+                  filteredExpenses.map((f, index) => {
+                    const paid = getExpensePaid(f, exchangeRates);
+                    const remaining = getExpenseRemaining(f, exchangeRates);
+                    return (
+                      <Draggable key={f.id} draggableId={f.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <motion.div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            style={provided.draggableProps.style}
+                            key={f.id}
+                            whileHover={{
+                              scale: 1.005,
+                              x: 2,
+                              backgroundColor: "rgba(255,255,255,0.02)",
+                            }}
+                            whileTap={{ scale: 0.995 }}
+                            onClick={() => setSelectedExpenseId(f.id)}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="text-[#9E9696] hover:text-white cursor-grab active:cursor-grabbing mr-2 flex items-center justify-center"
+                              >
+                                <GripVertical className="w-5 h-5" />
+                              </div>
+                              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                                <Users className="w-5 h-5 text-[#9E9696]" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-white leading-snug">{f.name}</h4>
+                                <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
+                                  Sabit / Değişken Gider
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
+                              <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
+                                <div>
+                                  <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                    Ödenen
+                                  </span>
+                                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                                    {paid.toLocaleString()} ₺
+                                  </span>
+                                </div>
+                                <div>
+                                  {(() => {
+                                    const netBalance = -remaining;
+                                    const isPositive = netBalance > 0;
+                                    const isNegative = netBalance < 0;
+                                    const color = isPositive
+                                      ? "text-emerald-500"
+                                      : isNegative
+                                        ? "text-red-500"
+                                        : "text-white/70";
+                                    const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                                    return (
+                                      <>
+                                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                                          KALAN ÖDEME
+                                        </span>
+                                        <span
+                                          className={`font-mono text-sm font-bold block mt-0.5 ${color}`}
+                                        >
+                                          {sign}
+                                          {Math.abs(netBalance).toLocaleString()} ₺
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                              <div className="flex">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedExpenseId(f.id);
+                                  }}
+                                  className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
+                                >
+                                  <Edit2 className="w-4.5 h-4.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      confirm(
+                                        "Bu gider merkezini silmek istediğinizden emin misiniz?",
+                                      )
+                                    )
+                                      deleteExpenseMutation.mutate(f.id);
+                                  }}
+                                  className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
+                                >
+                                  <Trash2 className="w-4.5 h-4.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </Draggable>
+                    );
+                  })
+                )}
+                {provided.placeholder}
               </div>
             )}
           </Droppable>
@@ -3474,21 +4934,38 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
-            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
-              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{totalPaid.toLocaleString()} ₺</h4>
+            <div
+              onClick={() => setBreakdownType("paid")}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+            >
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN
+              </span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">
+                {totalPaid.toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
-                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                <div
+                  onClick={() => setBreakdownType("remaining")}
+                  className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+                >
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(netBalance).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -3499,15 +4976,29 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
       <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Gider Detayları" : "Kalan Gider Borçları"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {breakdownType === "paid" ? "Ödenen Gider Detayları" : "Kalan Gider Borçları"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-4">
             {expenses.map((f) => {
-              const amount = breakdownType === "paid" ? getExpensePaid(f, exchangeRates) : getExpenseRemaining(f, exchangeRates);
+              const amount =
+                breakdownType === "paid"
+                  ? getExpensePaid(f, exchangeRates)
+                  : getExpenseRemaining(f, exchangeRates);
               if (amount === 0) return null;
               return (
-                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                >
                   <span className="font-bold text-white text-sm">{f.name}</span>
-                  <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                  <span
+                    className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                  >
+                    {amount.toLocaleString()} ₺
+                  </span>
                 </div>
               );
             })}
@@ -3517,55 +5008,133 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
       <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Gider Merkezi Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Gider Merkezi Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddExpense} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Gider Adı (Örn: Elektrik Faturası)</Label>
-              <Input required placeholder="Örn. Kira" value={newExpenseName} onChange={(e) => setNewExpenseName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Label className="text-sm font-semibold text-gray-300">
+                Gider Adı (Örn: Elektrik Faturası)
+              </Label>
+              <Input
+                required
+                placeholder="Örn. Kira"
+                value={newExpenseName}
+                onChange={(e) => setNewExpenseName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-              <Input placeholder="Ek notlar..." value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                placeholder="Ek notlar..."
+                value={newExpenseDesc}
+                onChange={(e) => setNewExpenseDesc(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) ₺</Label>
-                <Input type="number"  min="0" placeholder="0" value={newExpenseRest} onChange={(e) => setNewExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={newExpenseRest}
+                  onChange={(e) => setNewExpenseRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Borç Kaydı (İlk) ₺</Label>
-                <Input type="number" step="any" min="0" placeholder="0" value={newExpenseTaken} onChange={(e) => setNewExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="0"
+                  value={newExpenseTaken}
+                  onChange={(e) => setNewExpenseTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddExpenseOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={addExpenseMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddExpenseOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={addExpenseMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Kaydet
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedExpenseId} onOpenChange={(open) => !open && setSelectedExpenseId(null)}>
+      <Dialog
+        open={!!selectedExpenseId}
+        onOpenChange={(open) => !open && setSelectedExpenseId(null)}
+      >
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Gider Merkezi Güncelle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Gider Merkezi Güncelle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleUpdateExpense} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Gider Adı</Label>
-              <Input required value={editExpenseName} onChange={(e) => setEditExpenseName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                value={editExpenseName}
+                onChange={(e) => setEditExpenseName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Ödenen ₺</Label>
-                <Input type="number"  min="0" value={editExpenseRest} onChange={(e) => setEditExpenseRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  min="0"
+                  value={editExpenseRest}
+                  onChange={(e) => setEditExpenseRest(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Toplam Gider (Borç) ₺</Label>
-                <Input type="number"  min="0" value={editExpenseTaken} onChange={(e) => setEditExpenseTaken(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+                <Input
+                  type="number"
+                  min="0"
+                  value={editExpenseTaken}
+                  onChange={(e) => setEditExpenseTaken(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setSelectedExpenseId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={updateExpenseMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedExpenseId(null)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateExpenseMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Güncelle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3610,9 +5179,13 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
-      case "USD": return "$";
-      case "EUR": return "€";
-      case "TRY": default: return "₺";
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "TRY":
+      default:
+        return "₺";
     }
   };
 
@@ -3629,7 +5202,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
   const handleExportListPDF = () => {
     const columns = ["Okul Adı", "Sipariş (Öğrenci)", "Ödenen (₺)", "Kalan Ödeme (₺)"];
-    
+
     let sumPaid = 0;
     let sumRemaining = 0;
 
@@ -3651,14 +5224,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       "GENEL TOPLAM",
       "",
       `${sumPaid.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
-      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`
+      `${sumRemaining.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`,
     ]);
 
     exportToPDF({
       title: "Okullar Genel Raporu",
       columns,
       data,
-      filename: `Okullar_Genel_Raporu.pdf`
+      filename: `Okullar_Genel_Raporu.pdf`,
     });
   };
 
@@ -3666,17 +5239,36 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const totalRemaining = schools.reduce((sum, f) => sum + getSchoolRemaining(f, exchangeRates), 0);
 
   const addSchoolMutation = useMutation({
-    mutationFn: async (input: { name: string; currency: string; rest: number; desc: string; contribution: number }) => {
+    mutationFn: async (input: {
+      name: string;
+      currency: string;
+      rest: number;
+      desc: string;
+      contribution: number;
+    }) => {
       const { data: school, error: sErr } = await supabaseClient
         .from("schools")
-        .insert({ name: input.name, currency: input.currency, description: input.desc, paid_amount: input.rest, remaining_amount: 0, contribution_per_student: input.contribution, is_active: true, status: 'Aktif' })
+        .insert({
+          name: input.name,
+          currency: input.currency,
+          description: input.desc,
+          paid_amount: input.rest,
+          remaining_amount: 0,
+          contribution_per_student: input.contribution,
+          is_active: true,
+          status: "Aktif",
+        })
         .select("id, name, currency")
         .single();
       if (sErr) throw sErr;
 
       if (input.rest > 0) {
         await supabaseClient.from("school_transactions").insert({
-          school_id: school.id, transaction_type: "payment", amount: input.rest, description: "İlk Ödeme Kaydı", currency: input.currency
+          school_id: school.id,
+          transaction_type: "payment",
+          amount: input.rest,
+          description: "İlk Ödeme Kaydı",
+          currency: input.currency,
         });
       }
       return school;
@@ -3685,17 +5277,41 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("Okul eklendi");
       setIsAddSchoolOpen(false);
-      setNewSchoolName(""); setNewSchoolDesc(""); setNewSchoolTaken(""); setNewSchoolRest(""); setNewSchoolContribution(""); setNewSchoolCurrency("TRY");
+      setNewSchoolName("");
+      setNewSchoolDesc("");
+      setNewSchoolTaken("");
+      setNewSchoolRest("");
+      setNewSchoolContribution("");
+      setNewSchoolCurrency("TRY");
     },
   });
 
   const editSchoolMutation = useMutation({
-    mutationFn: async (input: { id: string; name: string; currency: string; restDiff: number; paid_amount: number; contribution: number }) => {
-      await supabaseClient.from("schools").update({ name: input.name, currency: input.currency, paid_amount: input.paid_amount, contribution_per_student: input.contribution }).eq("id", input.id);
+    mutationFn: async (input: {
+      id: string;
+      name: string;
+      currency: string;
+      restDiff: number;
+      paid_amount: number;
+      contribution: number;
+    }) => {
+      await supabaseClient
+        .from("schools")
+        .update({
+          name: input.name,
+          currency: input.currency,
+          paid_amount: input.paid_amount,
+          contribution_per_student: input.contribution,
+        })
+        .eq("id", input.id);
 
       if (input.restDiff !== 0) {
         await supabaseClient.from("school_transactions").insert({
-          school_id: input.id, transaction_type: "payment", amount: input.restDiff, description: "Bakiye Düzenlemesi (Ödenen)", currency: input.currency
+          school_id: input.id,
+          transaction_type: "payment",
+          amount: input.restDiff,
+          description: "Bakiye Düzenlemesi (Ödenen)",
+          currency: input.currency,
         });
       }
     },
@@ -3711,26 +5327,49 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       await supabaseClient.from("school_transactions").delete().eq("school_id", id);
       await supabaseClient.from("schools").delete().eq("id", id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["schools_ledger"] }); toast.success("Okul silindi"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools_ledger"] });
+      toast.success("Okul silindi");
+    },
   });
 
   const addTxMutation = useMutation({
-    mutationFn: async (input: { school_id: string; type: "debt" | "payment"; amount: number; desc: string; date: string; currency?: string }) => {
+    mutationFn: async (input: {
+      school_id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+    }) => {
       await supabaseClient.from("school_transactions").insert({
-        school_id: input.school_id, transaction_type: input.type, amount: input.amount, description: input.desc, currency: input.currency, created_at: new Date(input.date).toISOString()
+        school_id: input.school_id,
+        transaction_type: input.type,
+        amount: input.amount,
+        description: input.desc,
+        currency: input.currency,
+        created_at: new Date(input.date).toISOString(),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("İşlem kaydedildi");
-      setIsAddTxOpen(false); setNewTxAmount(""); setNewTxDesc("");
+      setIsAddTxOpen(false);
+      setNewTxAmount("");
+      setNewTxDesc("");
     },
   });
 
   const handleAddSchool = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSchoolName.trim()) return;
-    addSchoolMutation.mutate({ name: newSchoolName.trim(), currency: newSchoolCurrency, rest: parseFloat(newSchoolRest) || 0, desc: newSchoolDesc.trim(), contribution: parseFloat(newSchoolContribution) || 0 });
+    addSchoolMutation.mutate({
+      name: newSchoolName.trim(),
+      currency: newSchoolCurrency,
+      rest: parseFloat(newSchoolRest) || 0,
+      desc: newSchoolDesc.trim(),
+      contribution: parseFloat(newSchoolContribution) || 0,
+    });
   };
 
   const handleEditSchool = (e: React.FormEvent) => {
@@ -3741,14 +5380,28 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     const oldPaid = school.paid_amount || 0;
     const newPaid = parseFloat(editSchoolRest) || 0;
     const diff = newPaid - oldPaid;
-    editSchoolMutation.mutate({ id: editSchoolId, name: editSchoolName.trim(), currency: editSchoolCurrency, restDiff: diff, paid_amount: newPaid, contribution: parseFloat(editSchoolContribution) || 0 });
+    editSchoolMutation.mutate({
+      id: editSchoolId,
+      name: editSchoolName.trim(),
+      currency: editSchoolCurrency,
+      restDiff: diff,
+      paid_amount: newPaid,
+      contribution: parseFloat(editSchoolContribution) || 0,
+    });
   };
 
   const handleAddTx = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSchoolId || !newTxAmount || !newTxDesc.trim()) return;
     const school = schools.find((f) => f.id === selectedSchoolId);
-    addTxMutation.mutate({ school_id: selectedSchoolId, type: newTxType, amount: parseFloat(newTxAmount), desc: newTxDesc.trim(), date: newTxDate, currency: school?.currency });
+    addTxMutation.mutate({
+      school_id: selectedSchoolId,
+      type: newTxType,
+      amount: parseFloat(newTxAmount),
+      desc: newTxDesc.trim(),
+      date: newTxDate,
+      currency: school?.currency,
+    });
   };
 
   const handleExportSchoolPDF = () => {
@@ -3757,14 +5410,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     const data = selectedSchool.transactions.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borç" : "Ödeme / Tahsilat";
       const amountStr = `${getConvertedAmount(tx.amount, tx.currency || selectedSchool.currency, exchangeRates).toLocaleString()} ₺`;
-      return [
-        new Date(tx.date).toLocaleDateString("tr-TR"),
-        typeStr,
-        tx.desc || "",
-        amountStr
-      ];
+      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
     });
-    
+
     const paid = getSchoolPaid(selectedSchool, exchangeRates);
     const taken = getSchoolDebt(selectedSchool, exchangeRates);
     const remaining = getSchoolRemaining(selectedSchool, exchangeRates);
@@ -3777,37 +5425,50 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       summary: [
         { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
         { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
-        { label: "Kalan Borç", value: `${remaining.toLocaleString()} ₺` }
+        { label: "Kalan Borç", value: `${remaining.toLocaleString()} ₺` },
       ],
-      filename: `${selectedSchool.name.replace(/ /g, "_")}_Okul_Islem_Gecmisi.pdf`
+      filename: `${selectedSchool.name.replace(/ /g, "_")}_Okul_Islem_Gecmisi.pdf`,
     });
   };
 
   const selectedSchool = schools.find((f) => f.id === selectedSchoolId);
   const filteredSchools = schools
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.05, x: -2 }} whileTap={{ scale: 0.95 }} onClick={onBack} className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">Okullar</h1>
-            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">Okul ödemeleri ve bakiye takipleri.</p>
+            <p className="text-sm text-[#9E9696] mt-0.5 font-medium">
+              Okul ödemeleri ve bakiye takipleri.
+            </p>
           </div>
         </div>
         <div className="flex gap-3">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={handleExportListPDF} className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+            <Button
+              onClick={handleExportListPDF}
+              className="bg-white/5 hover:bg-white/10 text-white font-bold cursor-pointer rounded-xl h-11 px-5 border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.05)]"
+            >
               <Download className="mr-2 h-4 w-4 text-[#A67C52]" /> PDF İndir
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={() => setIsAddSchoolOpen(true)} className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]">
+            <Button
+              onClick={() => setIsAddSchoolOpen(true)}
+              className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold cursor-pointer rounded-xl h-11 px-5 shadow-[0_0_12px_rgba(166,124,82,0.3)]"
+            >
               <Plus className="mr-2 h-4 w-4" /> Okul Ekle
             </Button>
           </motion.div>
@@ -3816,49 +5477,78 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
       {isRatesError && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-semibold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları alınamadı.
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Döviz kurları
+          alınamadı.
         </div>
       )}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-        <Input type="text" placeholder="Okul ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" />
+        <Input
+          type="text"
+          placeholder="Okul ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
+        />
       </div>
 
       <div className="bg-[#131316] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <h3 className="font-bold text-white text-lg">Okul Listesi</h3>
-          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">{schools.length} Okul</Badge>
+          <Badge className="bg-[#A67C52]/15 text-[#A67C52] border-transparent font-bold">
+            {schools.length} Okul
+          </Badge>
         </div>
 
         <div className="divide-y divide-white/5">
           {filteredSchools.length === 0 ? (
-            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">Hiçbir okul bulunamadı.</div>
+            <div className="text-center py-16 text-sm text-[#9E9696] font-medium">
+              Hiçbir okul bulunamadı.
+            </div>
           ) : (
             filteredSchools.map((f) => {
               const paid = getSchoolPaid(f, exchangeRates);
               const remaining = getSchoolRemaining(f, exchangeRates);
               return (
-                <motion.div key={f.id} whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }} whileTap={{ scale: 0.995 }} onClick={() => setSelectedSchoolId(f.id)} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors">
+                <motion.div
+                  key={f.id}
+                  whileHover={{ scale: 1.005, x: 2, backgroundColor: "rgba(255,255,255,0.02)" }}
+                  whileTap={{ scale: 0.995 }}
+                  onClick={() => setSelectedSchoolId(f.id)}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer gap-4 transition-colors"
+                >
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white"><GraduationCap className="w-5 h-5 text-[#9E9696]" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                      <GraduationCap className="w-5 h-5 text-[#9E9696]" />
+                    </div>
                     <div>
                       <h4 className="font-bold text-white leading-snug">{f.name}</h4>
-                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">ID: {f.id.substring(0, 8).toUpperCase()}</span>
+                      <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
+                        ID: {f.id.substring(0, 8).toUpperCase()}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
                     <div className="grid grid-cols-2 gap-6 sm:gap-12 text-right min-w-[200px]">
                       <div>
-                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{paid.toLocaleString()} ₺</span>
+                        <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                          Ödenen
+                        </span>
+                        <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                          {paid.toLocaleString()} ₺
+                        </span>
                       </div>
                       <div>
                         {(() => {
                           const netBalance = -remaining;
                           const isPositive = netBalance > 0;
                           const isNegative = netBalance < 0;
-                          const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                          const color = isPositive
+                            ? "text-emerald-500"
+                            : isNegative
+                              ? "text-red-500"
+                              : "text-white/70";
                           const sign = isPositive ? "+ " : isNegative ? "- " : "";
                           return (
                             <>
@@ -3866,7 +5556,8 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                                 KALAN ÖDEME
                               </span>
                               <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                                {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                                {sign}
+                                {Math.abs(netBalance).toLocaleString()} ₺
                               </span>
                             </>
                           );
@@ -3874,18 +5565,33 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                       </div>
                     </div>
                     <div className="flex">
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        setEditSchoolId(f.id);
-                        setEditSchoolName(f.name);
-                        setEditSchoolCurrency(f.currency as any || "TRY");
-                        setEditSchoolRest(String(f.paid_amount || 0));
-                        setEditSchoolContribution(String(f.contribution_per_student || 0));
-                        setEditSchoolTaken(f.transactions.filter((tx) => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toString());
-                      }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditSchoolId(f.id);
+                          setEditSchoolName(f.name);
+                          setEditSchoolCurrency((f.currency as any) || "TRY");
+                          setEditSchoolRest(String(f.paid_amount || 0));
+                          setEditSchoolContribution(String(f.contribution_per_student || 0));
+                          setEditSchoolTaken(
+                            f.transactions
+                              .filter((tx) => tx.type === "debt")
+                              .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+                              .toString(),
+                          );
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
+                      >
                         <Edit2 className="w-4.5 h-4.5" />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); if (confirm("Bu okulu silmek istediğinizden emin misiniz?")) deleteSchoolMutation.mutate(f.id); }} className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Bu okulu silmek istediğinizden emin misiniz?"))
+                            deleteSchoolMutation.mutate(f.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
+                      >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
@@ -3898,21 +5604,38 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
         <div className="p-6 bg-white/[0.02] border-t border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
-            <div onClick={() => setBreakdownType("paid")} className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
-              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">{Math.round(totalPaid).toLocaleString()} ₺</h4>
+            <div
+              onClick={() => setBreakdownType("paid")}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+            >
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN
+              </span>
+              <h4 className="font-mono text-2xl font-black text-[#12B76A] mt-1.5">
+                {Math.round(totalPaid).toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
-                <div onClick={() => setBreakdownType("remaining")} className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all">
-                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">KALAN ÖDEME</span>
+                <div
+                  onClick={() => setBreakdownType("remaining")}
+                  className="p-4 rounded-2xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all"
+                >
+                  <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                    KALAN ÖDEME
+                  </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -3923,17 +5646,31 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
       <Dialog open={!!breakdownType} onOpenChange={(open) => !open && setBreakdownType(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">{breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {breakdownType === "paid" ? "Ödenen Tutar Detayları" : "Kalan Borç Detayları"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 pt-4">
             {schools.map((f) => {
-              const amount = breakdownType === "paid" ? getSchoolPaid(f, exchangeRates) : getSchoolRemaining(f, exchangeRates);
+              const amount =
+                breakdownType === "paid"
+                  ? getSchoolPaid(f, exchangeRates)
+                  : getSchoolRemaining(f, exchangeRates);
               if (amount === 0) return null;
               const hasForeignCurrency = f.currency && f.currency !== "TRY";
               return (
-                <div key={f.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                >
                   <span className="font-bold text-white text-sm">{f.name}</span>
                   <div className="text-right">
-                    <span className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}>{amount.toLocaleString()} ₺</span>
+                    <span
+                      className={`font-mono font-bold text-sm block ${breakdownType === "paid" ? "text-[#12B76A]" : "text-[#A67C52]"}`}
+                    >
+                      {amount.toLocaleString()} ₺
+                    </span>
                   </div>
                 </div>
               );
@@ -3944,20 +5681,35 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
       <Dialog open={isAddSchoolOpen} onOpenChange={setIsAddSchoolOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Okul Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Okul Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddSchool} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Okul Adı</Label>
-              <Input required placeholder="Örn. Atatürk İlkokulu" value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 rounded-xl" />
+              <Input
+                required
+                placeholder="Örn. Atatürk İlkokulu"
+                value={newSchoolName}
+                onChange={(e) => setNewSchoolName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama (İsteğe bağlı)</Label>
-              <Input placeholder="Ek notlar..." value={newSchoolDesc} onChange={(e) => setNewSchoolDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                placeholder="Ek notlar..."
+                value={newSchoolDesc}
+                onChange={(e) => setNewSchoolDesc(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
               <Select value={newSchoolCurrency} onValueChange={(v: any) => setNewSchoolCurrency(v)}>
-                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent className="bg-[#131316] border-white/10 text-white">
                   <SelectItem value="TRY">TRY (₺)</SelectItem>
                   <SelectItem value="USD">USD ($)</SelectItem>
@@ -3966,16 +5718,47 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Öğrenci Başına Katkı (₺)</Label>
-              <Input type="number" min="0" placeholder="0" value={newSchoolContribution} onChange={(e) => setNewSchoolContribution(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Label className="text-sm font-semibold text-gray-300">
+                Öğrenci Başına Katkı (₺)
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newSchoolContribution}
+                onChange={(e) => setNewSchoolContribution(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}</Label>
-              <Input type="number"  min="0" placeholder="0" value={newSchoolRest} onChange={(e) => setNewSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Label className="text-sm font-semibold text-gray-300">
+                Ödenen (İlk) {getCurrencySymbol(newSchoolCurrency)}
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newSchoolRest}
+                onChange={(e) => setNewSchoolRest(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddSchoolOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={addSchoolMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Kaydet</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddSchoolOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={addSchoolMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Kaydet
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3983,32 +5766,77 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
       <Dialog open={!!editSchoolId} onOpenChange={(open) => !open && setEditSchoolId(null)}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="text-xl font-bold">Okulu Düzenle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Okulu Düzenle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleEditSchool} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Okul Adı</Label>
-              <Input required value={editSchoolName} onChange={(e) => setEditSchoolName(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                value={editSchoolName}
+                onChange={(e) => setEditSchoolName(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Para Birimi</Label>
-              <Select value={editSchoolCurrency} onValueChange={(v: any) => setEditSchoolCurrency(v)}>
-                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl"><SelectValue /></SelectTrigger>
+              <Select
+                value={editSchoolCurrency}
+                onValueChange={(v: any) => setEditSchoolCurrency(v)}
+              >
+                <SelectTrigger className="h-11 border-white/10 bg-white/5 text-white rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent className="bg-[#131316] border-white/10 text-white">
-                  <SelectItem value="TRY">TRY (₺)</SelectItem><SelectItem value="USD">USD ($)</SelectItem><SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="TRY">TRY (₺)</SelectItem>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Öğrenci Başına Katkı (₺)</Label>
-              <Input type="number" step="any" min="0" value={editSchoolContribution} onChange={(e) => setEditSchoolContribution(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Label className="text-sm font-semibold text-gray-300">
+                Öğrenci Başına Katkı (₺)
+              </Label>
+              <Input
+                type="number"
+                step="any"
+                min="0"
+                value={editSchoolContribution}
+                onChange={(e) => setEditSchoolContribution(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}</Label>
-              <Input type="number" step="any" min="0" value={editSchoolRest} onChange={(e) => setEditSchoolRest(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Label className="text-sm font-semibold text-gray-300">
+                Ödenen (Toplam) {getCurrencySymbol(editSchoolCurrency)}
+              </Label>
+              <Input
+                type="number"
+                step="any"
+                min="0"
+                value={editSchoolRest}
+                onChange={(e) => setEditSchoolRest(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setEditSchoolId(null)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">Vazgeç</Button>
-              <Button type="submit" disabled={editSchoolMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Güncelle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditSchoolId(null)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={editSchoolMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Güncelle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -4020,25 +5848,41 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             <div className="flex flex-col h-full max-h-[85vh]">
               <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">OKUL DETAY PANELİ</span>
-                  <h3 className="text-xl font-extrabold text-white leading-tight">{selectedSchool.name}</h3>
+                  <span className="text-[10px] font-bold text-[#A67C52] uppercase tracking-widest">
+                    OKUL DETAY PANELİ
+                  </span>
+                  <h3 className="text-xl font-extrabold text-white leading-tight">
+                    {selectedSchool.name}
+                  </h3>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Ödenen</span>
-                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">{getSchoolPaid(selectedSchool, exchangeRates).toLocaleString()} ₺</span>
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Ödenen
+                  </span>
+                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                    {getSchoolPaid(selectedSchool, exchangeRates).toLocaleString()} ₺
+                  </span>
                 </div>
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">Toplam Borç</span>
-                  <span className="font-mono text-sm font-bold text-white block mt-0.5">{getSchoolDebt(selectedSchool, exchangeRates).toLocaleString()} ₺</span>
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Toplam Borç
+                  </span>
+                  <span className="font-mono text-sm font-bold text-white block mt-0.5">
+                    {getSchoolDebt(selectedSchool, exchangeRates).toLocaleString()} ₺
+                  </span>
                 </div>
                 {(() => {
                   const rem = getSchoolRemaining(selectedSchool, exchangeRates);
                   const netBalance = -rem;
                   const isPositive = netBalance > 0;
                   const isNegative = netBalance < 0;
-                  const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+                  const color = isPositive
+                    ? "text-emerald-500"
+                    : isNegative
+                      ? "text-red-500"
+                      : "text-white/70";
                   const sign = isPositive ? "+ " : isNegative ? "- " : "";
                   return (
                     <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
@@ -4046,7 +5890,8 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                         KALAN ÖDEME
                       </span>
                       <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
-                        {sign}{Math.abs(netBalance).toLocaleString()} ₺
+                        {sign}
+                        {Math.abs(netBalance).toLocaleString()} ₺
                       </span>
                     </div>
                   );
@@ -4056,10 +5901,21 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={handleExportSchoolPDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                    <Button
+                      size="sm"
+                      onClick={handleExportSchoolPDF}
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+                    >
                       <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
                     </Button>
-                    <Button size="sm" onClick={() => { setNewTxType("debt"); setIsAddTxOpen(true); }} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setNewTxType("debt");
+                        setIsAddTxOpen(true);
+                      }}
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+                    >
                       <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
                     </Button>
                   </div>
@@ -4068,17 +5924,38 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   {selectedSchool.transactions.map((tx) => {
                     const isTaken = tx.type === "debt";
                     return (
-                      <div key={tx.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl">
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}>
-                            {isTaken ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
+                          >
+                            {isTaken ? (
+                              <ArrowUpRight className="w-4 h-4" />
+                            ) : (
+                              <ArrowDownRight className="w-4 h-4" />
+                            )}
                           </div>
                           <div>
                             <span className="text-xs font-bold text-white block">{tx.desc}</span>
-                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5">{tx.date}</span>
+                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5">
+                              {tx.date}
+                            </span>
                           </div>
                         </div>
-                        <span className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}>{isTaken ? "+" : "-"}{getConvertedAmount(tx.amount, tx.currency || selectedSchool.currency, exchangeRates).toLocaleString()} ₺</span>
+                        <span
+                          className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
+                        >
+                          {isTaken ? "+" : "-"}
+                          {getConvertedAmount(
+                            tx.amount,
+                            tx.currency || selectedSchool.currency,
+                            exchangeRates,
+                          ).toLocaleString()}{" "}
+                          ₺
+                        </span>
                       </div>
                     );
                   })}
@@ -4091,20 +5968,59 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
       <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
-          <DialogHeader><DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
-
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label><Input required type="number"  min="1" value={newTxAmount} onChange={(e) => setNewTxAmount(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
-              <div className="space-y-2"><Label className="text-sm font-semibold text-gray-300">Tarih</Label><Input type="date" required value={newTxDate} onChange={(e) => setNewTxDate(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" /></div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label>
+                <Input
+                  required
+                  type="number"
+                  min="1"
+                  value={newTxAmount}
+                  onChange={(e) => setNewTxAmount(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Tarih</Label>
+                <Input
+                  type="date"
+                  required
+                  value={newTxDate}
+                  onChange={(e) => setNewTxDate(e.target.value)}
+                  className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
-              <Input required placeholder="Açıklama..." value={newTxDesc} onChange={(e) => setNewTxDesc(e.target.value)} className="h-11 border-white/10 bg-white/5 text-white rounded-xl" />
+              <Input
+                required
+                placeholder="Açıklama..."
+                value={newTxDesc}
+                onChange={(e) => setNewTxDesc(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
             </div>
             <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddTxOpen(false)} className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl">İptal</Button>
-              <Button type="submit" disabled={addTxMutation.isPending} className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6">Ekle</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddTxOpen(false)}
+                className="h-11 border-white/10 bg-transparent text-white hover:bg-white/5 rounded-xl"
+              >
+                İptal
+              </Button>
+              <Button
+                type="submit"
+                disabled={addTxMutation.isPending}
+                className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
+              >
+                Ekle
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -4144,7 +6060,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
-    }
+    },
   });
 
   const { data: baskiTransactions = [] } = useQuery({
@@ -4163,31 +6079,41 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { data, error } = await q;
       if (error) throw error;
       return data.map((t) => {
-        const match = String(t.description || "").match(/^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i);
+        const match = String(t.description || "").match(
+          /^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i,
+        );
         return {
           id: t.id,
           date: new Date(t.created_at).toISOString().split("T")[0],
           product: match ? match[1].trim() : "-",
           quantity: match ? parseFloat(match[2]) : "-",
-          desc: match ? (match[3] ? match[3].trim() : "-") : (t.description || "-"),
+          desc: match ? (match[3] ? match[3].trim() : "-") : t.description || "-",
           amount: t.amount,
           paidAmount: t.paid_amount || 0,
         };
       });
-    }
+    },
   });
 
   const addBaskiExpenseMutation = useMutation({
-    mutationFn: async ({ amount, desc, paid, remaining }: { amount: number; desc: string; paid: number; remaining: number }) => {
-      const { error: txErr } = await supabaseClient
-        .from("print_expenses")
-        .insert({
-          amount: amount,
-          description: desc,
-          paid_amount: paid,
-          remaining_amount: remaining,
-          team_id: teamId === "all" ? null : teamId
-        });
+    mutationFn: async ({
+      amount,
+      desc,
+      paid,
+      remaining,
+    }: {
+      amount: number;
+      desc: string;
+      paid: number;
+      remaining: number;
+    }) => {
+      const { error: txErr } = await supabaseClient.from("print_expenses").insert({
+        amount: amount,
+        description: desc,
+        paid_amount: paid,
+        remaining_amount: remaining,
+        team_id: teamId === "all" ? null : teamId,
+      });
       if (txErr) throw txErr;
     },
     onSuccess: () => {
@@ -4204,7 +6130,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     },
     onError: (error) => {
       toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
-    }
+    },
   });
 
   const deleteBaskiExpenseMutation = useMutation({
@@ -4217,18 +6143,21 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt silindi");
-    }
+    },
   });
 
   const editBaskiExpenseMutation = useMutation({
-    mutationFn: async (input: { id: string, amount: number, paid: number, desc: string }) => {
+    mutationFn: async (input: { id: string; amount: number; paid: number; desc: string }) => {
       const remaining = input.amount - input.paid;
-      const { error } = await supabaseClient.from("print_expenses").update({
-        amount: input.amount,
-        paid_amount: input.paid,
-        remaining_amount: remaining > 0 ? remaining : 0,
-        description: input.desc
-      }).eq("id", input.id);
+      const { error } = await supabaseClient
+        .from("print_expenses")
+        .update({
+          amount: input.amount,
+          paid_amount: input.paid,
+          remaining_amount: remaining > 0 ? remaining : 0,
+          description: input.desc,
+        })
+        .eq("id", input.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -4237,7 +6166,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt güncellendi");
       setBaskiEditModalOpen(false);
-    }
+    },
   });
 
   const openBaskiEdit = (tx: any) => {
@@ -4248,13 +6177,22 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     setBaskiEditModalOpen(true);
   };
 
-
   const filteredBaskiTransactions = baskiTransactions
-    .filter((tx: any) => tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) || tx.product.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a: any, b: any) => a.desc.localeCompare(b.desc, 'tr'));
+    .filter(
+      (tx: any) =>
+        tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.product.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+    .sort((a: any, b: any) => a.desc.localeCompare(b.desc, "tr"));
 
-  const genelToplam = filteredBaskiTransactions.reduce((sum: number, item: any) => sum + item.amount, 0);
-  const totalBaskiPaid = filteredBaskiTransactions.reduce((sum: number, item: any) => sum + item.paidAmount, 0);
+  const genelToplam = filteredBaskiTransactions.reduce(
+    (sum: number, item: any) => sum + item.amount,
+    0,
+  );
+  const totalBaskiPaid = filteredBaskiTransactions.reduce(
+    (sum: number, item: any) => sum + item.paidAmount,
+    0,
+  );
 
   const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
@@ -4269,7 +6207,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         tx.quantity.toString(),
         `${tx.amount.toLocaleString()} ₺`,
         `${tx.paidAmount.toLocaleString()} ₺`,
-        `${remaining.toLocaleString()} ₺`
+        `${remaining.toLocaleString()} ₺`,
       ];
     });
 
@@ -4280,7 +6218,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       "",
       `${genelToplam.toLocaleString()} ₺`,
       `${totalBaskiPaid.toLocaleString()} ₺`,
-      `${totalBaskiRemaining.toLocaleString()} ₺`
+      `${totalBaskiRemaining.toLocaleString()} ₺`,
     ]);
 
     exportToPDF({
@@ -4288,19 +6226,26 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       subtitle: `${filteredBaskiTransactions.length} Baskı İşlemi`,
       columns,
       data,
-      filename: `Baski_Giderleri.pdf`
+      filename: `Baski_Giderleri.pdf`,
     });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-4">
-        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-white/10 text-white">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onBack}
+          className="rounded-full hover:bg-white/10 text-white"
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
           <h2 className="text-2xl font-extrabold text-white">Baskı Detayları</h2>
-          <p className="text-sm text-[#9E9696] font-medium mt-1">Baskı giderleri ve işlem geçmişi</p>
+          <p className="text-sm text-[#9E9696] font-medium mt-1">
+            Baskı giderleri ve işlem geçmişi
+          </p>
         </div>
       </div>
 
@@ -4308,12 +6253,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
-            <Input 
-              type="text" 
-              placeholder="Baskı ara..." 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]" 
+            <Input
+              type="text"
+              placeholder="Baskı ara..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
             />
           </div>
         </div>
@@ -4322,10 +6267,18 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-bold text-white text-sm">İşlem Geçmişi</h4>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleExportBaskiPDF} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+              <Button
+                size="sm"
+                onClick={handleExportBaskiPDF}
+                className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+              >
                 <Download className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> PDF İndir
               </Button>
-              <Button size="sm" onClick={() => setBaskiModalOpen(true)} className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3">
+              <Button
+                size="sm"
+                onClick={() => setBaskiModalOpen(true)}
+                className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
+              >
                 <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
               </Button>
             </div>
@@ -4348,13 +6301,19 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <tbody>
                 {filteredBaskiTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4">
+                    <td
+                      colSpan={8}
+                      className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4"
+                    >
                       Henüz işlem bulunmuyor.
                     </td>
                   </tr>
                 ) : (
                   filteredBaskiTransactions.map((tx: any) => (
-                    <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <tr
+                      key={tx.id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
                       <td className="px-4 py-3 whitespace-nowrap">{tx.date}</td>
                       <td className="px-4 py-3 font-medium text-white">{tx.desc}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{tx.product}</td>
@@ -4369,8 +6328,23 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         {(tx.amount - tx.paidAmount).toLocaleString()} ₺
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <Button variant="ghost" size="icon" onClick={() => openBaskiEdit(tx)} className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteBaskiExpenseMutation.mutate(tx.id)} disabled={deleteBaskiExpenseMutation.isPending} className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"><Trash2 className="h-4 w-4" /></Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openBaskiEdit(tx)}
+                          className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteBaskiExpenseMutation.mutate(tx.id)}
+                          disabled={deleteBaskiExpenseMutation.isPending}
+                          className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -4379,7 +6353,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               {filteredBaskiTransactions.length > 0 && (
                 <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
                   <tr>
-                    <td colSpan={4} className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white">
+                    <td
+                      colSpan={4}
+                      className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white"
+                    >
                       Genel Toplam:
                     </td>
                     <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
@@ -4388,7 +6365,9 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
                       {totalBaskiPaid.toLocaleString()} ₺
                     </td>
-                    <td className={`px-4 py-4 text-right text-lg font-bold ${totalBaskiRemaining < 0 ? "text-[#12B76A]" : "text-rose-400"}`}>
+                    <td
+                      className={`px-4 py-4 text-right text-lg font-bold ${totalBaskiRemaining < 0 ? "text-[#12B76A]" : "text-rose-400"}`}
+                    >
                       {Math.abs(totalBaskiRemaining).toLocaleString()} ₺
                     </td>
                     <td className="px-4 py-4 rounded-br-xl"></td>
@@ -4401,14 +6380,22 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         <div className="p-6 bg-white/[0.02] border-t border-white/5 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-center max-w-4xl mx-auto">
             <div className="p-4 rounded-2xl bg-white/5 border border-white/5 transition-all">
-              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">TOPLAM ÖDENEN</span>
-              <h4 className="font-mono text-2xl font-black text-emerald-400 mt-1.5">{Math.round(totalBaskiPaid).toLocaleString()} ₺</h4>
+              <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider block">
+                TOPLAM ÖDENEN
+              </span>
+              <h4 className="font-mono text-2xl font-black text-emerald-400 mt-1.5">
+                {Math.round(totalBaskiPaid).toLocaleString()} ₺
+              </h4>
             </div>
             {(() => {
               const netBalance = -totalBaskiRemaining;
               const isPositive = netBalance > 0;
               const isNegative = netBalance < 0;
-              const color = isPositive ? "text-emerald-500" : isNegative ? "text-red-500" : "text-white/70";
+              const color = isPositive
+                ? "text-emerald-500"
+                : isNegative
+                  ? "text-red-500"
+                  : "text-white/70";
               const sign = isPositive ? "+ " : isNegative ? "- " : "";
               return (
                 <div className="p-4 rounded-2xl border border-white/5 bg-white/5 transition-all">
@@ -4416,7 +6403,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     KALAN ÖDEME
                   </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
-                    {sign}{Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {sign}
+                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -4441,14 +6429,18 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     className="w-full justify-between bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 hover:text-white"
                   >
                     {baskiSelectedProduct
-                      ? productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.name || "Ürün seçin..."
+                      ? productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.name ||
+                        "Ürün seçin..."
                       : "Ürün seçin..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[380px] p-0 bg-[#111111] border-white/10 text-white">
                   <Command className="bg-[#111111]">
-                    <CommandInput placeholder="Baskı boyutu ara..." className="text-white border-none focus:ring-0" />
+                    <CommandInput
+                      placeholder="Baskı boyutu ara..."
+                      className="text-white border-none focus:ring-0"
+                    />
                     <CommandList>
                       <CommandEmpty>Baskı boyutu bulunamadı.</CommandEmpty>
                       <CommandGroup>
@@ -4466,14 +6458,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                                 const total = p.base_price * (parseFloat(baskiQuantity) || 1);
                                 setBaskiRemainingAmount(total.toString());
                                 setBaskiPaidAmount("0");
-                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                document.dispatchEvent(
+                                  new KeyboardEvent("keydown", { key: "Escape" }),
+                                );
                               }}
                               className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
                             >
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4 text-[#A67C52]",
-                                  baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0"
+                                  baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0",
                                 )}
                               />
                               {p.name} ({p.base_price} ₺)
@@ -4488,7 +6482,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             <div className="grid gap-2">
               <Label>Adet</Label>
               <Input
-                type="number" 
+                type="number"
                 min="1"
                 value={baskiQuantity}
                 onChange={(e) => {
@@ -4517,7 +6511,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Ödenen Tutar (₺)</Label>
                 <Input
-                  type="number" 
+                  type="number"
                   min="0"
                   value={baskiPaidAmount}
                   onChange={(e) => {
@@ -4535,7 +6529,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Kalan Borç (₺)</Label>
                 <Input
-                  type="number" step="any"
+                  type="number"
+                  step="any"
                   min="0"
                   value={baskiRemainingAmount}
                   onChange={(e) => setBaskiRemainingAmount(e.target.value)}
@@ -4548,22 +6543,33 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
                   {(
-                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || 0) *
-                    (parseFloat(baskiQuantity) || 0)
-                  ).toLocaleString("tr-TR")} ₺
+                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price ||
+                      0) * (parseFloat(baskiQuantity) || 0)
+                  ).toLocaleString("tr-TR")}{" "}
+                  ₺
                 </span>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button
-              disabled={!baskiSelectedProduct || addBaskiExpenseMutation.isPending || parseFloat(baskiQuantity) < 1 || !baskiAciklama.trim()}
+              disabled={
+                !baskiSelectedProduct ||
+                addBaskiExpenseMutation.isPending ||
+                parseFloat(baskiQuantity) < 1 ||
+                !baskiAciklama.trim()
+              }
               onClick={() => {
                 const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                 if (p) {
                   const total = p.base_price * (parseFloat(baskiQuantity) || 0);
                   const desc = `${p.name} (${parseFloat(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
-                  addBaskiExpenseMutation.mutate({ amount: total, desc, paid: parseFloat(baskiPaidAmount) || 0, remaining: parseFloat(baskiRemainingAmount) || 0 });
+                  addBaskiExpenseMutation.mutate({
+                    amount: total,
+                    desc,
+                    paid: parseFloat(baskiPaidAmount) || 0,
+                    remaining: parseFloat(baskiRemainingAmount) || 0,
+                  });
                 }
               }}
               className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
@@ -4593,7 +6599,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Toplam Tutar (₺)</Label>
                 <Input
-                  type="number" 
+                  type="number"
                   min="0"
                   value={baskiEditAmount}
                   onChange={(e) => setBaskiEditAmount(e.target.value)}
@@ -4603,7 +6609,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               <div className="space-y-2">
                 <Label>Ödenen Tutar (₺)</Label>
                 <Input
-                  type="number" 
+                  type="number"
                   min="0"
                   value={baskiEditPaid}
                   onChange={(e) => setBaskiEditPaid(e.target.value)}
@@ -4621,7 +6627,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     id: baskiEditId,
                     amount: parseFloat(baskiEditAmount) || 0,
                     paid: parseFloat(baskiEditPaid) || 0,
-                    desc: baskiEditDesc
+                    desc: baskiEditDesc,
                   });
                 }
               }}

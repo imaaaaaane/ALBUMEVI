@@ -405,7 +405,8 @@ const translations: Record<Lang, Dict> = {
     "hero.badge": "FOTOĞRAFKÊŞIYA DIBISTANÊ YA B2B",
     "hero.title1": "Pênasekirina Nû ya",
     "hero.title2": "Forma Herî Paqij a Bîranînên Dibistanê",
-    "hero.subtitle": "Markaya pêbawer a di wênekêşiya dibistanê ya profesyonel de. Em bîranînên tije şadî tomar dikin û li ser rûyê her zarokekî kenekî dihêlin.",
+    "hero.subtitle":
+      "Markaya pêbawer a di wênekêşiya dibistanê ya profesyonel de. Em bîranînên tije şadî tomar dikin û li ser rûyê her zarokekî kenekî dihêlin.",
     "hero.ratingText": "Zêdetirî 500 dibistan bi dilxweşî xizmet wergirtin",
     "hero.ratingAvg": "Puanê navînî",
     "hero.monthlyStats": "38 kişandina wêneyan a dibistanê",
@@ -414,30 +415,41 @@ const translations: Record<Lang, Dict> = {
     "cta.adminLogin": "Têketina Rêveber",
     "services.badge": "Xizmetên Me",
     "services.title": "Tecrûbeya Wênekêşiyê ya Bêkêmasî",
-    "services.subtitle": "Em wênekêşiya dibistanê ji nû ve pênase dikin. Ji dikişandinê heta radestkirinê hemû pêvajo di bin çavdêriya tîma me ya pispor de tê birêvebirin.",
+    "services.subtitle":
+      "Em wênekêşiya dibistanê ji nû ve pênase dikin. Ji dikişandinê heta radestkirinê hemû pêvajo di bin çavdêriya tîma me ya pispor de tê birêvebirin.",
     "services.card1.title": "Portreyên Profesyonel ên Dibistanê",
-    "services.card1.desc": "Portreyên bi kalîteya stûdyoyê ku kesayetiya bêhempa ya her zarokekî nîşan dide. Em bi ronahiya xwezayî û paşperdeyên taybet bîranînên nayên jibirkirin diafirînin.",
+    "services.card1.desc":
+      "Portreyên bi kalîteya stûdyoyê ku kesayetiya bêhempa ya her zarokekî nîşan dide. Em bi ronahiya xwezayî û paşperdeyên taybet bîranînên nayên jibirkirin diafirînin.",
     "services.card2.title": "Kişandinên Komî yên di Sînifê de",
-    "services.card2.desc": "Wênekêşiya komî rasterast di sînifê de pêk tê. Zarok di hawara ku jê re fêr bûne de, ligel hevalên xwe yên sînifê bi awayekî xwezayî û samîmî poz didin.",
+    "services.card2.desc":
+      "Wênekêşiya komî rasterast di sînifê de pêk tê. Zarok di hawara ku jê re fêr bûne de, ligel hevalên xwe yên sînifê bi awayekî xwezayî û samîmî poz didin.",
     "services.card3.title": "Lojîstîka Bêkêmasî û Hêsan",
-    "services.card3.desc": "Em hemû pêvajoyê ji koordînasyona randevûyan heta belavkirina wêneyan birêve dibin. Barkirina zêde li ser rêveberiya dibistanê nîne, kargêriya herî zêde.",
+    "services.card3.desc":
+      "Em hemû pêvajoyê ji koordînasyona randevûyan heta belavkirina wêneyan birêve dibin. Barkirina zêde li ser rêveberiya dibistanê nîne, kargêriya herî zêde.",
     "services.card4.title": "Albomên Taybet û Berhemên Fîzîkî",
-    "services.card4.desc": "Em albomên premium ên bergê wan hişk, çapên bi çarçove û berhemên wêneyan ên kesane ji bo malbatan sêwirandin, hildiberînen û radest dikin.",
+    "services.card4.desc":
+      "Em albomên premium ên bergê wan hişk, çapên bi çarçove û berhemên wêneyan ên kesane ji bo malbatan sêwirandin, hildiberînen û radest dikin.",
     "process.badge": "Pêvajo",
     "process.title": "Çar Gav ber bi Portreyên Bêkêmasî ve",
     "process.step1.title": "Hevdîtina Keşifê",
-    "process.step1.desc": "Em guh didin hewcedarî û hêviyên dibistana we. Em bi hev re tarîx, cîh û tercîhên pakêtê diyar dikin.",
+    "process.step1.desc":
+      "Em guh didin hewcedarî û hêviyên dibistana we. Em bi hev re tarîx, cîh û tercîhên pakêtê diyar dikin.",
     "process.step2.title": "Roja Kişandina Profesyonel",
-    "process.step2.desc": "Tîma me ya bi tecrûbe tê dibistana we, dihêle ku zark rehet hîs bikin û ji her portreyê wêneya herî baş dikişînin.",
+    "process.step2.desc":
+      "Tîma me ya bi tecrûbe tê dibistana we, dihêle ku zark rehet hîs bikin û ji her portreyê wêneya herî baş dikişînin.",
     "process.step3.title": "Rötuş û Verastkirina bi Dîqet",
-    "process.step3.desc": "Her wêneyek ji bo hevsengiya rengan û ronahiyê bi dîqet tê amadekirin. Bêkêmasîbûn bêyî tawîzkirina xwezayîbûnê.",
+    "process.step3.desc":
+      "Her wêneyek ji bo hevsengiya rengan û ronahiyê bi dîqet tê amadekirin. Bêkêmasîbûn bêyî tawîzkirina xwezayîbûnê.",
     "process.step4.title": "Radestkirina Fîzîkî",
-    "process.step4.desc": "Albomên ku çapkirina wan qediya û pakêtên berheman bi riya dibistanê ji malbatan re tên belavkirin. Her pakêt bi baldarî tê amadekirin.",
+    "process.step4.desc":
+      "Albomên ku çapkirina wan qediya û pakêtên berheman bi riya dibistanê ji malbatan re tên belavkirin. Her pakêt bi baldarî tê amadekirin.",
     "whyus.badge": "Çima Albumevi?",
     "whyus.title": "Hevkariya Demdirêj a li ser Bingeha Baweriyê",
-    "whyus.desc": "Bi tecrûbeya xwe ya 12 salan û zanîna ku me li zêdetirî 500 dibistanan bi dest xistiye, em her sal dibin tercîha rêveberên dibistanan. Nêzîkatiya me ya zarok-navend me ji yên din cuda dike.",
+    "whyus.desc":
+      "Bi tecrûbeya xwe ya 12 salan û zanîna ku me li zêdetirî 500 dibistanan bi dest xistiye, em her sal dibin tercîha rêveberên dibistanan. Nêzîkatiya me ya zarok-navend me ji yên din cuda dike.",
     "whyus.testimonial.author": "Midûrê Dibistanê, Êlih (Batman)",
-    "whyus.testimonial.text": '"Karkirina bi Albumevi re ji bo zarok û dêûbavên me bû ezmûneke nayê jibirkirin. Ez bi tundî pêşniyar dikim."',
+    "whyus.testimonial.text":
+      '"Karkirina bi Albumevi re ji bo zarok û dêûbavên me bû ezmûneke nayê jibirkirin. Ez bi tundî pêşniyar dikim."',
     "whyus.feature1": "Piştgiriya Taybet",
     "whyus.feature2": "Amûrên bi Kalîteya Bilind",
     "whyus.feature3": "Dema Zivirîna Lezgîn",
@@ -447,7 +459,8 @@ const translations: Record<Lang, Dict> = {
     "whyus.cta": "Têkilî bi me re Deynî",
     "contact.badge": "Têkilî",
     "contact.title": "Ji bo Dibistana xwe Pêşniyara Taybet bistînin",
-    "contact.desc": "Ji bo bihayên taybet û pakêtên ku li gorî hewcedariyên dibistana we hatine amadekirin îro bi me re têkilî daynin. Em bersivê di nav 24 saetan de garantî dikin.",
+    "contact.desc":
+      "Ji bo bihayên taybet û pakêtên ku li gorî hewcedariyên dibistana we hatine amadekirin îro bi me re têkilî daynin. Em bersivê di nav 24 saetan de garantî dikin.",
     "contact.phone": "TELEFON",
     "contact.email": "E-POSTA",
     "contact.address": "NAVÎŞAN",
@@ -486,7 +499,8 @@ const translations: Record<Lang, Dict> = {
     "school.invalidLink": "Dibe ku ev lînk nederbasdar be an jî dema wê derbas bûbe.",
     "school.backHome": "Vegere rûpela serkêş",
     "login.school.title": "Têketina Dibistanê",
-    "login.school.subtitle": "Ji bo birêvebirina seansên kişandina wêneyan a dibistana xwe têkevin hesêb.",
+    "login.school.subtitle":
+      "Ji bo birêvebirina seansên kişandina wêneyan a dibistana xwe têkevin hesêb.",
     "login.username": "Navê Bikarhêner",
     "login.password": "Şîfre",
     "login.button.signIn": "Têkeve Hesêb",

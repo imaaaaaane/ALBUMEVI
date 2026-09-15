@@ -60,7 +60,7 @@ function SchoolLogin() {
       style={{
         /* USER WILL INSERT BACKGROUND IMAGE URL HERE */
         // backgroundImage: 'url("https://example.com/your-aesthetic-background.jpg")'
-        backgroundColor: "#0A0A0A" // Fallback solid color
+        backgroundColor: "#0A0A0A", // Fallback solid color
       }}
     >
       {/* Dark overlay with blur effect for cinematic depth */}
@@ -101,7 +101,7 @@ function SchoolLogin() {
             >
               {/* Decorative gradient for Kılavuz */}
               <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#A67C52] rounded-full blur-[80px] opacity-20 pointer-events-none" />
-              
+
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-white/10 rounded-lg border border-white/10">
                   <Info className="w-6 h-6 text-white" />
@@ -110,26 +110,33 @@ function SchoolLogin() {
               </div>
 
               <div className="space-y-4 mb-8 text-white/80 text-sm leading-relaxed">
-                <p>
-                  Sisteme giriş yapmadan önce lütfen aşağıdaki adımları okuyun.
-                </p>
+                <p>Sisteme giriş yapmadan önce lütfen aşağıdaki adımları okuyun.</p>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-[#A67C52] shrink-0" />
-                    <span>Okul yöneticisi olarak size verilen <strong>Kullanıcı Adı</strong> ve <strong>Şifre</strong> ile sisteme giriş yapmalısınız.</span>
+                    <span>
+                      Okul yöneticisi olarak size verilen <strong>Kullanıcı Adı</strong> ve{" "}
+                      <strong>Şifre</strong> ile sisteme giriş yapmalısınız.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-[#A67C52] shrink-0" />
-                    <span>Giriş yaptıktan sonra okulunuza ait <strong>öğrenci paket seçimlerini</strong> ve <strong>siparişleri</strong> yönetebilirsiniz.</span>
+                    <span>
+                      Giriş yaptıktan sonra okulunuza ait <strong>öğrenci paket seçimlerini</strong>{" "}
+                      ve <strong>siparişleri</strong> yönetebilirsiniz.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-[#A67C52] shrink-0" />
-                    <span>Sistemle ilgili herhangi bir sorunda <strong>Albumevi Destek</strong> ekibiyle iletişime geçebilirsiniz.</span>
+                    <span>
+                      Sistemle ilgili herhangi bir sorunda <strong>Albumevi Destek</strong> ekibiyle
+                      iletişime geçebilirsiniz.
+                    </span>
                   </li>
                 </ul>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => setShowGuide(false)}
                 className="w-full h-12 bg-white text-black hover:bg-gray-200 font-bold rounded-xl shadow-lg transition-all active:scale-[0.98]"
               >
