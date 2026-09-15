@@ -328,9 +328,14 @@ function ManageSchools() {
           const blob = await response.blob();
 
           const ext = student.image_url.split(".").pop() || "jpg";
-          // Make sure slugify is used correctly, fallback to jpg just in case
+          // Make sure safeExt is used correctly, fallback to jpg just in case
           const safeExt = ext.split("?")[0] || "jpg";
-          const fileName = `${slugify(student.name)}_${student.id.substring(0, 4)}.${safeExt}`;
+          
+          const safePackageName = packageName.replace(/[/\\]/g, "-").trim();
+          const safeClassName = (student.class_name || "Bilinmeyen Şube").replace(/[/\\]/g, "-").trim();
+          const safeStudentName = student.name.replace(/[/\\]/g, "-").trim();
+          
+          const fileName = `${safePackageName}/${safeClassName}/${safeStudentName}.${safeExt}`;
           zip.file(fileName, blob);
         } catch (err) {
           console.error("Error fetching image for", student.name, err);
@@ -377,7 +382,7 @@ function ManageSchools() {
           .from("students")
           .select("id, name, image_url, class_id, selection, created_at")
           .not("selection", "is", null),
-        (supabase as any).from("classes").select("id, school_id"),
+        (supabase as any).from("classes").select("id, school_id, name"),
         (supabase as any).from("schools").select("id, name, package_statuses"),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price"),
         (supabase as any).from("products").select("id, name"),
@@ -390,7 +395,7 @@ function ManageSchools() {
 
       // Map classes and schools for quick lookup
       const classMap = new Map();
-      (classes || []).forEach((c: any) => classMap.set(c.id, c.school_id));
+      (classes || []).forEach((c: any) => classMap.set(c.id, { school_id: c.school_id, name: c.name }));
 
       const schoolMap = new Map();
       const schoolStatusMap = new Map();
@@ -416,8 +421,9 @@ function ManageSchools() {
 
       // 2. Aggregate data in JavaScript
       const grouped = (students || []).reduce((acc: any, s: any) => {
-        const schoolId = classMap.get(s.class_id);
-        if (!schoolId) return acc;
+        const classInfo = classMap.get(s.class_id);
+        if (!classInfo) return acc;
+        const schoolId = classInfo.school_id;
 
         const spMapping = schoolProductsMap.get(schoolId);
         if (!spMapping) return acc;
@@ -469,6 +475,7 @@ function ManageSchools() {
               id: s.id,
               name: s.name || `Öğrenci`,
               image_url: s.image_url,
+              class_name: classInfo.name || "Bilinmeyen Şube",
             });
           }
         });
@@ -480,48 +487,6 @@ function ManageSchools() {
     },
   });
 
-  const { data: finance } = useQuery({
-    queryKey: ["finance"],
-    queryFn: async () => {
-      const [{ data: rawStudents, error: oErr }, { data: txs, error: fErr }] = await Promise.all([
-        (supabase as any)
-          .from("students")
-          .select(
-            `
-          selection,
-          classes!inner(schools!inner(package1_price, package2_price))
-        `,
-          )
-          .not("selection", "is", null),
-        (supabase as any).from("school_transactions").select("amount, type"),
-      ]);
-      if (oErr) throw new Error(oErr.message);
-      if (fErr) throw new Error(fErr.message);
-
-      const totalRevenue = (rawStudents ?? []).reduce((s: number, st: any) => {
-        const p1p = st.classes?.schools?.package1_price || 0;
-        const p2p = st.classes?.schools?.package2_price || 0;
-        if (st.selection === "paket1") return s + p1p;
-        if (st.selection === "paket2") return s + p2p;
-        return s;
-      }, 0);
-
-      const totalPaid = (txs ?? []).reduce(
-        (s: number, t: any) => s + (t.type === "payment" ? Number(t.amount ?? 0) : 0),
-        0,
-      );
-      const balanceDue = totalRevenue - totalPaid;
-      const pendingOrders = (rawStudents ?? []).length; // treating all as pending for now
-
-      return {
-        totalRevenue,
-        totalPaid,
-        balanceDue,
-        pendingOrders,
-        invoices: [],
-      };
-    },
-  });
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
