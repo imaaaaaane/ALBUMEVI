@@ -150,7 +150,7 @@ const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) 
       {displayedText1}
       {isTyping1 && <span className="animate-pulse">|</span>}
       <br />
-      <span className="text-[#D0A36D]">
+      <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent">
         {displayedText2}
         {!isTyping1 && displayedText2.length < text2.length && (
           <span className="animate-pulse text-white">|</span>
@@ -278,7 +278,7 @@ function Landing() {
             <img
               src="/logo-light.png"
               alt="Albumevi Logo"
-              className="h-20 md:h-24 w-auto object-contain"
+              className="w-56 md:w-64 h-auto object-contain"
             />
           </Link>
 
@@ -323,7 +323,7 @@ function Landing() {
       {/* HERO SECTION */}
       <div className="relative pt-24 min-h-screen flex items-center justify-center overflow-hidden">
         {/* Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#D0A36D]/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-amber-700/20 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
         <motion.main
           initial={{ opacity: 0, y: 20 }}
@@ -348,19 +348,7 @@ function Landing() {
                 {t("hero.subtitle")}
               </motion.p>
 
-              <motion.div
-                variants={heroItemVariants}
-                className="flex items-center gap-3 pt-4 border-t border-white/5 w-max pr-8"
-              >
-                <div className="flex gap-1 text-yellow-500">
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                </div>
-                <p className="text-sm text-gray-400">500+ okul memnuniyetle hizmet aldı</p>
-              </motion.div>
+                {/* Left Side Elements */}
 
               <motion.div variants={heroItemVariants} className="pt-6">
                 <a
@@ -379,30 +367,36 @@ function Landing() {
               animate="visible"
               className="relative"
             >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-2xl bg-gray-900 border border-white/5 h-[450px] w-full overflow-hidden">
+              {/* Glassmorphism Floating Badge */}
+              <div className="absolute -left-8 md:-left-12 top-1/4 z-20 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1">
+                <div className="flex gap-1 text-amber-400 text-sm">
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                  <Star className="w-4 h-4 fill-current" />
+                </div>
+                <p className="text-lg font-bold text-white">500+ Mutlu Okul</p>
+                <p className="text-xs text-white/60">Sistemi aktif kullanıyor</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="rounded-2xl bg-gray-900 border border-white/5 h-[450px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                   <img
                     src="/pic1.jpg"
                     alt="Portrait"
                     className="object-cover h-full w-full opacity-80"
                   />
                 </div>
-                <div className="space-y-4">
-                  <div className="bg-[#111111] border border-white/5 p-4 rounded-2xl flex items-center justify-between">
-                    <div>
-                      <div className="flex text-[#D0A36D] text-sm">★★★★★</div>
-                      <p className="text-xl font-bold mt-1">4.9</p>
-                      <p className="text-xs text-gray-400">{t("hero.ratingAvg")}</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[200px] w-full overflow-hidden">
+                <div className="space-y-4 pt-12">
+                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[210px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <img
                       src="/pic2.jpg"
                       alt="Kids"
                       className="object-cover h-full w-full opacity-80"
                     />
                   </div>
-                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[180px] w-full overflow-hidden">
+                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[210px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <img
                       src="/pic3.jpg"
                       alt="Boy"
