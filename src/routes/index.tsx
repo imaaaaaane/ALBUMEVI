@@ -108,6 +108,61 @@ const FAQS = [
 
 const MotionLink = motion(Link);
 
+const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) => {
+  const [displayedText1, setDisplayedText1] = useState("");
+  const [displayedText2, setDisplayedText2] = useState("");
+  const [isTyping1, setIsTyping1] = useState(true);
+
+  useEffect(() => {
+    let i = 0;
+    setDisplayedText1("");
+    setIsTyping1(true);
+    const intervalId = setInterval(() => {
+      setDisplayedText1(text1.slice(0, i + 1));
+      i++;
+      if (i >= text1.length) {
+        clearInterval(intervalId);
+        setIsTyping1(false);
+      }
+    }, 45); // Typing speed
+    return () => clearInterval(intervalId);
+  }, [text1]);
+
+  useEffect(() => {
+    if (isTyping1) return;
+    let i = 0;
+    setDisplayedText2("");
+    const intervalId = setInterval(() => {
+      setDisplayedText2(text2.slice(0, i + 1));
+      i++;
+      if (i >= text2.length) {
+        clearInterval(intervalId);
+      }
+    }, 45);
+    return () => clearInterval(intervalId);
+  }, [text2, isTyping1]);
+
+  return (
+    <motion.h1
+      variants={heroItemVariants}
+      className="text-5xl md:text-7xl font-extrabold italic leading-[1.1] tracking-tight"
+    >
+      {displayedText1}
+      {isTyping1 && <span className="animate-pulse">|</span>}
+      <br />
+      <span className="text-[#D0A36D]">
+        {displayedText2}
+        {!isTyping1 && displayedText2.length < text2.length && (
+          <span className="animate-pulse text-white">|</span>
+        )}
+        {!isTyping1 && displayedText2.length === text2.length && (
+          <span className="animate-pulse text-white font-normal ml-1">|</span>
+        )}
+      </span>
+    </motion.h1>
+  );
+};
+
 export const Route = createFileRoute("/")({
   component: Landing,
 });
@@ -285,13 +340,7 @@ function Landing() {
               animate="visible"
               className="space-y-8"
             >
-              <motion.h1
-                variants={heroItemVariants}
-                className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight"
-              >
-                {t("hero.title1")} <br />
-                <span className="text-[#D0A36D]">{t("hero.title2")}</span>
-              </motion.h1>
+              <TypewriterHeadline text1={t("hero.title1")} text2={t("hero.title2")} />
               <motion.p
                 variants={heroItemVariants}
                 className="text-lg text-gray-400 max-w-lg leading-relaxed"
