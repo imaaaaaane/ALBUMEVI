@@ -56,29 +56,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Albumevi — School Photography & Logistics Platform" },
+      { title: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
       {
         name: "description",
         content:
-          "Albumevi streamlines school photography — orders, inventory, finance, and delivery in one elegant platform.",
+          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
       },
-      { property: "og:title", content: "Albumevi — School Photography & Logistics Platform" },
+      { property: "og:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
       {
         property: "og:description",
         content:
-          "Albumevi School Hub is a school photography and logistics platform for administrators.",
+          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Albumevi — School Photography & Logistics Platform" },
-      {
-        name: "description",
-        content:
-          "Albumevi School Hub is a school photography and logistics platform for administrators.",
-      },
+      { name: "twitter:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
       {
         name: "twitter:description",
         content:
-          "Albumevi School Hub is a school photography and logistics platform for administrators.",
+          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
       },
       {
         property: "og:image",

@@ -642,7 +642,7 @@ function EbatlamaView() {
             className="h-24 w-auto object-contain rounded-2xl shadow-xl shadow-black/50"
           />
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Ebatlama</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Ebatlama</h1>
             <p className="text-[#A67C52] text-lg font-medium mt-2 uppercase tracking-widest">
               Kesim Optimizasyonu
             </p>
@@ -650,7 +650,7 @@ function EbatlamaView() {
         </div>
         <button
           onClick={toggleTheme}
-          className="absolute right-0 top-0 p-3 rounded-full bg-white border border-gray-200 shadow-lg text-slate-600 hover:text-[#A67C52] transition-all"
+          className="absolute right-0 top-0 p-3 rounded-full bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 shadow-lg text-slate-600 dark:text-white/70 hover:text-[#A67C52] transition-all"
         >
           {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
         </button>
@@ -660,17 +660,17 @@ function EbatlamaView() {
         {/* Left Column: Material and List */}
         <div className="lg:col-span-3 space-y-8">
           {/* Malzeme Seçimi */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
+          <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-3xl p-8 shadow-xl">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-xl bg-[#A67C52]/20 flex items-center justify-center">
                 <Settings className="w-6 h-6 text-[#A67C52]" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Malzeme Seçimi</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Malzeme Seçimi</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-white/70 mb-2">
                   Genel Kalınlık
                 </label>
                 <Select
@@ -686,10 +686,10 @@ function EbatlamaView() {
                     updateSettingsMutation.mutate(newSettings);
                   }}
                 >
-                  <SelectTrigger className="w-full bg-gray-50 border-gray-200 text-slate-900 h-14 rounded-xl focus:ring-[#A67C52]">
+                  <SelectTrigger className="w-full bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-200 text-slate-900">
+                  <SelectContent className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white">
                     <SelectItem value="1.5 mm">1.5 mm</SelectItem>
                     <SelectItem value="2.7 mm">2.7 mm</SelectItem>
 
@@ -698,7 +698,7 @@ function EbatlamaView() {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-white/70 mb-2">
                   Plaka Ebatları (mm)
                 </label>
                 <Select
@@ -710,10 +710,10 @@ function EbatlamaView() {
                     updateSettingsMutation.mutate({ plate_size: v, bicak_payi: defaultBicak });
                   }}
                 >
-                  <SelectTrigger className="w-full bg-gray-50 border-gray-200 text-slate-900 h-14 rounded-xl focus:ring-[#A67C52]">
+                  <SelectTrigger className="w-full bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white text-slate-900 dark:text-white h-14 rounded-xl focus:ring-[#A67C52]">
                     <SelectValue placeholder="Seçiniz" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-200 text-slate-900">
+                  <SelectContent className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white">
                     {availablePlateSizes.map((size) => (
                       <SelectItem key={size} value={size}>
                         {size}
@@ -723,7 +723,7 @@ function EbatlamaView() {
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-white/70 mb-2">
                   Bıçak Payı (mm)
                 </label>
                 <Input
@@ -734,11 +734,11 @@ function EbatlamaView() {
                     setBicakPayi(e.target.value);
                     updateSettingsMutation.mutate({ bicak_payi: e.target.value });
                   }}
-                  className="bg-gray-50 border-gray-200 text-slate-900 h-14 w-full focus-visible:ring-[#A67C52] text-center"
+                  className="bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white text-slate-900 dark:text-white h-14 w-full focus-visible:ring-[#A67C52] text-center"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-slate-600 dark:text-white/70 mb-2">
                   Otomatik Yönlendirme
                 </label>
                 <button
@@ -761,13 +761,13 @@ function EbatlamaView() {
           </div>
 
           {/* Ebatlama Listesi */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
+          <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-3xl p-8 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-[#A67C52]/20 flex items-center justify-center">
                   <LayoutGrid className="w-6 h-6 text-[#A67C52]" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Ebatlama Listesi</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ebatlama Listesi</h2>
               </div>
 
               <Button
@@ -781,7 +781,7 @@ function EbatlamaView() {
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-600 uppercase bg-gray-50">
+                  <thead className="text-xs text-slate-600 dark:text-white/70 uppercase bg-gray-50 dark:bg-white/5 dark:text-white">
                     <tr>
                       <th className="px-2 py-4 rounded-tl-lg w-8"></th>
                       <th className="px-4 py-4 w-40 text-center">Parça Adı</th>
@@ -813,12 +813,12 @@ function EbatlamaView() {
                                   <tr
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
-                                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${snapshot.isDragging ? "bg-gray-100 shadow-2xl z-50" : ""}`}
+                                    className={`border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${snapshot.isDragging ? "bg-gray-100 shadow-2xl z-50 dark:bg-white/10" : ""}`}
                                   >
                                     <td className="px-2 py-3 text-center">
                                       <div
                                         {...provided.dragHandleProps}
-                                        className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing flex justify-center"
+                                        className="text-slate-400 hover:text-slate-600 dark:text-white/70 cursor-grab active:cursor-grabbing flex justify-center"
                                       >
                                         <GripVertical className="w-4 h-4" />
                                       </div>
@@ -831,7 +831,7 @@ function EbatlamaView() {
                                           handleItemChange(item.id, "parcaAdi", e.target.value)
                                         }
                                         onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 text-slate-900 h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                                         placeholder="Örn: Kapak"
                                       />
                                     </td>
@@ -845,7 +845,7 @@ function EbatlamaView() {
                                           handleItemChange(item.id, "boy", e.target.value)
                                         }
                                         onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 text-slate-900 h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                                         placeholder="Boy"
                                       />
                                     </td>
@@ -869,7 +869,7 @@ function EbatlamaView() {
                                           handleItemChange(item.id, "en", e.target.value)
                                         }
                                         onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 text-slate-900 h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                                         placeholder="En"
                                       />
                                     </td>
@@ -882,14 +882,14 @@ function EbatlamaView() {
                                           handleItemChange(item.id, "adet", e.target.value)
                                         }
                                         onBlur={() => handleItemBlur(item.id)}
-                                        className="bg-white border-gray-200 text-slate-900 h-10 w-full focus-visible:ring-[#A67C52] text-center"
+                                        className="bg-white border-gray-200 dark:bg-black/40 dark:border-white/10 text-slate-900 dark:text-white h-10 w-full focus-visible:ring-[#A67C52] text-center"
                                         placeholder="Adet"
                                       />
                                     </td>
-                                    <td className="px-4 py-3 text-center font-medium text-slate-600">
+                                    <td className="px-4 py-3 text-center font-medium text-slate-600 dark:text-white/70">
                                       {birimM2.toFixed(4)}
                                     </td>
-                                    <td className="px-4 py-3 text-center font-bold text-slate-900">
+                                    <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-white">
                                       {toplamM2.toFixed(4)}
                                     </td>
                                     <td className="px-4 py-3 text-center">
@@ -936,32 +936,32 @@ function EbatlamaView() {
         <div className="lg:col-span-1 space-y-6">
           {optimizationResults && (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500">
+              <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-white/70">
                   Gereken Plaka
                 </span>
-                <span className="text-2xl font-extrabold text-slate-900">
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
                   {optimizationResults.gerekenPlaka}
                 </span>
               </div>
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500">
+              <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-white/70">
                   Üretilen Parça
                 </span>
-                <span className="text-2xl font-extrabold text-slate-900">
+                <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
                   {optimizationResults.toplamParca}
                 </span>
               </div>
-              <div className="bg-white border border-gray-200 border-l-4 border-l-[#16A34A] rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500">
+              <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 border-l-4 border-l-[#16A34A] rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-white/70">
                   Verimlilik
                 </span>
                 <span className="text-xl font-extrabold text-[#16A34A]">
                   %{optimizationResults.verimlilik.toFixed(1)}
                 </span>
               </div>
-              <div className="bg-white border border-gray-200 border-l-4 border-l-[#FCA5A5] rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500">
+              <div className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 border-l-4 border-l-[#FCA5A5] rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+                <span className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-slate-500 dark:text-white/70">
                   Fire Oranı
                 </span>
                 <span className="text-xl font-extrabold text-[#FCA5A5]">
@@ -972,8 +972,8 @@ function EbatlamaView() {
           )}
 
           {/* 2D Mini Preview */}
-          <div className="bg-white border border-[#A67C52]/30 rounded-3xl p-6 shadow-[0_0_15px_rgba(166,124,82,0.1)] flex flex-col h-auto">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div className="bg-white border border-[#A67C52]/30 dark:bg-black/40 rounded-3xl p-6 shadow-[0_0_15px_rgba(166,124,82,0.1)] flex flex-col h-auto">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex flex-wrap items-center justify-between gap-2 shrink-0">
               <span className="flex items-center gap-2">
                 <Box className="w-5 h-5 text-[#A67C52]" />
                 2D Yerleşim Planı
@@ -981,14 +981,14 @@ function EbatlamaView() {
             </h3>
 
             {!optimizationResults || optimizationResults.plates.length === 0 ? (
-              <div className="flex-1 min-h-[300px] bg-gray-50 border border-gray-200 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+              <div className="flex-1 min-h-[300px] bg-gray-50 border border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
                 <span className="text-slate-400 text-sm font-medium">Yerleşim Bekleniyor</span>
               </div>
             ) : (
-              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col gap-6 overflow-y-auto max-h-[600px] custom-scrollbar">
+              <div className="flex-1 bg-gray-50 border border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white rounded-xl p-4 flex flex-col gap-6 overflow-y-auto max-h-[600px] custom-scrollbar">
                 {optimizationResults.plates.map((plate, pIdx) => (
                   <div key={pIdx} className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase tracking-wider">
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-white/70 font-bold uppercase tracking-wider">
                       <span>Plaka {pIdx + 1}</span>
                       <span>
                         {optimizationResults.pw}x{optimizationResults.ph}
@@ -1060,23 +1060,23 @@ function EbatlamaView() {
       <div
         id="kesim-semasi-container"
         ref={printRef}
-        className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl mt-8"
+        className="bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-3xl p-8 shadow-xl mt-8"
       >
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-[#A67C5233] flex items-center justify-center">
               <Layers className="w-6 h-6 text-[#A67C52]" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Detaylı Kesim Şeması</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Detaylı Kesim Şeması</h2>
           </div>
 
-          <div className="flex items-center gap-4 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
+          <div className="flex items-center gap-4 bg-gray-50 dark:bg-white/5 p-1.5 rounded-xl border border-gray-200 dark:border-white/10">
             <button
               onClick={() => setViewMode("2D")}
               className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
                 viewMode === "2D"
-                  ? "bg-white text-slate-900 shadow-md border border-gray-200"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white text-slate-900 dark:text-white shadow-md border border-gray-200 dark:bg-white/10 dark:border-white/20"
+                  : "text-slate-500 dark:text-white/70 hover:text-slate-900 dark:text-white"
               }`}
             >
               2D Görünüm
@@ -1085,8 +1085,8 @@ function EbatlamaView() {
               onClick={() => setViewMode("3D")}
               className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
                 viewMode === "3D"
-                  ? "bg-white text-slate-900 shadow-md border border-gray-200"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white text-slate-900 dark:text-white shadow-md border border-gray-200 dark:bg-white/10 dark:border-white/20"
+                  : "text-slate-500 dark:text-white/70 hover:text-slate-900 dark:text-white"
               }`}
             >
               3D Görünüm
@@ -1113,7 +1113,7 @@ function EbatlamaView() {
         {/* MAIN EXPORT CONTAINER */}
         <div
           id="print-export-container"
-          className={`p-8 -m-4 sm:-m-8 rounded-xl transition-colors duration-200 ${isDownloading ? "bg-white overflow-hidden shadow-none ring-0" : "bg-gray-50 shadow-inner border border-gray-200"}`}
+          className={`p-8 -m-4 sm:-m-8 rounded-xl transition-colors duration-200 ${isDownloading ? "bg-white overflow-hidden shadow-none ring-0" : "bg-gray-50 shadow-inner border border-gray-200 dark:bg-white/5 dark:border-white/10"}`}
           style={isDownloading ? { width: "1200px" } : undefined}
         >
           {/* Header & Legend */}
@@ -1130,13 +1130,13 @@ function EbatlamaView() {
               )}
               <div>
                 <h2
-                  className={`text-3xl font-bold mb-2 ${isDownloading ? "text-black" : "text-slate-900"}`}
+                  className={`text-3xl font-bold mb-2 ${isDownloading ? "text-black" : "text-slate-900 dark:text-white"}`}
                 >
                   Kesim Şeması
                 </h2>
                 {optimizationResults && (
                   <p
-                    className={`font-medium ${isDownloading ? "text-gray-600" : "text-slate-500"}`}
+                    className={`font-medium ${isDownloading ? "text-gray-600" : "text-slate-500 dark:text-white/70"}`}
                   >
                     Plaka Ebatı: {optimizationResults.pw}x{optimizationResults.ph} mm
                   </p>
@@ -1150,7 +1150,7 @@ function EbatlamaView() {
                   className={`w-6 h-6 bg-[#16A34A] border shadow-sm ${isDownloading ? "border-white" : "border-gray-200"}`}
                 ></div>
                 <span
-                  className={`font-semibold text-sm ${isDownloading ? "text-black" : "text-slate-600"}`}
+                  className={`font-semibold text-sm ${isDownloading ? "text-black" : "text-slate-600 dark:text-white/70"}`}
                 >
                   İşlenen Parça
                 </span>
@@ -1158,7 +1158,7 @@ function EbatlamaView() {
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-[#FCA5A5] border border-[#8B5A2B] shadow-sm"></div>
                 <span
-                  className={`font-semibold text-sm ${isDownloading ? "text-black" : "text-slate-600"}`}
+                  className={`font-semibold text-sm ${isDownloading ? "text-black" : "text-slate-600 dark:text-white/70"}`}
                 >
                   Fire Alanı
                 </span>
@@ -1170,15 +1170,15 @@ function EbatlamaView() {
           {optimizationResults && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
               <div
-                className={`${isDownloading ? "bg-white border-gray-200" : "bg-white border-gray-200"} border rounded-xl p-6 flex flex-col justify-center shadow-sm`}
+                className={`${isDownloading ? "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10" : "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10"} border rounded-xl p-6 flex flex-col justify-center shadow-sm`}
               >
                 <span
-                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500"}`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500 dark:text-white/70"}`}
                 >
                   Gereken Plaka
                 </span>
                 <span
-                  className={`text-4xl font-extrabold ${isDownloading ? "text-black" : "text-slate-900"}`}
+                  className={`text-4xl font-extrabold ${isDownloading ? "text-black" : "text-slate-900 dark:text-white"}`}
                 >
                   {optimizationResults.gerekenPlaka}{" "}
                   <span
@@ -1189,15 +1189,15 @@ function EbatlamaView() {
                 </span>
               </div>
               <div
-                className={`${isDownloading ? "bg-white border-gray-200" : "bg-white border-gray-200"} border rounded-xl p-6 flex flex-col justify-center shadow-sm`}
+                className={`${isDownloading ? "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10" : "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10"} border rounded-xl p-6 flex flex-col justify-center shadow-sm`}
               >
                 <span
-                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500"}`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500 dark:text-white/70"}`}
                 >
                   Üretilen Parça
                 </span>
                 <span
-                  className={`text-4xl font-extrabold ${isDownloading ? "text-black" : "text-slate-900"}`}
+                  className={`text-4xl font-extrabold ${isDownloading ? "text-black" : "text-slate-900 dark:text-white"}`}
                 >
                   {optimizationResults.toplamParca}{" "}
                   <span
@@ -1208,10 +1208,10 @@ function EbatlamaView() {
                 </span>
               </div>
               <div
-                className={`${isDownloading ? "bg-white border-gray-200" : "bg-white border-gray-200"} border rounded-xl p-6 border-l-4 border-l-[#16A34A] flex flex-col justify-center shadow-sm`}
+                className={`${isDownloading ? "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10" : "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10"} border rounded-xl p-6 border-l-4 border-l-[#16A34A] flex flex-col justify-center shadow-sm`}
               >
                 <span
-                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500"}`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500 dark:text-white/70"}`}
                 >
                   Verimlilik %
                 </span>
@@ -1220,10 +1220,10 @@ function EbatlamaView() {
                 </span>
               </div>
               <div
-                className={`${isDownloading ? "bg-white border-gray-200" : "bg-white border-gray-200"} border rounded-xl p-6 border-l-4 border-l-[#FCA5A5] flex flex-col justify-center shadow-sm`}
+                className={`${isDownloading ? "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10" : "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10"} border rounded-xl p-6 border-l-4 border-l-[#FCA5A5] flex flex-col justify-center shadow-sm`}
               >
                 <span
-                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500"}`}
+                  className={`block text-xs font-bold uppercase tracking-wider mb-2 ${isDownloading ? "text-gray-500" : "text-slate-500 dark:text-white/70"}`}
                 >
                   Fire Oranı %
                 </span>
@@ -1237,7 +1237,7 @@ function EbatlamaView() {
           {/* 2D / 3D Sahnesi (Main View) */}
           {!optimizationResults || optimizationResults.plates.length === 0 ? (
             <div
-              className={`h-[400px] border rounded-2xl flex items-center justify-center ${isDownloading ? "bg-gray-50 border-gray-200" : "bg-white border-gray-200"}`}
+              className={`h-[400px] border rounded-2xl flex items-center justify-center ${isDownloading ? "bg-gray-50 border-gray-200 dark:bg-white/5 dark:border-white/10 dark:text-white" : "bg-white border-gray-200 dark:bg-black/40 dark:border-white/10"}`}
             >
               <span
                 className={`text-lg font-medium ${isDownloading ? "text-gray-400" : "text-slate-400"}`}
@@ -1250,7 +1250,7 @@ function EbatlamaView() {
               {optimizationResults.plates.map((plate, pIdx) => (
                 <div key={pIdx} className="w-full">
                   <h4
-                    className={`text-center font-bold tracking-widest mb-8 text-xl ${isDownloading ? "text-gray-500" : "text-slate-500"}`}
+                    className={`text-center font-bold tracking-widest mb-8 text-xl ${isDownloading ? "text-gray-500" : "text-slate-500 dark:text-white/70"}`}
                   >
                     PLAKA {pIdx + 1}
                   </h4>
@@ -1416,18 +1416,18 @@ function EbatlamaView() {
                       {/* 3D Control Panel */}
                       <div
                         id="3d-controls"
-                        className="absolute bottom-6 right-6 bg-white border border-gray-200 rounded-xl p-3 flex flex-col items-center gap-2 shadow-2xl z-10 select-none"
+                        className="absolute bottom-6 right-6 bg-white border border-gray-200 dark:bg-black/40 dark:border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 shadow-2xl z-10 select-none"
                       >
                         <button
                           onClick={() => setRotX((prev) => Math.max(0, prev - 15))}
-                          className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 hover:text-white rounded-lg transition-colors shadow-sm"
+                          className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 dark:text-white/70 dark:bg-white/5 dark:text-white/70 hover:text-white rounded-lg transition-colors shadow-sm"
                         >
                           <ChevronUp className="w-5 h-5" />
                         </button>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setRotZ((prev) => prev - 15)}
-                            className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 hover:text-white rounded-lg transition-colors shadow-sm"
+                            className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 dark:text-white/70 dark:bg-white/5 dark:text-white/70 hover:text-white rounded-lg transition-colors shadow-sm"
                           >
                             <ChevronLeft className="w-5 h-5" />
                           </button>
@@ -1442,14 +1442,14 @@ function EbatlamaView() {
                           </button>
                           <button
                             onClick={() => setRotZ((prev) => prev + 15)}
-                            className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 hover:text-white rounded-lg transition-colors shadow-sm"
+                            className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 dark:text-white/70 dark:bg-white/5 dark:text-white/70 hover:text-white rounded-lg transition-colors shadow-sm"
                           >
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </div>
                         <button
                           onClick={() => setRotX((prev) => Math.min(85, prev + 15))}
-                          className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 hover:text-white rounded-lg transition-colors shadow-sm"
+                          className="p-2 bg-gray-50 hover:bg-[#A67C52] text-slate-500 dark:text-white/70 dark:bg-white/5 dark:text-white/70 hover:text-white rounded-lg transition-colors shadow-sm"
                         >
                           <ChevronDown className="w-5 h-5" />
                         </button>
