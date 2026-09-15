@@ -755,11 +755,11 @@ function SchoolPortal() {
                     className="bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4"
                   >
                     {prod.image_url && (
-                      <div className="w-full h-32 md:h-40 bg-white/5 rounded-xl overflow-hidden shrink-0">
+                      <div className="w-full h-32 md:h-40 bg-white/5 p-2 rounded-xl overflow-hidden shrink-0">
                         <img
                           src={prod.image_url}
                           alt={prod.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
