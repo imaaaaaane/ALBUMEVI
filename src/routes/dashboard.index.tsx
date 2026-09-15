@@ -234,9 +234,9 @@ function OverviewDashboard() {
           }
 
           if (computedStatus === "Bekliyor") bek++;
-          else if (computedStatus === "Hazırlanıyor" || computedStatus === "Üretimde") uret++;
-          else if (computedStatus === "Kargoya Verildi") kar++;
-          else if (computedStatus === "Tamamlandı") tes++;
+          else if (computedStatus === "Üretimde") uret++;
+          else if (computedStatus === "Kargoya Hazır") kar++;
+          else if (computedStatus === "Teslim Edildi") tes++;
         });
 
         setFunnelCounts({ bekliyor: bek, uretimde: uret, kargoyaHazir: kar, teslimEdildi: tes });

@@ -639,7 +639,11 @@ function ManageSchools() {
       if (fetchErr) throw new Error(fetchErr.message);
 
       const currentStatuses = school.package_statuses || {};
-      const updatedStatuses = { ...currentStatuses, [packageName]: newStatus };
+      const updatedStatuses = { 
+        ...currentStatuses, 
+        [packageName]: newStatus,
+        global_status: newStatus 
+      };
 
       const { error } = await (supabase as any)
         .from("schools")
@@ -1041,36 +1045,32 @@ function ManageSchools() {
                           </AccordionTrigger>
                           <AccordionContent className="px-4 pb-4 pt-2">
                             <div className="flex justify-end gap-2 mb-4">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={updatePackageStatus.isPending}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const newStatus =
-                                    pkg.order_status === "Hazırlandı" ? "Hazırlanıyor" : "Hazırlandı";
-                                  updatePackageStatus.mutate({
-                                    schoolId: pkg.school_id,
-                                    packageName: pkg.package_name,
-                                    newStatus,
-                                  });
-                                }}
-                                className={`h-8 rounded-md transition-colors ${
-                                  pkg.order_status === "Hazırlandı"
-                                    ? "text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
-                                    : "text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-300"
-                                }`}
-                              >
-                                {updatePackageStatus.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : pkg.order_status === "Hazırlandı" ? (
-                                  <span className="text-xs font-bold mr-2">X</span>
-                                ) : (
-                                  <span className="text-xs font-bold mr-2">✓</span>
+                              <div className="flex bg-black/40 border border-white/10 p-1 rounded-xl">
+                                {["Bekliyor", "Üretimde", "Kargoya Hazır", "Teslim Edildi"].map(
+                                  (status) => (
+                                    <button
+                                      key={status}
+                                      disabled={updatePackageStatus.isPending}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        updatePackageStatus.mutate({
+                                          schoolId: pkg.school_id,
+                                          packageName: pkg.package_name,
+                                          newStatus: status,
+                                        });
+                                      }}
+                                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                                        pkg.order_status === status
+                                          ? "bg-[#A67C52] text-black shadow-md"
+                                          : "text-white/50 hover:text-white hover:bg-white/10"
+                                      }`}
+                                    >
+                                      {status}
+                                    </button>
+                                  ),
                                 )}
-                                {pkg.order_status === "Hazırlandı" ? "Hazırlanıyor Yap" : "Hazırlandı İşaretle"}
-                              </Button>
+                              </div>
                               <Button
                                 size="sm"
                                 variant="ghost"
