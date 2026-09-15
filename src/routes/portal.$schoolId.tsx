@@ -84,6 +84,7 @@ const R2Image = ({ src, alt, className }: { src: string; alt?: string; className
 
 function SchoolPortal() {
   const { schoolId } = Route.useParams();
+  const { role } = useAuth();
   console.log("PORTAL_COMPONENT_UPDATED_v2");
 
   const [showGuide, setShowGuide] = useState(() => {
