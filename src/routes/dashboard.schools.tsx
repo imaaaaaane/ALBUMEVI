@@ -134,7 +134,19 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        const fileExt = file.name.split(".").pop() || "jpg";
+
+        let originalName = file.name;
+        const lastDotIdx = originalName.lastIndexOf(".");
+        const fileExt = lastDotIdx !== -1 ? originalName.substring(lastDotIdx + 1) : "jpg";
+        if (lastDotIdx !== -1) {
+          originalName = originalName.substring(0, lastDotIdx);
+        }
+        // Replace underscores and hyphens with spaces
+        originalName = originalName.replace(/[_-]/g, " ").trim();
+        if (!originalName) {
+          originalName = `Öğrenci ${i + 1}`;
+        }
+
         const fileName = `${Math.random().toString(36).substring(2, 10)}-${Date.now()}.${fileExt}`;
         const filePath = `${schoolSlug}/${newClassId}/${fileName}`;
 
@@ -147,7 +159,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
 
         studentInserts.push({
           class_id: newClassId,
-          name: `Öğrenci ${i + 1}`,
+          name: originalName,
           image_url: urlData.publicUrl,
         });
       }
