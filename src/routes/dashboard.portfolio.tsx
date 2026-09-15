@@ -7,6 +7,7 @@ import { Loader2, Trash2, UploadCloud, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
+import { uploadFileToR2, getR2PublicUrl, deleteFileFromR2 } from "../lib/r2";
 
 export const Route = createFileRoute("/dashboard/portfolio")({
   component: PortfolioPage,
@@ -32,20 +33,14 @@ function PortfolioPage() {
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const fileName = `portfolyo/${Date.now()}-${Math.random()}.${fileExt}`;
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("portfolio")
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from("portfolio").getPublicUrl(fileName);
+      await uploadFileToR2(file, fileName);
+      const publicUrl = getR2PublicUrl(fileName);
 
       // Insert into database
       const { error: dbError } = await (supabase as any).from("portfolio_images").insert({
-        image_url: publicUrlData.publicUrl,
+        image_url: publicUrl,
         team_id: teamId === "all" ? null : teamId || null,
       });
 
@@ -68,9 +63,13 @@ function PortfolioPage() {
       // Optional: Delete from storage as well
       if (image.image_url) {
         const urlParts = image.image_url.split("/");
-        const fileName = urlParts[urlParts.length - 1];
+        const fileName = urlParts.slice(-2).join("/"); // Keeps e.g. "portfolyo/filename.jpg"
         if (fileName) {
-          await supabase.storage.from("portfolio").remove([fileName]);
+          try {
+            await deleteFileFromR2(fileName);
+          } catch (e) {
+            console.error("Failed to delete from R2", e);
+          }
         }
       }
 

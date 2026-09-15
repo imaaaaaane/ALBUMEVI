@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Edit2, Trash2, Camera, UploadCloud, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { uploadFileToR2, getR2PublicUrl } from "../lib/r2";
 
 export const Route = createFileRoute("/dashboard/photographers")({
   component: PhotographersPage,
@@ -93,17 +94,12 @@ function PhotographersPage() {
     try {
       setIsUploading(true);
       const fileExt = file.name.split(".").pop();
-      const fileName = `${teamId}-${Math.random()}.${fileExt}`;
+      const fileName = `cekimciler/${teamId}-${Math.random()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file, { upsert: true });
+      await uploadFileToR2(file, fileName);
+      const publicUrl = getR2PublicUrl(fileName);
 
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-      setForm((prev) => ({ ...prev, img: publicUrlData.publicUrl }));
+      setForm((prev) => ({ ...prev, img: publicUrl }));
       toast.success("Fotoğraf yüklendi!");
     } catch (err: any) {
       toast.error(err.message || "Fotoğraf yüklenemedi.");

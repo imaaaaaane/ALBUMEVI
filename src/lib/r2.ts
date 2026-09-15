@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const r2Client = new S3Client({
@@ -33,4 +33,17 @@ export const getR2FileUrl = async (path: string) => {
   });
   
   return await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+};
+
+export const getR2PublicUrl = (path: string) => {
+  const endpoint = import.meta.env.VITE_R2_PUBLIC_URL || `${import.meta.env.VITE_R2_ENDPOINT}/${R2_BUCKET_NAME}`;
+  return `${endpoint}/${path}`;
+};
+
+export const deleteFileFromR2 = async (path: string) => {
+  const command = new DeleteObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: path,
+  });
+  await r2Client.send(command);
 };
