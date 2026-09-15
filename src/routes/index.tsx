@@ -369,12 +369,12 @@ function Landing() {
             >
               {/* Glassmorphism Floating Badge */}
               <div className="absolute -left-8 md:-left-12 top-1/4 z-20 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1">
-                <div className="flex gap-1 text-amber-400 text-sm">
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
-                  <Star className="w-4 h-4 fill-current" />
+                <div className="flex flex-row items-center gap-1.5 text-amber-400 text-sm">
+                  <Star className="w-4 h-4 fill-current shrink-0" />
+                  <Star className="w-4 h-4 fill-current shrink-0" />
+                  <Star className="w-4 h-4 fill-current shrink-0" />
+                  <Star className="w-4 h-4 fill-current shrink-0" />
+                  <Star className="w-4 h-4 fill-current shrink-0" />
                 </div>
                 <p className="text-lg font-bold text-white">500+ Mutlu Okul</p>
                 <p className="text-xs text-white/60">Sistemi aktif kullanıyor</p>
