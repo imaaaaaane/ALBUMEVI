@@ -223,7 +223,7 @@ function Landing() {
             <img
               src="/logo-light.png"
               alt="Albumevi Logo"
-              className="h-8 md:h-12 w-auto object-contain"
+              className="h-12 md:h-16 w-auto object-contain"
             />
           </Link>
 
@@ -841,7 +841,7 @@ function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <img src="/logo-light.png" alt="Albumevi Logo" className="h-6 md:h-8 w-auto object-contain" />
+            <img src="/logo-light.png" alt="Albumevi Logo" className="h-12 md:h-16 w-auto object-contain" />
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
