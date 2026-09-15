@@ -240,13 +240,20 @@ function EbatlamaView() {
 
   const [items, setItems] = useState<CutItem[]>([]);
 
+  const loadedPlateRef = useRef("");
+
   useEffect(() => {
     if (!plateSize) {
       setItems([]);
+      loadedPlateRef.current = "";
       return;
     }
-    const filtered = dbItems.filter((i) => i.plaka_tipi === plateSize);
-    setItems(filtered);
+    // Only sync from DB if we just switched to a new plate size
+    if (loadedPlateRef.current !== plateSize) {
+      const filtered = dbItems.filter((i) => i.plaka_tipi === plateSize);
+      setItems(filtered);
+      loadedPlateRef.current = plateSize;
+    }
   }, [dbItems, plateSize]);
 
   useEffect(() => {
@@ -411,7 +418,7 @@ function EbatlamaView() {
 
   const handleAddItem = () => {
     const newItem = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID() || Date.now().toString() + '-' + Math.random().toString(36).substring(2, 9),
       sira: items.length + 1,
       parcaAdi: "",
       boy: "",
@@ -800,7 +807,7 @@ function EbatlamaView() {
                               <Draggable
                                 key={item.id}
                                 draggableId={item.id}
-                                index={items.indexOf(item)}
+                                index={index}
                               >
                                 {(provided, snapshot) => (
                                   <tr
