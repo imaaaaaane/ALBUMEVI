@@ -790,14 +790,14 @@ function SchoolPortal() {
                 schoolProducts.map((prod) => (
                   <div
                     key={prod.id}
-                    className="group bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-2xl flex flex-col justify-between items-start relative overflow-hidden gap-4 hover:border-white/20 transition-all duration-300"
+                    className="group bg-black/40 backdrop-blur-md border border-white/10 p-4 md:p-6 rounded-3xl flex flex-col justify-between items-start relative gap-4 hover:border-white/20 transition-all duration-500 hover:scale-[1.02] cursor-pointer"
                   >
                     {prod.image_url && (
-                      <div className="w-full h-56 md:h-64 bg-white/5 p-4 rounded-2xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
+                      <div className="w-full aspect-[4/3] rounded-2xl border border-white/10 overflow-hidden shadow-2xl shadow-black/60 shrink-0 bg-white/5">
                         <img
                           src={getR2PublicUrl(prod.image_url)}
                           alt={prod.name}
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                         />
                       </div>
                     )}
