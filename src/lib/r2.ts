@@ -41,7 +41,7 @@ export const getR2PublicUrl = (pathOrUrl: string) => {
 
   // If it's already a full URL
   if (pathOrUrl.startsWith("http")) {
-    // If it's using the old S3 endpoint, convert it
+    // Convert old S3 endpoint to public URL
     if (pathOrUrl.includes("r2.cloudflarestorage.com")) {
       try {
         const url = new URL(pathOrUrl);
@@ -56,7 +56,20 @@ export const getR2PublicUrl = (pathOrUrl: string) => {
         return pathOrUrl;
       }
     }
-    return pathOrUrl; // Already a valid URL (e.g. pub.r2.dev)
+    
+    // Convert old r2.dev URL to the new custom domain
+    if (pathOrUrl.includes(".r2.dev") && baseUrl) {
+      try {
+        const url = new URL(pathOrUrl);
+        // pathname is like "/portfolyo/123.jpg"
+        const objectKey = url.pathname.replace(/^\/+/, '');
+        return `${baseUrl}/${objectKey}`;
+      } catch (e) {
+        return pathOrUrl;
+      }
+    }
+
+    return pathOrUrl; // Already a valid URL (e.g. pub.r2.dev or cdn)
   }
 
   // If it's just a path/key
