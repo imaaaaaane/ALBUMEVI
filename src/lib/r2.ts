@@ -13,10 +13,11 @@ export const r2Client = new S3Client({
 export const R2_BUCKET_NAME = import.meta.env.VITE_R2_BUCKET_NAME;
 
 export const uploadFileToR2 = async (file: File, path: string) => {
+  const buffer = await file.arrayBuffer();
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: path,
-    Body: file,
+    Body: new Uint8Array(buffer),
     ContentType: file.type,
   });
 
