@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
   Table,
@@ -193,7 +194,7 @@ function SchoolPortal() {
 
         const { data: school, error } = await (supabase as any)
           .from("schools")
-          .select("id, name, package_statuses")
+          .select("id, name, package_statuses, status")
           .eq(queryColumn, schoolId)
           .maybeSingle();
 
@@ -215,6 +216,7 @@ function SchoolPortal() {
 
         setActualSchoolId(school.id);
         setSchoolName(school.name);
+        setSchoolStatus(school.status || "Aktif");
         if (school.package_statuses?.global_status) {
           setGlobalStatus(school.package_statuses.global_status);
         }
@@ -560,6 +562,26 @@ function SchoolPortal() {
     );
   }
 
+  if (!isCheckingExpiration && schoolStatus === "Pasif" && role !== "admin") {
+    return (
+      <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 font-sans text-white relative overflow-hidden">
+        {/* Background blobs for premium feel */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#A67C52]/20 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-black/50 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="max-w-md w-full bg-[#131316] border border-white/10 rounded-3xl p-8 relative z-10 shadow-2xl flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-10 h-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4">Portal Kapalı</h1>
+          <p className="text-white/60 mb-8 leading-relaxed">
+            Bu okulun fotoğraf seçim portalı şu anda kapalıdır. Lütfen yetkili ile iletişime geçin.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (authError) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
@@ -574,6 +596,12 @@ function SchoolPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
+      {schoolStatus === "Pasif" && role === "admin" && (
+        <div className="bg-red-500/90 backdrop-blur text-white text-center py-2 px-4 text-sm font-medium z-[100] relative flex items-center justify-center gap-2">
+          <Info className="w-4 h-4" />
+          Admin Görünümü: Bu portal şu anda dış kullanıcılara PASİF durumdadır.
+        </div>
+      )}
       {/* Guide Modal Overlay */}
       <AnimatePresence>
         {showGuide && (
