@@ -316,12 +316,21 @@ function Landing() {
                 {/* Left Side Elements */}
 
               <motion.div variants={heroItemVariants} className="pt-6">
-                <a
-                  href="#galeri"
-                  className="inline-flex items-center gap-2 bg-[#D0A36D] hover:bg-[#E2B67C] text-black px-8 py-3 rounded-full font-semibold transition-all hover:scale-105"
-                >
-                  Portfolyoyu İncele <ArrowRight className="w-5 h-5" />
-                </a>
+                <div className="flex flex-wrap items-center gap-6 mt-8">
+                  <a
+                    href="#galeri"
+                    className="inline-flex items-center gap-2 bg-[#D0A36D] hover:bg-[#E2B67C] text-black px-8 py-3 rounded-full font-semibold transition-all hover:scale-105"
+                  >
+                    Portfolyoyu İncele <ArrowRight className="w-5 h-5" />
+                  </a>
+                  <div className="flex flex-col justify-center px-6 py-3 bg-[#111111]/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-lg">
+                    <div className="flex gap-1 text-amber-400 text-[15px] mb-0.5 justify-center">
+                      <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+                    </div>
+                    <p className="text-white text-sm font-extrabold tracking-wide text-center">500+ Mutlu Okul</p>
+                    <p className="text-gray-400 text-[10px] text-center mt-0.5">Sistemi aktif kullanıyor</p>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
 
@@ -337,15 +346,6 @@ function Landing() {
                 {/* LEFT COLUMN: Strictly relative block with fixed height, absolutely NO flex */}
                 <div className="relative w-full h-[450px] lg:h-[550px] rounded-[2rem]">
                   <img src="/pic1.jpg" alt="Hero Main" className="absolute inset-0 w-full h-full object-cover rounded-[2rem] shadow-2xl z-10" />
-                  
-                  {/* BADGE: Absolute positioned over the bottom-left corner */}
-                  <div className="absolute -bottom-6 -left-4 lg:-left-8 z-50 w-48 p-4 rounded-2xl bg-[#111111]/80 backdrop-blur-md border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
-                    <div className="flex gap-1.5 text-amber-400 text-lg mb-1">
-                      <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
-                    </div>
-                    <p className="text-white text-base font-bold tracking-wide">500+ Mutlu Okul</p>
-                    <p className="text-gray-300 text-xs mt-1">Sistemi aktif kullanıyor</p>
-                  </div>
                 </div>
 
                 {/* RIGHT COLUMN: Flex column for the two stacked smaller images */}
