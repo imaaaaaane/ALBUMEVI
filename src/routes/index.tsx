@@ -29,33 +29,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2PublicUrl } from "@/lib/r2";
 
-const PHOTOGRAPHERS = [
-  {
-    name: "Ahmet Yılmaz",
-    role: "Fotoğrafçı",
-    phone: "+90 555 123 4567",
-    img: "https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    name: "Elif Demir",
-    role: "Fotoğrafçı",
-    phone: "+90 555 987 6543",
-    img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    name: "Can Kaya",
-    role: "Fotoğrafçı",
-    phone: "+90 555 456 7890",
-    img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    name: "Ayşe Yılmaz",
-    role: "Fotoğrafçı",
-    phone: "+90 555 222 3344",
-    img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop",
-  },
-];
-
 const GALLERY_ITEMS = [
   { id: 1, src: "/portfolyo/portfolya1.jpg", alt: "Albumevi Portfolyo 1" },
   { id: 2, src: "/portfolyo/portfolya2.jpg", alt: "Albumevi Portfolyo 2" },
@@ -504,7 +477,7 @@ function Landing() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-center max-w-7xl mx-auto">
-          {(dynamicPhotographers.length > 0 ? dynamicPhotographers : PHOTOGRAPHERS).map(
+          {dynamicPhotographers.map(
             (photographer: any, idx: number) => (
               <motion.div
                 key={idx}
