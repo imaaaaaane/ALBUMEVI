@@ -97,7 +97,7 @@ function PhotographersPage() {
 
       await uploadFileToR2(file, fileName);
 
-      setForm((prev) => ({ ...prev, img: fileName }));
+      setForm((prev) => ({ ...prev, img: `https://cdn.albumevi.com.tr/${fileName}` }));
       toast.success("Fotoğraf yüklendi!");
     } catch (err: any) {
       toast.error(err.message || "Fotoğraf yüklenemedi.");
@@ -170,11 +170,18 @@ function PhotographersPage() {
             >
               <div className="aspect-[4/3] relative bg-black">
                 {(p.img || p.image_url) ? (
-                  <img
-                    src={getR2PublicUrl(p.img || p.image_url)}
-                    alt={p.full_name}
-                    className="w-full h-full object-cover opacity-80"
-                  />
+                  (() => {
+                    const imgUrl = p.img || p.image_url;
+                    const cleanUrl = imgUrl ? imgUrl.replace(/https:\/\/pub-[a-zA-Z0-9]+\.r2\.dev/, 'https://cdn.albumevi.com.tr') : '';
+                    const finalSrc = cleanUrl.startsWith("http") ? cleanUrl : getR2PublicUrl(cleanUrl);
+                    return (
+                      <img
+                        src={finalSrc}
+                        alt={p.full_name}
+                        className="w-full h-full object-cover opacity-80"
+                      />
+                    );
+                  })()
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/30">
                     Görsel Yok
@@ -241,11 +248,17 @@ function PhotographersPage() {
                   </div>
                 ) : form.img ? (
                   <div className="absolute inset-0 z-10">
-                    <img
-                      src={form.img}
-                      alt="Preview"
-                      className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-                    />
+                    {(() => {
+                      const cleanPreviewUrl = form.img ? form.img.replace(/https:\/\/pub-[a-zA-Z0-9]+\.r2\.dev/, 'https://cdn.albumevi.com.tr') : '';
+                      const finalSrc = cleanPreviewUrl.startsWith("http") ? cleanPreviewUrl : getR2PublicUrl(cleanPreviewUrl);
+                      return (
+                        <img
+                          src={finalSrc}
+                          alt="Preview"
+                          className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                        />
+                      );
+                    })()}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <p className="text-white font-bold drop-shadow-md">Değiştirmek için tıkla</p>
                     </div>
