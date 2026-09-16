@@ -333,39 +333,25 @@ function Landing() {
               className="relative"
             >
               <div className="relative grid grid-cols-2 gap-4 w-full max-w-lg mx-auto">
-                {/* Left Column (Large Image) */}
-                <img
-                  src="/pic1.jpg"
-                  alt="Portrait"
-                  className="col-span-1 h-full w-full object-cover rounded-3xl shadow-xl opacity-80"
-                />
-
-                {/* Right Column (Two Small Images) */}
-                <div className="col-span-1 flex flex-col gap-4 translate-y-8">
-                  <img
-                    src="/pic2.jpg"
-                    alt="Kids"
-                    className="h-48 w-full object-cover rounded-3xl shadow-xl opacity-80"
-                  />
-                  <img
-                    src="/pic3.jpg"
-                    alt="Boy"
-                    className="h-48 w-full object-cover rounded-3xl shadow-xl opacity-80"
-                  />
+                
+                {/* 1. Floating Badge */}
+                <div className="absolute -bottom-6 -left-10 z-30 backdrop-blur-md bg-white/10 border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl p-4 flex flex-col items-center text-center">
+                  <div className="text-amber-400 flex gap-1 mb-1 tracking-widest text-lg">★★★★★</div>
+                  <p className="text-white text-sm font-bold">500+ Mutlu Okul</p>
+                  <p className="text-white/70 text-xs">Sistemi aktif kullanıyor</p>
                 </div>
 
-                {/* Glassmorphism Floating Badge */}
-                <div className="absolute -bottom-6 -left-12 z-30 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1 hidden sm:flex">
-                  <div className="flex flex-row items-center gap-1.5 text-amber-400 text-sm">
-                    <Star className="w-4 h-4 fill-current shrink-0" />
-                    <Star className="w-4 h-4 fill-current shrink-0" />
-                    <Star className="w-4 h-4 fill-current shrink-0" />
-                    <Star className="w-4 h-4 fill-current shrink-0" />
-                    <Star className="w-4 h-4 fill-current shrink-0" />
-                  </div>
-                  <p className="text-lg font-bold text-white">500+ Mutlu Okul</p>
-                  <p className="text-xs text-white/60">Sistemi aktif kullanıyor</p>
+                {/* 2. Left Column - One Tall Image */}
+                <div className="col-span-1 h-[480px]">
+                  <img src="/pic1.jpg" alt="Hero 1" className="w-full h-full object-cover rounded-3xl shadow-xl" />
                 </div>
+
+                {/* 3. Right Column - Two Stacked Images (Staggered down using margin-top) */}
+                <div className="col-span-1 flex flex-col gap-4 mt-12">
+                  <img src="/pic2.jpg" alt="Hero 2" className="w-full h-[232px] object-cover rounded-3xl shadow-xl" />
+                  <img src="/pic3.jpg" alt="Hero 3" className="w-full h-[232px] object-cover rounded-3xl shadow-xl" />
+                </div>
+
               </div>
             </motion.div>
           </div>
