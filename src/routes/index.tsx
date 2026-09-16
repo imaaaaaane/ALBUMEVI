@@ -367,42 +367,39 @@ function Landing() {
               animate="visible"
               className="relative"
             >
-              {/* Glassmorphism Floating Badge */}
-              <div className="absolute -bottom-8 -left-8 md:-left-16 z-20 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1">
-                <div className="flex flex-row items-center gap-1.5 text-amber-400 text-sm">
-                  <Star className="w-4 h-4 fill-current shrink-0" />
-                  <Star className="w-4 h-4 fill-current shrink-0" />
-                  <Star className="w-4 h-4 fill-current shrink-0" />
-                  <Star className="w-4 h-4 fill-current shrink-0" />
-                  <Star className="w-4 h-4 fill-current shrink-0" />
-                </div>
-                <p className="text-lg font-bold text-white">500+ Mutlu Okul</p>
-                <p className="text-xs text-white/60">Sistemi aktif kullanıyor</p>
-              </div>
+              <div className="relative grid grid-cols-2 gap-4 w-full max-w-lg mx-auto">
+                {/* Left Column (Large Image) */}
+                <img
+                  src="/pic1.jpg"
+                  alt="Portrait"
+                  className="col-span-1 h-full w-full object-cover rounded-3xl shadow-xl opacity-80"
+                />
 
-              <div className="grid grid-cols-2 gap-4 relative z-10">
-                <div className="rounded-2xl bg-gray-900 border border-white/5 h-[450px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                {/* Right Column (Two Small Images) */}
+                <div className="col-span-1 flex flex-col gap-4 translate-y-8">
                   <img
-                    src="/pic1.jpg"
-                    alt="Portrait"
-                    className="object-cover h-full w-full opacity-80"
+                    src="/pic2.jpg"
+                    alt="Kids"
+                    className="h-48 w-full object-cover rounded-3xl shadow-xl opacity-80"
+                  />
+                  <img
+                    src="/pic3.jpg"
+                    alt="Boy"
+                    className="h-48 w-full object-cover rounded-3xl shadow-xl opacity-80"
                   />
                 </div>
-                <div className="space-y-4 pt-12">
-                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[210px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                    <img
-                      src="/pic2.jpg"
-                      alt="Kids"
-                      className="object-cover h-full w-full opacity-80"
-                    />
+
+                {/* Glassmorphism Floating Badge */}
+                <div className="absolute -bottom-6 -left-12 z-30 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1 hidden sm:flex">
+                  <div className="flex flex-row items-center gap-1.5 text-amber-400 text-sm">
+                    <Star className="w-4 h-4 fill-current shrink-0" />
+                    <Star className="w-4 h-4 fill-current shrink-0" />
+                    <Star className="w-4 h-4 fill-current shrink-0" />
+                    <Star className="w-4 h-4 fill-current shrink-0" />
+                    <Star className="w-4 h-4 fill-current shrink-0" />
                   </div>
-                  <div className="rounded-2xl bg-gray-900 border border-white/5 h-[210px] w-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                    <img
-                      src="/pic3.jpg"
-                      alt="Boy"
-                      className="object-cover h-full w-full opacity-80"
-                    />
-                  </div>
+                  <p className="text-lg font-bold text-white">500+ Mutlu Okul</p>
+                  <p className="text-xs text-white/60">Sistemi aktif kullanıyor</p>
                 </div>
               </div>
             </motion.div>
