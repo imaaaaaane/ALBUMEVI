@@ -241,10 +241,9 @@ function NotesView() {
               <option value="" disabled>
                 Notu Yazan (Seçiniz...)
               </option>
-              <option value="AMINE HIMMICH">AMINE HIMMICH</option>
+              <option value="AMİNE HİMMİCH">AMİNE HİMMİCH</option>
               <option value="MUSTAFA ASLAN">MUSTAFA ASLAN</option>
-              <option value="DELIL TENHA">DELIL TENHA</option>
-              <option value="ZINAR TENHA">ZINAR TENHA</option>
+              <option value="SERHAT GÜNEŞ">SERHAT GÜNEŞ</option>
             </select>
             <Input
               placeholder="Başlık"
