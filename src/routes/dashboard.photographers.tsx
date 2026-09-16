@@ -33,19 +33,17 @@ function PhotographersPage() {
   const { data: photographers = [], isLoading } = useQuery({
     queryKey: ["photographers", teamId],
     queryFn: async () => {
-      if (!teamId) return [];
       let q = (supabase as any)
         .from("photographers")
         .select("*")
         .order("created_at", { ascending: false });
-      if (teamId !== "all") {
+      if (teamId && teamId !== "all") {
         q = q.eq("team_id", teamId);
       }
       const { data, error } = await q;
       if (error) throw error;
       return data;
     },
-    enabled: !!teamId,
   });
 
   const saveMutation = useMutation({
@@ -59,7 +57,7 @@ function PhotographersPage() {
       } else {
         const { error } = await (supabase as any)
           .from("photographers")
-          .insert({ ...payload, team_id: teamId === "all" ? null : teamId });
+          .insert({ ...payload, team_id: (teamId === "all" || !teamId) ? null : teamId });
         if (error) throw error;
       }
     },
@@ -89,12 +87,13 @@ function PhotographersPage() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !teamId) return;
+    if (!file) return;
 
     try {
       setIsUploading(true);
       const fileExt = file.name.split(".").pop();
-      const fileName = `cekimciler/${teamId}-${Math.random()}.${fileExt}`;
+      const safeTeamId = teamId || "admin";
+      const fileName = `cekimciler/${safeTeamId}-${Math.random()}.${fileExt}`;
 
       await uploadFileToR2(file, fileName);
       const publicUrl = getR2PublicUrl(fileName);
@@ -171,9 +170,9 @@ function PhotographersPage() {
               className="bg-[#12100E] border-t border-white/10 rounded-2xl overflow-hidden shadow-lg border-t-[#A67C52]/20"
             >
               <div className="aspect-[4/3] relative bg-black">
-                {p.img ? (
+                {(p.img || p.image_url) ? (
                   <img
-                    src={getR2PublicUrl(p.img)}
+                    src={getR2PublicUrl(p.img || p.image_url)}
                     alt={p.full_name}
                     className="w-full h-full object-cover opacity-80"
                   />

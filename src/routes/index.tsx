@@ -915,28 +915,28 @@ function Landing() {
                     Çekimciler Ekibimiz
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {PHOTOGRAPHERS.map((photographer, idx) => (
+                    {dynamicPhotographers.map((photographer: any, idx: number) => (
                       <div
                         key={idx}
                         className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4"
                       >
                         <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
                           <img
-                            src={photographer.img}
-                            alt={photographer.name}
+                            src={photographer.img ? getR2PublicUrl(photographer.img) : photographer.image_url ? getR2PublicUrl(photographer.image_url) : ""}
+                            alt={photographer.full_name || photographer.name}
                             className="w-full h-full object-cover"
                           />
                         </div>
                         <div>
-                          <p className="font-bold text-sm text-white">{photographer.name}</p>
+                          <p className="font-bold text-sm text-white">{photographer.full_name || photographer.name}</p>
                           <a
-                            href={`https://wa.me/${photographer.phone.replace(/[^0-9]/g, "")}`}
+                            href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D0A36D] transition-colors mt-1"
                           >
                             <Phone className="w-3 h-3" />
-                            {photographer.phone}
+                            {photographer.phone || "Telefon Yok"}
                           </a>
                         </div>
                       </div>
