@@ -120,9 +120,6 @@ const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) 
         {!isTyping1 && displayedText2.length < text2.length && (
           <span className="animate-pulse text-white">|</span>
         )}
-        {!isTyping1 && displayedText2.length === text2.length && (
-          <span className="animate-pulse text-white font-normal ml-1">|</span>
-        )}
       </span>
     </motion.h1>
   );
