@@ -332,33 +332,26 @@ function Landing() {
               animate="visible"
               className="relative"
             >
-              <div className="relative grid grid-cols-2 gap-6 w-full max-w-lg mx-auto mt-8 lg:mt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl mx-auto mt-8 lg:mt-0">
                 
-                {/* LEFT COLUMN - MUST BE RELATIVE AND HAVE A FIXED HEIGHT */}
-                <div className="col-span-1 relative w-full h-[400px] md:h-[480px] lg:h-[500px]">
+                {/* LEFT COLUMN: Strictly relative block with fixed height, absolutely NO flex */}
+                <div className="relative w-full h-[450px] lg:h-[550px] rounded-[2rem]">
+                  <img src="/pic1.jpg" alt="Hero Main" className="absolute inset-0 w-full h-full object-cover rounded-[2rem] shadow-2xl z-10" />
                   
-                  {/* MAIN TALL IMAGE - FORCED ABSOLUTE INSET */}
-                  <img 
-                    src="/pic1.jpg" 
-                    alt="Okul Fotoğrafı" 
-                    className="absolute inset-0 w-full h-full object-cover rounded-[2rem] shadow-2xl z-10" 
-                  />
-                  
-                  {/* FLOATING BADGE - FORCED ABSOLUTE OUTSIDE THE IMAGE EDGES */}
-                  <div className="absolute -bottom-6 -left-6 lg:-left-10 z-50 w-44 lg:w-48 p-4 rounded-2xl bg-[#111111]/70 backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
+                  {/* BADGE: Absolute positioned over the bottom-left corner */}
+                  <div className="absolute -bottom-6 -left-4 lg:-left-8 z-50 w-48 p-4 rounded-2xl bg-[#111111]/80 backdrop-blur-md border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center text-center">
                     <div className="flex gap-1.5 text-amber-400 text-lg mb-1">
                       <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
                     </div>
-                    <p className="text-white text-sm lg:text-base font-bold tracking-wide">500+ Mutlu Okul</p>
-                    <p className="text-gray-300 text-[10px] lg:text-xs mt-1 leading-tight">Sistemi aktif kullanıyor</p>
+                    <p className="text-white text-base font-bold tracking-wide">500+ Mutlu Okul</p>
+                    <p className="text-gray-300 text-xs mt-1">Sistemi aktif kullanıyor</p>
                   </div>
-
                 </div>
 
-                {/* Right Column (Two Stacked Images) */}
-                <div className="col-span-1 flex flex-col gap-6 pt-12">
-                  <img src="/pic2.jpg" alt="Okul Fotoğrafı 2" className="w-full h-[200px] md:h-[235px] object-cover rounded-[2rem] shadow-xl" />
-                  <img src="/pic3.jpg" alt="Okul Fotoğrafı 3" className="w-full h-[200px] md:h-[235px] object-cover rounded-[2rem] shadow-xl" />
+                {/* RIGHT COLUMN: Flex column for the two stacked smaller images */}
+                <div className="flex flex-col gap-6 lg:pt-12">
+                  <img src="/pic2.jpg" alt="Hero Small 1" className="w-full h-[210px] lg:h-[260px] object-cover rounded-[2rem] shadow-xl" />
+                  <img src="/pic3.jpg" alt="Hero Small 2" className="w-full h-[210px] lg:h-[260px] object-cover rounded-[2rem] shadow-xl" />
                 </div>
 
               </div>
