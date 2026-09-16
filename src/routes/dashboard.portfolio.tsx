@@ -40,7 +40,7 @@ function PortfolioPage() {
 
       // Insert into database
       const { error: dbError } = await (supabase as any).from("portfolio_images").insert({
-        image_url: fileName,
+        image_url: `https://cdn.albumevi.com.tr/${fileName}`,
         team_id: teamId === "all" ? null : teamId || null,
       });
 
@@ -148,11 +148,19 @@ function PortfolioPage() {
               key={image.id}
               className="relative group rounded-2xl overflow-hidden break-inside-avoid shadow-lg bg-[#12100E] border border-white/5"
             >
-              <img
-                src={getR2PublicUrl(image.image_url)}
-                alt="Portfolio Item"
-                className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-              />
+              {(() => {
+                const cleanUrl = image.image_url ? image.image_url.replace(/https:\/\/pub-[a-zA-Z0-9]+\.r2\.dev/, 'https://cdn.albumevi.com.tr') : '';
+                // Fallback to getR2PublicUrl if it's a relative path, but cleanUrl handles the regex replacement
+                const finalSrc = cleanUrl.startsWith("http") ? cleanUrl : getR2PublicUrl(cleanUrl);
+                
+                return (
+                  <img
+                    src={finalSrc}
+                    alt="Portfolio Item"
+                    className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                  />
+                );
+              })()}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                 <button
                   onClick={() => {
