@@ -225,6 +225,13 @@ function ManageOrders() {
         const results: AggregatedOrder[] = [];
 
         (data || []).forEach((school: any) => {
+          const sProds = spMap.get(school.id) || { paket1: null, paket2: null };
+          const p1_sp = sProds.paket1;
+          const p2_sp = sProds.paket2;
+
+          const p1 = p1_sp ? pMap.get(p1_sp.product_id) : null;
+          const p2 = p2_sp ? pMap.get(p2_sp.product_id) : null;
+
           let p1Count = 0;
           let p2Count = 0;
 
@@ -237,18 +244,11 @@ function ManageOrders() {
                 } catch {
                   parsed = student.selection.split(",").filter(Boolean);
                 }
-                if (parsed.includes("paket1")) p1Count++;
-                if (parsed.includes("paket2")) p2Count++;
+                if ((p1_sp && parsed.includes(p1_sp.product_id)) || parsed.includes("paket1")) p1Count++;
+                if ((p2_sp && parsed.includes(p2_sp.product_id)) || parsed.includes("paket2")) p2Count++;
               }
             });
           });
-
-          const sProds = spMap.get(school.id) || { paket1: null, paket2: null };
-          const p1_sp = sProds.paket1;
-          const p2_sp = sProds.paket2;
-
-          const p1 = p1_sp ? pMap.get(p1_sp.product_id) : null;
-          const p2 = p2_sp ? pMap.get(p2_sp.product_id) : null;
 
           const p1Price = p1_sp?.custom_price || p1?.base_price || 0;
           const p2Price = p2_sp?.custom_price || p2?.base_price || 0;
@@ -260,7 +260,7 @@ function ManageOrders() {
 
           const globalStatus = school.package_statuses?.global_status;
           let computedStatus = globalStatus;
-          if (!computedStatus) {
+          if (!computedStatus || computedStatus === "Sipariş Yok") {
             computedStatus = p1Count > 0 || p2Count > 0 ? "Bekliyor" : "Sipariş Yok";
           }
 
