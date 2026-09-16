@@ -278,7 +278,7 @@ function Landing() {
             <img
               src="/logo-light.png"
               alt="Albumevi Logo"
-              className="w-56 md:w-64 h-auto object-contain"
+              className="w-48 md:w-56 lg:w-64 h-auto object-contain"
             />
           </Link>
 
@@ -368,7 +368,7 @@ function Landing() {
               className="relative"
             >
               {/* Glassmorphism Floating Badge */}
-              <div className="absolute -left-8 md:-left-12 top-1/4 z-20 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1">
+              <div className="absolute -bottom-8 -left-8 md:-left-16 z-20 backdrop-blur-md bg-white/5 border border-white/10 shadow-2xl rounded-2xl p-4 flex flex-col gap-1">
                 <div className="flex flex-row items-center gap-1.5 text-amber-400 text-sm">
                   <Star className="w-4 h-4 fill-current shrink-0" />
                   <Star className="w-4 h-4 fill-current shrink-0" />
