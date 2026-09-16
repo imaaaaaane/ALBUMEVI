@@ -332,24 +332,26 @@ function Landing() {
               animate="visible"
               className="relative"
             >
-              <div className="relative grid grid-cols-2 gap-4 w-full max-w-lg mx-auto">
+              <div className="relative grid grid-cols-2 gap-6 w-full max-w-lg mx-auto mt-8 lg:mt-0">
                 
-                {/* 1. Floating Badge */}
-                <div className="absolute -bottom-6 -left-10 z-30 backdrop-blur-md bg-white/10 border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl p-4 flex flex-col items-center text-center">
-                  <div className="text-amber-400 flex gap-1 mb-1 tracking-widest text-lg">★★★★★</div>
-                  <p className="text-white text-sm font-bold">500+ Mutlu Okul</p>
-                  <p className="text-white/70 text-xs">Sistemi aktif kullanıyor</p>
+                {/* Left Column (Tall Image + Floating Badge) */}
+                <div className="col-span-1 relative h-[420px] md:h-[500px]">
+                  <img src="/pic1.jpg" alt="Okul Fotoğrafı 1" className="w-full h-full object-cover rounded-[2rem] shadow-2xl" />
+                  
+                  {/* FORCED FLOATING BADGE */}
+                  <div className="absolute -bottom-6 -left-8 z-50 backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl rounded-2xl p-4 w-[170px] flex flex-col items-center text-center transform hover:scale-105 transition-transform">
+                    <div className="flex gap-1 text-amber-400 text-lg mb-1">
+                      <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+                    </div>
+                    <p className="text-white text-sm font-extrabold">500+ Mutlu Okul</p>
+                    <p className="text-gray-300 text-[10px] mt-1">Sistemi aktif kullanıyor</p>
+                  </div>
                 </div>
 
-                {/* 2. Left Column - One Tall Image */}
-                <div className="col-span-1 h-[480px]">
-                  <img src="/pic1.jpg" alt="Hero 1" className="w-full h-full object-cover rounded-3xl shadow-xl" />
-                </div>
-
-                {/* 3. Right Column - Two Stacked Images (Staggered down using margin-top) */}
-                <div className="col-span-1 flex flex-col gap-4 mt-12">
-                  <img src="/pic2.jpg" alt="Hero 2" className="w-full h-[232px] object-cover rounded-3xl shadow-xl" />
-                  <img src="/pic3.jpg" alt="Hero 3" className="w-full h-[232px] object-cover rounded-3xl shadow-xl" />
+                {/* Right Column (Two Stacked Images) */}
+                <div className="col-span-1 flex flex-col gap-6 pt-12">
+                  <img src="/pic2.jpg" alt="Okul Fotoğrafı 2" className="w-full h-[200px] md:h-[235px] object-cover rounded-[2rem] shadow-xl" />
+                  <img src="/pic3.jpg" alt="Okul Fotoğrafı 3" className="w-full h-[200px] md:h-[235px] object-cover rounded-[2rem] shadow-xl" />
                 </div>
 
               </div>
