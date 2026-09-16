@@ -139,14 +139,14 @@ function PortfolioPage() {
           <p className="text-white/50 mt-2">Sağ üstteki butondan yeni görsel yükleyebilirsiniz.</p>
         </div>
       ) : (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
+        <div className="flex flex-row gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {portfolioImages.map((image: any, index: number) => (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
               key={image.id}
-              className="relative group rounded-2xl overflow-hidden break-inside-avoid shadow-lg bg-[#12100E] border border-white/5"
+              className="flex-none w-72 md:w-80 h-[400px] snap-center relative group bg-[#12100E] border border-white/5 rounded-[2rem] overflow-hidden shadow-lg"
             >
               {(() => {
                 const cleanUrl = image.image_url ? image.image_url.replace(/https:\/\/pub-[a-zA-Z0-9]+\.r2\.dev/, 'https://cdn.albumevi.com.tr') : '';
@@ -157,7 +157,7 @@ function PortfolioPage() {
                   <img
                     src={finalSrc}
                     alt="Portfolio Item"
-                    className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 rounded-[2rem] shadow-lg"
                   />
                 );
               })()}
