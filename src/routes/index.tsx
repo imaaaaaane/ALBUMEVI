@@ -29,14 +29,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2PublicUrl } from "@/lib/r2";
 
-const GALLERY_ITEMS = [
-  { id: 1, src: "/portfolyo/portfolya1.jpg", alt: "Albumevi Portfolyo 1" },
-  { id: 2, src: "/portfolyo/portfolya2.jpg", alt: "Albumevi Portfolyo 2" },
-  { id: 3, src: "/portfolyo/portfolya3.jpg", alt: "Albumevi Portfolyo 3" },
-  { id: 4, src: "/portfolyo/portfolya4.jpg", alt: "Albumevi Portfolyo 4" },
-  { id: 5, src: "/portfolyo/portfolya5.jpg", alt: "Albumevi Portfolyo 5" },
-];
-
 const PROCESS_STEPS = [
   {
     icon: Calendar,
@@ -532,7 +524,7 @@ function Landing() {
 
         {/* Image Grid */}
         <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-          {(dynamicPortfolio.length > 0 ? dynamicPortfolio : GALLERY_ITEMS).map(
+          {dynamicPortfolio.map(
             (item: any, i: number) => (
               <motion.div
                 key={item.id}
@@ -543,7 +535,7 @@ function Landing() {
                 className="group relative rounded-xl overflow-hidden bg-gray-900 border border-white/5 break-inside-avoid mb-4"
               >
                 <img
-                  src={item.image_url ? getR2PublicUrl(item.image_url) : getR2PublicUrl(item.src)}
+                  src={item.image_url ? getR2PublicUrl(item.image_url) : ""}
                   alt={item.alt || item.title || "Portfolyo Görseli"}
                   className="w-full h-auto object-cover rounded-lg group-hover:scale-110 transition-transform duration-700"
                 />
