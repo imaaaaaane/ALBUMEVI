@@ -96,9 +96,8 @@ function PhotographersPage() {
       const fileName = `cekimciler/${safeTeamId}-${Math.random()}.${fileExt}`;
 
       await uploadFileToR2(file, fileName);
-      const publicUrl = getR2PublicUrl(fileName);
 
-      setForm((prev) => ({ ...prev, img: publicUrl }));
+      setForm((prev) => ({ ...prev, img: fileName }));
       toast.success("Fotoğraf yüklendi!");
     } catch (err: any) {
       toast.error(err.message || "Fotoğraf yüklenemedi.");

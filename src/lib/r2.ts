@@ -74,7 +74,8 @@ export const getR2PublicUrl = (pathOrUrl: string) => {
 
   // If it's just a path/key
   if (baseUrl) {
-    return `${baseUrl}/${pathOrUrl}`;
+    const cleanPath = pathOrUrl.replace(/^\/+/, "");
+    return `${baseUrl}/${cleanPath}`;
   }
   
   // Fallback if VITE_R2_PUBLIC_URL is missing, but avoid S3 URL directly in frontend

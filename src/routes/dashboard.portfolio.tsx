@@ -40,7 +40,7 @@ function PortfolioPage() {
 
       // Insert into database
       const { error: dbError } = await (supabase as any).from("portfolio_images").insert({
-        image_url: publicUrl,
+        image_url: fileName,
         team_id: teamId === "all" ? null : teamId || null,
       });
 
