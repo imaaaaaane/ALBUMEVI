@@ -651,7 +651,7 @@ function Inventory() {
           </div>
         </div>
         <Button
-          onClick={() => setOpen(true)}
+          onClick={() => { setForm(prev => ({ ...prev, category: selectedCategory || "Diğer" })); setOpen(true); }}
           className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90 cursor-pointer h-12 px-6 rounded-xl shadow-lg shadow-[#A67C52]/20 font-semibold"
         >
           <Plus className="mr-2 h-5 w-5" /> Yeni Ürün Ekle
@@ -761,7 +761,7 @@ function Inventory() {
 
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => { setForm(prev => ({ ...prev, category: selectedCategory || "Diğer" })); setOpen(true); }}
             className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-3 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
