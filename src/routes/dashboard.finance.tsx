@@ -255,7 +255,7 @@ function AccountingDashboard() {
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["finance_products"],
     queryFn: async () => {
-      const { data, error } = await supabaseClient.from("products").select("*");
+      const { data, error } = await supabaseClient.from("products").select("id, name, image_url, category, sayfa_fiyatlari");
       if (error) throw error;
       return data || [];
     },
@@ -2585,9 +2585,9 @@ function FirmsListView({
           if (field === "productId" || field === "sayfa_sayisi") {
             const prod = products.find((p: any) => p.id === updated.productId);
             if (prod) {
-              const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "1"];
-              const p = customPrice ? parseFloat(customPrice) : prod.base_price;
-              updated.price = isNaN(p) || p === 0 ? prod.base_price : p;
+              const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
+              const p = parseFloat(customPrice);
+              updated.price = isNaN(p) ? 0 : p;
             } else {
               updated.price = 0;
             }
@@ -2893,7 +2893,7 @@ function FirmsListView({
                                       'Okul İşleri': []
                                     };
                                     
-                                    products.forEach((p: any) => {
+                                    (products || []).forEach((p: any) => {
                                       const name = (p.name || '').toLowerCase();
                                       if (name.includes('panoramik')) {
                                         groupedProducts['Panoramik'].push(p);
@@ -2934,7 +2934,7 @@ function FirmsListView({
                                                 />
                                                 {p.name}
                                               </div>
-                                              <span className="text-white/50 text-xs">{p.base_price} ₺</span>
+                                              <span className="text-white/50 text-xs">{p.sayfa_fiyatlari?.["5"] || 0} ₺</span>
                                             </div>
                                           ))}
                                         </div>
@@ -6085,7 +6085,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("products")
-        .select("id, name, base_price, sayfa_fiyatlari")
+        .select("id, name, sayfa_fiyatlari")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
@@ -6458,7 +6458,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     className="w-full justify-between bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 hover:text-white"
                   >
                     {baskiSelectedProduct
-                      ? productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.name ||
+                      ? (productsForBaski || []).find((p: any) => p.id === baskiSelectedProduct)?.name ||
                         "Ürün seçin..."
                       : "Ürün seçin..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -6484,7 +6484,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                               value={p.name + " " + p.id}
                               onSelect={() => {
                                 setBaskiSelectedProduct(p.id);
-                                const total = p.base_price * (parseFloat(baskiQuantity) || 1);
+                                const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 1);
                                 setBaskiRemainingAmount(total.toString());
                                 setBaskiPaidAmount("0");
                                 document.dispatchEvent(
@@ -6499,7 +6499,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                                   baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0",
                                 )}
                               />
-                              {p.name} ({p.base_price} ₺)
+                              {p.name} ({p.sayfa_fiyatlari?.["5"] || 0} ₺)
                             </CommandItem>
                           ))}
                       </CommandGroup>
@@ -6518,7 +6518,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   setBaskiQuantity(e.target.value);
                   const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                   if (p) {
-                    const total = p.base_price * (parseFloat(e.target.value) || 0);
+                    const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(e.target.value) || 0);
                     const paid = parseFloat(baskiPaidAmount) || 0;
                     setBaskiRemainingAmount((total - paid).toString());
                   }
@@ -6547,7 +6547,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     setBaskiPaidAmount(e.target.value);
                     const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                     if (p) {
-                      const total = p.base_price * (parseFloat(baskiQuantity) || 0);
+                      const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 0);
                       const paid = parseFloat(e.target.value) || 0;
                       setBaskiRemainingAmount((total - paid).toString());
                     }
@@ -6572,7 +6572,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
                   {(
-                    (productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price ||
+                    (parseFloat(productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.sayfa_fiyatlari?.["5"] || "0") ||
                       0) * (parseFloat(baskiQuantity) || 0)
                   ).toLocaleString("tr-TR")}{" "}
                   ₺
@@ -6591,7 +6591,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               onClick={() => {
                 const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                 if (p) {
-                  const total = p.base_price * (parseFloat(baskiQuantity) || 0);
+                  const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 0);
                   const desc = `${p.name} (${parseFloat(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
                   addBaskiExpenseMutation.mutate({
                     amount: total,
