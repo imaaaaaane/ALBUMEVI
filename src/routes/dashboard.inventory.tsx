@@ -174,7 +174,11 @@ function SortableProductCard({
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
-          {p.category === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(p.category) && (p.name || '').toLowerCase().includes('panoramik')) ? (
+          {(() => {
+            const c = p?.category;
+            const n = p?.name || '';
+            return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
+          })() ? (
             <>
               <div className="flex justify-between">
                 <span>5 Sayfa:</span>
@@ -610,14 +614,14 @@ function Inventory() {
   };
 
   products.forEach((p: any) => {
-    const cat = p.category;
+    const cat = p?.category;
     
     // Check Manual Override FIRST
     if (['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(cat)) {
       groupedProducts[cat as string].push(p);
     } else {
       // Fallback to Automatic Keyword Routing
-      const name = (p.name || '').toLowerCase();
+      const name = (p?.name || '').toLowerCase();
       if (name.includes('panoramik')) {
         groupedProducts['Panoramik'].push(p);
       } else if (name.includes('baskı') || name.includes('baski')) {
@@ -820,7 +824,11 @@ function Inventory() {
 
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {form.category === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(form.category) && (form.name || '').toLowerCase().includes('panoramik')) ? (
+              {(() => {
+                const c = form?.category;
+                const n = form?.name || '';
+                return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
+              })() ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
@@ -921,7 +929,11 @@ function Inventory() {
 
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {editForm.category === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(editForm.category) && (editForm.name || '').toLowerCase().includes('panoramik')) ? (
+              {(() => {
+                const c = editForm?.category;
+                const n = editForm?.name || '';
+                return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
+              })() ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
