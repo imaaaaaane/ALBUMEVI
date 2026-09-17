@@ -174,14 +174,23 @@ function SortableProductCard({
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
-          <div className="flex justify-between">
-            <span>5 Sayfa:</span>
-            <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["5"] ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺` : '-'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>10 Sayfa:</span>
-            <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["10"] ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺` : '-'}</span>
-          </div>
+          {p.name.toLowerCase().includes('panoramik') ? (
+            <>
+              <div className="flex justify-between">
+                <span>5 Sayfa:</span>
+                <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["5"] ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺` : '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>10 Sayfa:</span>
+                <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["10"] ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺` : '-'}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between mt-auto">
+              <span>Satış Fiyatı:</span>
+              <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["single"] ? `${Number(p.sayfa_fiyatlari["single"]).toLocaleString()} ₺` : '-'}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
@@ -245,7 +254,7 @@ function Inventory() {
       ] = await Promise.all([
         (supabase as any)
           .from("products")
-          .select("id, name, base_price, created_at, image_url, sira, sayfa_fiyatlari")
+          .select("*")
           .order("sira", { ascending: true })
           .order("created_at", { ascending: true }),
         (supabase as any)
@@ -578,10 +587,10 @@ function Inventory() {
 
   const groupedProducts: Record<string, any[]> = {
     'Panoramik': [],
-    'Canvas': [],
-    'Ahşap Albüm': [],
     'Baskı': [],
-    'Okul İşleri': []
+    'Canvas': [],
+    'Okul İşleri': [],
+    'Diğer': []
   };
 
   products.forEach((p: any) => {
@@ -592,12 +601,12 @@ function Inventory() {
       groupedProducts['Panoramik'].push(p);
     } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
       groupedProducts['Canvas'].push(p);
-    } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm')) {
-      groupedProducts['Ahşap Albüm'].push(p);
     } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
       groupedProducts['Baskı'].push(p);
-    } else {
+    } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm') || cat.includes('okul') || name.includes('okul')) {
       groupedProducts['Okul İşleri'].push(p);
+    } else {
+      groupedProducts['Diğer'].push(p);
     }
   });
 
@@ -771,30 +780,52 @@ function Inventory() {
               />
             </div>
             <div className="space-y-4 pt-4 border-t border-white/10">
-              <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
-              <div className="grid grid-cols-2 gap-4">
-                {[5, 10].map((num) => (
-                  <div key={num} className="space-y-2">
-                    <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={form.sayfa_fiyatlari[String(num)] || "0"}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          sayfa_fiyatlari: {
-                            ...form.sayfa_fiyatlari,
-                            [String(num)]: e.target.value,
-                          },
-                        })
-                      }
-                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
-                    />
-                  </div>
-                ))}
-              </div>
+              <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
+              {form.name.toLowerCase().includes('panoramik') ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {[5, 10].map((num) => (
+                    <div key={num} className="space-y-2">
+                      <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.sayfa_fiyatlari[String(num)] || "0"}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            sayfa_fiyatlari: {
+                              ...form.sayfa_fiyatlari,
+                              [String(num)]: e.target.value,
+                            },
+                          })
+                        }
+                        className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-white/70">Satış Fiyatı (₺)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.sayfa_fiyatlari["single"] || "0"}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        sayfa_fiyatlari: {
+                          ...form.sayfa_fiyatlari,
+                          ["single"]: e.target.value,
+                        },
+                      })
+                    }
+                    className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                  />
+                </div>
+              )}
             </div>
             <DialogFooter className="mt-8">
               <Button
@@ -838,30 +869,52 @@ function Inventory() {
             </div>
 
             <div className="space-y-4 pt-4 border-t border-white/10">
-              <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
-              <div className="grid grid-cols-2 gap-4">
-                {[5, 10].map((num) => (
-                  <div key={num} className="space-y-2">
-                    <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editForm.sayfa_fiyatlari[String(num)] || "0"}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          sayfa_fiyatlari: {
-                            ...editForm.sayfa_fiyatlari,
-                            [String(num)]: e.target.value,
-                          },
-                        })
-                      }
-                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
-                    />
-                  </div>
-                ))}
-              </div>
+              <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
+              {editForm.name.toLowerCase().includes('panoramik') ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {[5, 10].map((num) => (
+                    <div key={num} className="space-y-2">
+                      <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editForm.sayfa_fiyatlari[String(num)] || "0"}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            sayfa_fiyatlari: {
+                              ...editForm.sayfa_fiyatlari,
+                              [String(num)]: e.target.value,
+                            },
+                          })
+                        }
+                        className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-white/70">Satış Fiyatı (₺)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editForm.sayfa_fiyatlari["single"] || "0"}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        sayfa_fiyatlari: {
+                          ...editForm.sayfa_fiyatlari,
+                          ["single"]: e.target.value,
+                        },
+                      })
+                    }
+                    className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-white/70">Ürün Resmi</Label>

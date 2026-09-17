@@ -2902,19 +2902,24 @@ function FirmsListView({
                                       'Panoramik': [],
                                       'Baskı': [],
                                       'Canvas': [],
-                                      'Okul İşleri': []
+                                      'Okul İşleri': [],
+                                      'Diğer': []
                                     };
                                     
                                     (products || []).forEach((p: any) => {
                                       const name = (p.name || '').toLowerCase();
-                                      if (name.includes('panoramik')) {
+                                      const cat = (p.category || '').toLowerCase();
+                                      
+                                      if (cat.includes('panoramik') || name.includes('panoramik')) {
                                         groupedProducts['Panoramik'].push(p);
-                                      } else if (name.includes('baskı') || name.includes('baski')) {
-                                        groupedProducts['Baskı'].push(p);
-                                      } else if (name.includes('canvas') || name.includes('kanvas')) {
+                                      } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
                                         groupedProducts['Canvas'].push(p);
-                                      } else {
+                                      } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
+                                        groupedProducts['Baskı'].push(p);
+                                      } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm') || cat.includes('okul') || name.includes('okul')) {
                                         groupedProducts['Okul İşleri'].push(p);
+                                      } else {
+                                        groupedProducts['Diğer'].push(p);
                                       }
                                     });
 
