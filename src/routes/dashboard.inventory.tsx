@@ -581,7 +581,7 @@ function Inventory() {
     'Canvas': [],
     'Ahşap Albüm': [],
     'Baskı': [],
-    'Diğer': []
+    'Okul İşleri': []
   };
 
   products.forEach((p: any) => {
@@ -597,7 +597,7 @@ function Inventory() {
     } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
       groupedProducts['Baskı'].push(p);
     } else {
-      groupedProducts['Diğer'].push(p);
+      groupedProducts['Okul İşleri'].push(p);
     }
   });
 
@@ -662,7 +662,7 @@ function Inventory() {
       ) : !selectedCategory ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {Object.entries(groupedProducts).map(([category, items]) => {
-            if (category === 'Diğer' && items.length === 0) return null;
+            if (category === 'Okul İşleri' && items.length === 0) return null;
             const coverImage = items.find(p => p.image_url)?.image_url;
             return (
               <button
