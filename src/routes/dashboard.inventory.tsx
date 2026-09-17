@@ -188,7 +188,7 @@ function SortableProductCard({
           ) : (
             <div className="flex justify-between mt-auto">
               <span>Satış Fiyatı:</span>
-              <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["single"] ? `${Number(p.sayfa_fiyatlari["single"]).toLocaleString()} ₺` : '-'}</span>
+              <span className="text-[#A67C52] font-semibold">{p.base_price ? `${Number(p.base_price).toLocaleString()} ₺` : '-'}</span>
             </div>
           )}
         </div>
@@ -223,7 +223,7 @@ function Inventory() {
     "5": "0",
     "10": "0",
   };
-  const [form, setForm] = useState({ name: "", sayfa_fiyatlari: initialFiyatlari });
+  const [form, setForm] = useState({ name: "", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
@@ -231,12 +231,14 @@ function Inventory() {
     name: string;
     image_url: string | null;
     file: File | null;
+    base_price: number;
     sayfa_fiyatlari: Record<string, string>;
   }>({
     id: "",
     name: "",
     image_url: null,
     file: null,
+    base_price: 0,
     sayfa_fiyatlari: initialFiyatlari,
   });
 
@@ -376,12 +378,14 @@ function Inventory() {
   const addMutation = useMutation({
     mutationFn: async (input: {
       name: string;
+      base_price: number;
       sayfa_fiyatlari: Record<string, string>;
     }) => {
       const { data, error } = await (supabase as any)
         .from("products")
         .insert({
           name: input.name,
+          base_price: input.base_price,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
           team_id: teamId === "all" ? null : teamId,
         })
@@ -395,7 +399,7 @@ function Inventory() {
       toast.success("Ürün başarıyla eklendi");
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
-      setForm({ name: "", sayfa_fiyatlari: initialFiyatlari });
+      setForm({ name: "", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
     },
     onError: (e: Error) => toast.error(e.message || "Ürün eklenemedi"),
   });
@@ -406,6 +410,7 @@ function Inventory() {
       name: string;
       image_url: string | null;
       file: File | null;
+      base_price: number;
       sayfa_fiyatlari: Record<string, string>;
     }) => {
       await supabase.auth.getSession();
@@ -434,6 +439,7 @@ function Inventory() {
         .update({
           name: input.name,
           image_url: finalImageUrl,
+          base_price: input.base_price,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
         })
         .eq("id", input.id)
@@ -566,6 +572,7 @@ function Inventory() {
     }
     addMutation.mutate({
       name: form.name.trim(),
+      base_price: form.base_price,
       sayfa_fiyatlari: form.sayfa_fiyatlari,
     });
   };
@@ -581,6 +588,7 @@ function Inventory() {
       name: editForm.name.trim(),
       image_url: editForm.image_url,
       file: editForm.file,
+      base_price: editForm.base_price,
       sayfa_fiyatlari: editForm.sayfa_fiyatlari,
     });
   };
@@ -718,6 +726,7 @@ function Inventory() {
                     setEditForm({
                       id: p.id,
                       name: p.name,
+                      base_price: p.base_price || 0,
                       image_url: p.image_url || null,
                       file: null,
                       sayfa_fiyatlari: p.sayfa_fiyatlari || {
@@ -812,14 +821,11 @@ function Inventory() {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={form.sayfa_fiyatlari["single"] || "0"}
+                    value={form.base_price || 0}
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        sayfa_fiyatlari: {
-                          ...form.sayfa_fiyatlari,
-                          ["single"]: e.target.value,
-                        },
+                        base_price: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
@@ -901,14 +907,11 @@ function Inventory() {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={editForm.sayfa_fiyatlari["single"] || "0"}
+                    value={editForm.base_price || 0}
                     onChange={(e) =>
                       setEditForm({
                         ...editForm,
-                        sayfa_fiyatlari: {
-                          ...editForm.sayfa_fiyatlari,
-                          ["single"]: e.target.value,
-                        },
+                        base_price: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
