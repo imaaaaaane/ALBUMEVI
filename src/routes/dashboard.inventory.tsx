@@ -219,31 +219,21 @@ function Inventory() {
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const initialFiyatlari: Record<string, string> = {
-    "1": "0",
-    "2": "0",
-    "3": "0",
-    "4": "0",
     "5": "0",
-    "6": "0",
-    "7": "0",
-    "8": "0",
-    "9": "0",
     "10": "0",
   };
-  const [form, setForm] = useState({ name: "", base_price: "", sayfa_fiyatlari: initialFiyatlari });
+  const [form, setForm] = useState({ name: "", sayfa_fiyatlari: initialFiyatlari });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
     id: string;
     name: string;
-    base_price: string;
     image_url: string | null;
     file: File | null;
     sayfa_fiyatlari: Record<string, string>;
   }>({
     id: "",
     name: "",
-    base_price: "",
     image_url: null,
     file: null,
     sayfa_fiyatlari: initialFiyatlari,
@@ -385,14 +375,12 @@ function Inventory() {
   const addMutation = useMutation({
     mutationFn: async (input: {
       name: string;
-      base_price: number;
       sayfa_fiyatlari: Record<string, string>;
     }) => {
       const { data, error } = await (supabase as any)
         .from("products")
         .insert({
           name: input.name,
-          base_price: input.base_price,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
           team_id: teamId === "all" ? null : teamId,
         })
@@ -406,7 +394,7 @@ function Inventory() {
       toast.success("Ürün başarıyla eklendi");
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
-      setForm({ name: "", base_price: "", sayfa_fiyatlari: initialFiyatlari });
+      setForm({ name: "", sayfa_fiyatlari: initialFiyatlari });
     },
     onError: (e: Error) => toast.error(e.message || "Ürün eklenemedi"),
   });
@@ -415,7 +403,6 @@ function Inventory() {
     mutationFn: async (input: {
       id: string;
       name: string;
-      base_price: number;
       image_url: string | null;
       file: File | null;
       sayfa_fiyatlari: Record<string, string>;
@@ -445,7 +432,6 @@ function Inventory() {
         .from("products")
         .update({
           name: input.name,
-          base_price: input.base_price,
           image_url: finalImageUrl,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
         })
@@ -573,29 +559,25 @@ function Inventory() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const price = parseFloat(form.base_price);
-    if (!form.name.trim() || Number.isNaN(price)) {
-      toast.error("Lütfen isim ve fiyat alanlarını doldurun");
+    if (!form.name.trim()) {
+      toast.error("Lütfen isim girin");
       return;
     }
     addMutation.mutate({
       name: form.name.trim(),
-      base_price: price,
       sayfa_fiyatlari: form.sayfa_fiyatlari,
     });
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const price = parseFloat(editForm.base_price);
-    if (!editForm.name.trim() || Number.isNaN(price)) {
-      toast.error("Lütfen isim ve geçerli bir fiyat girin");
+    if (!editForm.name.trim()) {
+      toast.error("Lütfen isim girin");
       return;
     }
     updateMutation.mutate({
       id: editForm.id,
       name: editForm.name.trim(),
-      base_price: price,
       image_url: editForm.image_url,
       file: editForm.file,
       sayfa_fiyatlari: editForm.sayfa_fiyatlari,
@@ -735,19 +717,10 @@ function Inventory() {
                     setEditForm({
                       id: p.id,
                       name: p.name,
-                      base_price: p.base_price?.toString() || "0",
                       image_url: p.image_url || null,
                       file: null,
                       sayfa_fiyatlari: p.sayfa_fiyatlari || {
-                        "1": "0",
-                        "2": "0",
-                        "3": "0",
-                        "4": "0",
                         "5": "0",
-                        "6": "0",
-                        "7": "0",
-                        "8": "0",
-                        "9": "0",
                         "10": "0",
                       },
                     });
@@ -805,35 +778,23 @@ function Inventory() {
                 className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="250"
-                value={form.base_price}
-                onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-                className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
-              />
-            </div>
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
               <div className="grid grid-cols-2 gap-4">
-                {[...Array(10)].map((_, i) => (
-                  <div key={i + 1} className="space-y-2">
-                    <Label className="text-white/70">{i + 1} Sayfa Fiyatı (₺)</Label>
+                {[5, 10].map((num) => (
+                  <div key={num} className="space-y-2">
+                    <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={form.sayfa_fiyatlari[String(i + 1)] || "0"}
+                      value={form.sayfa_fiyatlari[String(num)] || "0"}
                       onChange={(e) =>
                         setForm({
                           ...form,
                           sayfa_fiyatlari: {
                             ...form.sayfa_fiyatlari,
-                            [String(i + 1)]: e.target.value,
+                            [String(num)]: e.target.value,
                           },
                         })
                       }
@@ -887,20 +848,20 @@ function Inventory() {
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Sayfa Sayısına Göre Fiyatlar</h4>
               <div className="grid grid-cols-2 gap-4">
-                {[...Array(10)].map((_, i) => (
-                  <div key={i + 1} className="space-y-2">
-                    <Label className="text-white/70">{i + 1} Sayfa Fiyatı (₺)</Label>
+                {[5, 10].map((num) => (
+                  <div key={num} className="space-y-2">
+                    <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={editForm.sayfa_fiyatlari[String(i + 1)] || "0"}
+                      value={editForm.sayfa_fiyatlari[String(num)] || "0"}
                       onChange={(e) =>
                         setEditForm({
                           ...editForm,
                           sayfa_fiyatlari: {
                             ...editForm.sayfa_fiyatlari,
-                            [String(i + 1)]: e.target.value,
+                            [String(num)]: e.target.value,
                           },
                         })
                       }
@@ -955,18 +916,7 @@ function Inventory() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-white/70">Varsayılan Fiyat (₺)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="250"
-                value={editForm.base_price}
-                onChange={(e) => setEditForm({ ...editForm, base_price: e.target.value })}
-                className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
-              />
-            </div>
+ 
             <DialogFooter className="mt-8">
               <Button
                 type="button"
