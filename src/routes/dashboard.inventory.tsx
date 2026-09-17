@@ -89,7 +89,7 @@ function SortableProductCard({
     id: p.id,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedPreviewPage, setSelectedPreviewPage] = useState("1");
+
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -173,23 +173,15 @@ function SortableProductCard({
       )}
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
-        <div className="flex items-center justify-between mb-0.5">
-          <div className="text-[10px] opacity-70">Sayfa Fiyatı</div>
-          <select
-            value={selectedPreviewPage}
-            onChange={(e) => setSelectedPreviewPage(e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="bg-black/40 border border-white/10 text-white rounded text-[9px] px-1 py-0.5 outline-none focus:ring-1 focus:ring-[#A67C52] cursor-pointer"
-          >
-            {[...Array(10)].map((_, i) => (
-              <option key={i + 1} value={String(i + 1)} className="bg-[#131316]">
-                {i + 1} Sayfa
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="text-xs font-semibold text-[#A67C52] mb-2">
-          {Number(p.sayfa_fiyatlari?.[selectedPreviewPage] || p.base_price || 0).toLocaleString()} ₺
+        <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
+          <div className="flex justify-between">
+            <span>5 Sayfa:</span>
+            <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["5"] ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺` : '-'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>10 Sayfa:</span>
+            <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["10"] ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺` : '-'}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
