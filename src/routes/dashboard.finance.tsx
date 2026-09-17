@@ -2814,7 +2814,7 @@ function FirmsListView({
             }
           }}
         >
-          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-3xl p-6 overflow-hidden">
+          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-3xl p-6 overflow-visible">
             <form onSubmit={handleAddTx} className="space-y-6">
               <div>
                 <DialogTitle className="text-xl font-bold text-white">
@@ -2864,7 +2864,7 @@ function FirmsListView({
                 {newTxType === "debt" && (
                   <div className="space-y-3">
                     <Label className="text-xs text-[#9E9696]">Ürünler (Satış)</Label>
-                    <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[30vh] overflow-visible pr-1">
                       {lineItems.map((item) => (
                         <div key={item.id} className="flex gap-2 items-start">
                           <div className="flex-1">
@@ -2874,8 +2874,12 @@ function FirmsListView({
                               <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
-                                className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setOpenDropdownId(openDropdownId === item.id ? null : item.id);
+                                }}
+                                className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white pointer-events-auto cursor-pointer"
                               >
                                 {item.productId
                                   ? products.find((p: any) => p.id === item.productId)?.name ||
@@ -2884,7 +2888,7 @@ function FirmsListView({
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                               {openDropdownId === item.id && (
-                                <div className="absolute w-full mt-1 z-[100] max-h-56 overflow-y-auto shadow-2xl bg-[#1a1a1a] border border-white/20 rounded-lg">
+                                <div className="absolute w-full mt-1 z-[9999] max-h-56 overflow-y-auto shadow-2xl bg-[#1a1a1a] border border-white/20 rounded-lg">
                                   {(() => {
                                     const groupedProducts: Record<string, any[]> = {
                                       'Panoramik': [],
