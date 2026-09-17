@@ -2812,7 +2812,7 @@ function FirmsListView({
             }
           }}
         >
-          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-md p-6 overflow-hidden">
+          <DialogContent className="border-border bg-[#131316] text-white rounded-3xl max-w-3xl p-6 overflow-hidden">
             <form onSubmit={handleAddTx} className="space-y-6">
               <div>
                 <DialogTitle className="text-xl font-bold text-white">
@@ -2880,7 +2880,7 @@ function FirmsListView({
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-[300px] p-0 bg-[#111111] border-white/10 text-white">
+                              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-[#111111] border-white/10 text-white">
                                 <Command className="bg-[#111111]">
                                   <CommandInput
                                     placeholder="Ürün ara..."
@@ -2888,29 +2888,60 @@ function FirmsListView({
                                   />
                                   <CommandList>
                                     <CommandEmpty>Ürün bulunamadı.</CommandEmpty>
-                                    <CommandGroup>
-                                      {products.map((p: any) => (
-                                        <CommandItem
-                                          key={p.id}
-                                          value={p.name + " " + p.id}
-                                          onSelect={() => {
-                                            updateLineItem(item.id, "productId", p.id);
-                                            document.dispatchEvent(
-                                              new KeyboardEvent("keydown", { key: "Escape" }),
-                                            );
-                                          }}
-                                          className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4 text-[#A67C52]",
-                                              item.productId === p.id ? "opacity-100" : "opacity-0",
-                                            )}
-                                          />
-                                          {p.name} ({p.base_price} ₺)
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
+                                    {(() => {
+                                      const groupedProducts: Record<string, any[]> = {
+                                        'Panoramik': [],
+                                        'Canvas': [],
+                                        'Ahşap Albüm': [],
+                                        'Baskı': [],
+                                        'Diğer': []
+                                      };
+                                      products.forEach((p: any) => {
+                                        const name = (p.name || '').toLowerCase();
+                                        const cat = (p.category || '').toLowerCase();
+                                        
+                                        if (cat.includes('panoramik') || name.includes('panoramik')) {
+                                          groupedProducts['Panoramik'].push(p);
+                                        } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
+                                          groupedProducts['Canvas'].push(p);
+                                        } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm')) {
+                                          groupedProducts['Ahşap Albüm'].push(p);
+                                        } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
+                                          groupedProducts['Baskı'].push(p);
+                                        } else {
+                                          groupedProducts['Diğer'].push(p);
+                                        }
+                                      });
+
+                                      return Object.entries(groupedProducts).map(([category, items]) => {
+                                        if (items.length === 0) return null;
+                                        return (
+                                          <CommandGroup key={category} heading={category}>
+                                            {items.map((p: any) => (
+                                              <CommandItem
+                                                key={p.id}
+                                                value={p.name + " " + p.id}
+                                                onSelect={() => {
+                                                  updateLineItem(item.id, "productId", p.id);
+                                                  document.dispatchEvent(
+                                                    new KeyboardEvent("keydown", { key: "Escape" }),
+                                                  );
+                                                }}
+                                                className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4 text-[#A67C52]",
+                                                    item.productId === p.id ? "opacity-100" : "opacity-0",
+                                                  )}
+                                                />
+                                                {p.name} ({p.base_price} ₺)
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        );
+                                      });
+                                    })()}
                                   </CommandList>
                                 </Command>
                               </PopoverContent>
