@@ -2868,9 +2868,17 @@ function FirmsListView({
                       {lineItems.map((item) => (
                         <div key={item.id} className="flex gap-2 items-start">
                           <div className="flex-1">
-                            <div className="relative flex-1" tabIndex={0} onBlur={(e) => {
-                              if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpenDropdownId(null);
-                            }}>
+                            <div className="relative flex-1">
+                              {openDropdownId === item.id && (
+                                <div 
+                                  className="fixed inset-0 z-[9998]" 
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setOpenDropdownId(null);
+                                  }}
+                                />
+                              )}
                               <Button
                                 type="button"
                                 variant="outline"
