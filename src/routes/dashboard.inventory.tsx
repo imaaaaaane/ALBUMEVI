@@ -617,7 +617,7 @@ function Inventory() {
     const cat = p?.category;
     
     // Check Manual Override FIRST
-    if (['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(cat)) {
+    if (['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri', 'Diğer'].includes(cat)) {
       groupedProducts[cat as string].push(p);
     } else {
       // Fallback to Automatic Keyword Routing
@@ -628,6 +628,8 @@ function Inventory() {
         groupedProducts['Baskı'].push(p);
       } else if (name.includes('canvas') || name.includes('kanvas')) {
         groupedProducts['Canvas'].push(p);
+      } else if (name.includes('kargo')) {
+        groupedProducts['Diğer'].push(p);
       } else {
         // Anything else goes to Okul İşleri
         groupedProducts['Okul İşleri'].push(p);
