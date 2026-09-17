@@ -2206,6 +2206,7 @@ function FirmsListView({
   const [selectedFirmId, setSelectedFirmId] = useState<string | null>(null);
   const [isAddFirmOpen, setIsAddFirmOpen] = useState(false);
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [breakdownType, setBreakdownType] = useState<"paid" | "remaining" | null>(null);
 
   const [newFirmName, setNewFirmName] = useState("");
@@ -2809,6 +2810,7 @@ function FirmsListView({
               setLineItems([
                 { id: Math.random().toString(), productId: "", quantity: 1, price: 0 },
               ]);
+              setOpenDropdownId(null);
             }
           }}
         >
@@ -2866,86 +2868,82 @@ function FirmsListView({
                       {lineItems.map((item) => (
                         <div key={item.id} className="flex gap-2 items-start">
                           <div className="flex-1">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white"
-                                >
-                                  {item.productId
-                                    ? products.find((p: any) => p.id === item.productId)?.name ||
-                                      "Ürün Seç..."
-                                    : "Ürün Seç..."}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-[#111111] border-white/10 text-white">
-                                <Command className="bg-[#111111]">
-                                  <CommandInput
-                                    placeholder="Ürün ara..."
-                                    className="text-white border-none focus:ring-0"
-                                  />
-                                  <CommandList>
-                                    <CommandEmpty>Ürün bulunamadı.</CommandEmpty>
-                                    {(() => {
-                                      const groupedProducts: Record<string, any[]> = {
-                                        'Panoramik': [],
-                                        'Canvas': [],
-                                        'Ahşap Albüm': [],
-                                        'Baskı': [],
-                                        'Diğer': []
-                                      };
-                                      products.forEach((p: any) => {
-                                        const name = (p.name || '').toLowerCase();
-                                        const cat = (p.category || '').toLowerCase();
-                                        
-                                        if (cat.includes('panoramik') || name.includes('panoramik')) {
-                                          groupedProducts['Panoramik'].push(p);
-                                        } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
-                                          groupedProducts['Canvas'].push(p);
-                                        } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm')) {
-                                          groupedProducts['Ahşap Albüm'].push(p);
-                                        } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
-                                          groupedProducts['Baskı'].push(p);
-                                        } else {
-                                          groupedProducts['Diğer'].push(p);
-                                        }
-                                      });
+                            <div className="relative flex-1" tabIndex={0} onBlur={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpenDropdownId(null);
+                            }}>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
+                                className="w-full justify-between bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/10 hover:text-white"
+                              >
+                                {item.productId
+                                  ? products.find((p: any) => p.id === item.productId)?.name ||
+                                    "Ürün Seç..."
+                                  : "Ürün Seç..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                              {openDropdownId === item.id && (
+                                <div className="absolute w-full mt-1 z-[100] max-h-56 overflow-y-auto shadow-2xl bg-[#1a1a1a] border border-white/20 rounded-lg">
+                                  {(() => {
+                                    const groupedProducts: Record<string, any[]> = {
+                                      'Panoramik': [],
+                                      'Baskı': [],
+                                      'Canvas': [],
+                                      'Okul İşleri': []
+                                    };
+                                    
+                                    products.forEach((p: any) => {
+                                      const name = (p.name || '').toLowerCase();
+                                      if (name.includes('panoramik')) {
+                                        groupedProducts['Panoramik'].push(p);
+                                      } else if (name.includes('baskı') || name.includes('baski')) {
+                                        groupedProducts['Baskı'].push(p);
+                                      } else if (name.includes('canvas') || name.includes('kanvas')) {
+                                        groupedProducts['Canvas'].push(p);
+                                      } else {
+                                        groupedProducts['Okul İşleri'].push(p);
+                                      }
+                                    });
 
-                                      return Object.entries(groupedProducts).map(([category, items]) => {
-                                        if (items.length === 0) return null;
-                                        return (
-                                          <CommandGroup key={category} heading={category}>
-                                            {items.map((p: any) => (
-                                              <CommandItem
-                                                key={p.id}
-                                                value={p.name + " " + p.id}
-                                                onSelect={() => {
-                                                  updateLineItem(item.id, "productId", p.id);
-                                                  document.dispatchEvent(
-                                                    new KeyboardEvent("keydown", { key: "Escape" }),
-                                                  );
-                                                }}
-                                                className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
-                                              >
+                                    return Object.entries(groupedProducts).map(([category, items]) => {
+                                      if (items.length === 0) return null;
+                                      
+                                      items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                                      return (
+                                        <div key={category}>
+                                          <div className="px-3 py-2 text-xs font-bold text-white/50 bg-[#111111] uppercase tracking-wider sticky top-0 z-10 border-b border-white/5">
+                                            {category}
+                                          </div>
+                                          {items.map((p: any) => (
+                                            <div
+                                              key={p.id}
+                                              onClick={() => {
+                                                updateLineItem(item.id, "productId", p.id);
+                                                setOpenDropdownId(null);
+                                              }}
+                                              className="p-2.5 text-sm cursor-pointer hover:bg-white/10 border-b border-white/5 last:border-0 transition-colors text-white flex items-center justify-between"
+                                            >
+                                              <div className="flex items-center">
                                                 <Check
                                                   className={cn(
                                                     "mr-2 h-4 w-4 text-[#A67C52]",
                                                     item.productId === p.id ? "opacity-100" : "opacity-0",
                                                   )}
                                                 />
-                                                {p.name} ({p.base_price} ₺)
-                                              </CommandItem>
-                                            ))}
-                                          </CommandGroup>
-                                        );
-                                      });
-                                    })()}
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
+                                                {p.name}
+                                              </div>
+                                              <span className="text-white/50 text-xs">{p.base_price} ₺</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div className="w-20">
                             <Input
