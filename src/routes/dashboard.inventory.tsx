@@ -174,7 +174,7 @@ function SortableProductCard({
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
-          {p.name.toLowerCase().includes('panoramik') ? (
+          {(p.name || "").toLowerCase().includes('panoramik') ? (
             <>
               <div className="flex justify-between">
                 <span>5 Sayfa:</span>
@@ -790,7 +790,7 @@ function Inventory() {
             </div>
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {form.name.toLowerCase().includes('panoramik') ? (
+              {(form.name || "").toLowerCase().includes('panoramik') ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
@@ -876,7 +876,7 @@ function Inventory() {
 
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {editForm.name.toLowerCase().includes('panoramik') ? (
+              {(editForm.name || "").toLowerCase().includes('panoramik') ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
