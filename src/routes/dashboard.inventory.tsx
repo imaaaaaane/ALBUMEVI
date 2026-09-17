@@ -217,6 +217,7 @@ function Inventory() {
   const { teamId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const initialFiyatlari: Record<string, string> = {
     "1": "0",
     "2": "0",
@@ -601,14 +602,55 @@ function Inventory() {
     });
   };
 
+  const groupedProducts: Record<string, any[]> = {
+    'Panoramik': [],
+    'Canvas': [],
+    'Ahşap Albüm': [],
+    'Baskı': [],
+    'Diğer': []
+  };
+
+  products.forEach((p: any) => {
+    const name = (p.name || '').toLowerCase();
+    const cat = (p.category || '').toLowerCase();
+    
+    if (cat.includes('panoramik') || name.includes('panoramik')) {
+      groupedProducts['Panoramik'].push(p);
+    } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
+      groupedProducts['Canvas'].push(p);
+    } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm')) {
+      groupedProducts['Ahşap Albüm'].push(p);
+    } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
+      groupedProducts['Baskı'].push(p);
+    } else {
+      groupedProducts['Diğer'].push(p);
+    }
+  });
+
+  const displayedProducts = selectedCategory ? groupedProducts[selectedCategory] || [] : [];
+
   return (
     <div className="space-y-8 min-h-screen bg-[#131316] text-white selection:bg-[#A67C52] selection:text-white pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ürün Envanteri</h1>
-          <p className="text-sm text-white/50 mt-1">
-            Okullar için sunulacak paketleri ve varsayılan fiyatlarını yönetin.
-          </p>
+        <div className="flex items-center gap-4">
+          {selectedCategory && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSelectedCategory(null)}
+              className="h-12 w-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {selectedCategory ? `${selectedCategory} Envanteri` : "Ürün Envanteri"}
+            </h1>
+            <p className="text-sm text-white/50 mt-1">
+              Okullar için sunulacak paketleri ve varsayılan fiyatlarını yönetin.
+            </p>
+          </div>
         </div>
         <Button
           onClick={() => setOpen(true)}
@@ -638,81 +680,111 @@ function Inventory() {
       </div>
 
       {/* Products grid */}
-      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">
-        {isLoading ? (
-          <div className="col-span-full rounded-2xl border border-white/5 bg-white/5 p-12 text-center text-white/50">
-            Ürünler yükleniyor...
-          </div>
-        ) : (
-          <>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={products.map((p: any) => p.id)}
-                strategy={rectSortingStrategy}
+      {/* Dynamic Main View */}
+      {isLoading ? (
+        <div className="rounded-2xl border border-white/5 bg-white/5 p-12 text-center text-white/50">
+          Ürünler yükleniyor...
+        </div>
+      ) : !selectedCategory ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Object.entries(groupedProducts).map(([category, items]) => {
+            if (category === 'Diğer' && items.length === 0) return null;
+            const coverImage = items.find(p => p.image_url)?.image_url;
+            return (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className="relative group overflow-hidden rounded-3xl border border-white/10 bg-white/5 aspect-video hover:border-[#A67C52]/50 hover:shadow-xl hover:shadow-[#A67C52]/10 transition-all duration-300 text-left"
               >
-                {products.map((p: any) => (
-                  <SortableProductCard
-                    key={p.id}
-                    p={p}
-                    onEdit={() => {
-                      setEditForm({
-                        id: p.id,
-                        name: p.name,
-                        base_price: p.base_price?.toString() || "0",
-                        image_url: p.image_url || null,
-                        file: null,
-                        sayfa_fiyatlari: p.sayfa_fiyatlari || {
-                          "1": "0",
-                          "2": "0",
-                          "3": "0",
-                          "4": "0",
-                          "5": "0",
-                          "6": "0",
-                          "7": "0",
-                          "8": "0",
-                          "9": "0",
-                          "10": "0",
-                        },
-                      });
-                      setEditOpen(true);
-                    }}
-                    onDelete={() => {
-                      if (confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
-                        deleteMutation.mutate(p.id);
-                      }
-                    }}
-                    onUploadImage={(file) => {
-                      setUploadingImageId(p.id);
-                      uploadImageMutation.mutate({ id: p.id, file });
-                    }}
-                    isUploading={uploadingImageId === p.id}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-3 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
+                {coverImage ? (
+                  <>
+                    <img src={getR2PublicUrl(coverImage)} alt={category} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent pointer-events-none" />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-colors">
+                    <Package className="w-16 h-16 text-[#A67C52]/20 group-hover:text-[#A67C52]/40 transition-colors" />
+                  </div>
+                )}
+                <div className="absolute bottom-6 left-6 right-6 z-10">
+                  <h3 className="text-3xl font-black text-white drop-shadow-md">{category}</h3>
+                  <p className="text-[#A67C52] font-semibold mt-1 bg-black/40 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
+                    {items.length} Ürün
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={displayedProducts.map((p: any) => p.id)}
+              strategy={rectSortingStrategy}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
-                <Plus className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-white mb-0.5">Yeni Ürün Ekle</div>
-                <p className="text-[9px] text-white/40 max-w-[120px] mx-auto leading-tight">
-                  Envantere yeni bir ürün veya paket seçeneği ekleyin.
-                </p>
-              </div>
-            </button>
-          </>
-        )}
-      </div>
+              {displayedProducts.map((p: any) => (
+                <SortableProductCard
+                  key={p.id}
+                  p={p}
+                  onEdit={() => {
+                    setEditForm({
+                      id: p.id,
+                      name: p.name,
+                      base_price: p.base_price?.toString() || "0",
+                      image_url: p.image_url || null,
+                      file: null,
+                      sayfa_fiyatlari: p.sayfa_fiyatlari || {
+                        "1": "0",
+                        "2": "0",
+                        "3": "0",
+                        "4": "0",
+                        "5": "0",
+                        "6": "0",
+                        "7": "0",
+                        "8": "0",
+                        "9": "0",
+                        "10": "0",
+                      },
+                    });
+                    setEditOpen(true);
+                  }}
+                  onDelete={() => {
+                    if (confirm("Bu ürünü silmek istediğinize emin misiniz?")) {
+                      deleteMutation.mutate(p.id);
+                    }
+                  }}
+                  onUploadImage={(file) => {
+                    setUploadingImageId(p.id);
+                    uploadImageMutation.mutate({ id: p.id, file });
+                  }}
+                  isUploading={uploadingImageId === p.id}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-3 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
+              <Plus className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white mb-0.5">Yeni Ürün Ekle</div>
+              <p className="text-[9px] text-white/40 max-w-[120px] mx-auto leading-tight">
+                Envantere yeni bir ürün veya paket seçeneği ekleyin.
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Add Product Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
