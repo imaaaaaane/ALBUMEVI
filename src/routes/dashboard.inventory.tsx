@@ -174,7 +174,7 @@ function SortableProductCard({
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
-          {(p.name || "").toLowerCase().includes('panoramik') ? (
+          {p.category === 'Panoramik' ? (
             <>
               <div className="flex justify-between">
                 <span>5 Sayfa:</span>
@@ -223,12 +223,13 @@ function Inventory() {
     "5": "0",
     "10": "0",
   };
-  const [form, setForm] = useState({ name: "", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
+  const [form, setForm] = useState({ name: "", category: "Diğer", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
     id: string;
     name: string;
+    category: string;
     image_url: string | null;
     file: File | null;
     base_price: number;
@@ -236,6 +237,7 @@ function Inventory() {
   }>({
     id: "",
     name: "",
+    category: "Diğer",
     image_url: null,
     file: null,
     base_price: 0,
@@ -378,6 +380,7 @@ function Inventory() {
   const addMutation = useMutation({
     mutationFn: async (input: {
       name: string;
+      category: string;
       base_price: number;
       sayfa_fiyatlari: Record<string, string>;
     }) => {
@@ -385,6 +388,7 @@ function Inventory() {
         .from("products")
         .insert({
           name: input.name,
+          category: input.category,
           base_price: input.base_price,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
           team_id: teamId === "all" ? null : teamId,
@@ -399,7 +403,7 @@ function Inventory() {
       toast.success("Ürün başarıyla eklendi");
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
-      setForm({ name: "", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
+      setForm({ name: "", category: "Diğer", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
     },
     onError: (e: Error) => toast.error(e.message || "Ürün eklenemedi"),
   });
@@ -408,6 +412,7 @@ function Inventory() {
     mutationFn: async (input: {
       id: string;
       name: string;
+      category: string;
       image_url: string | null;
       file: File | null;
       base_price: number;
@@ -438,6 +443,7 @@ function Inventory() {
         .from("products")
         .update({
           name: input.name,
+          category: input.category,
           image_url: finalImageUrl,
           base_price: input.base_price,
           sayfa_fiyatlari: input.sayfa_fiyatlari,
@@ -572,6 +578,7 @@ function Inventory() {
     }
     addMutation.mutate({
       name: form.name.trim(),
+      category: form.category,
       base_price: form.base_price,
       sayfa_fiyatlari: form.sayfa_fiyatlari,
     });
@@ -586,6 +593,7 @@ function Inventory() {
     updateMutation.mutate({
       id: editForm.id,
       name: editForm.name.trim(),
+      category: editForm.category,
       image_url: editForm.image_url,
       file: editForm.file,
       base_price: editForm.base_price,
@@ -602,16 +610,15 @@ function Inventory() {
   };
 
   products.forEach((p: any) => {
-    const name = (p.name || '').toLowerCase();
-    const cat = (p.category || '').toLowerCase();
+    const cat = p.category;
     
-    if (cat.includes('panoramik') || name.includes('panoramik')) {
+    if (cat === 'Panoramik') {
       groupedProducts['Panoramik'].push(p);
-    } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
+    } else if (cat === 'Canvas') {
       groupedProducts['Canvas'].push(p);
-    } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
+    } else if (cat === 'Baskı') {
       groupedProducts['Baskı'].push(p);
-    } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm') || cat.includes('okul') || name.includes('okul')) {
+    } else if (cat === 'Okul İşleri') {
       groupedProducts['Okul İşleri'].push(p);
     } else {
       groupedProducts['Diğer'].push(p);
@@ -726,6 +733,7 @@ function Inventory() {
                     setEditForm({
                       id: p.id,
                       name: p.name,
+                      category: p.category || "Diğer",
                       base_price: p.base_price || 0,
                       image_url: p.image_url || null,
                       file: null,
@@ -788,9 +796,25 @@ function Inventory() {
                 className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label className="text-white/70">Kategori</Label>
+              <select
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 text-white rounded-xl h-12 px-3 focus-visible:ring-[#A67C52] focus-visible:outline-none"
+              >
+                <option value="Panoramik" className="bg-[#131316]">Panoramik</option>
+                <option value="Baskı" className="bg-[#131316]">Baskı</option>
+                <option value="Canvas" className="bg-[#131316]">Canvas</option>
+                <option value="Okul İşleri" className="bg-[#131316]">Okul İşleri</option>
+                <option value="Diğer" className="bg-[#131316]">Diğer</option>
+              </select>
+            </div>
+
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {(form.name || "").toLowerCase().includes('panoramik') ? (
+              {form.category === 'Panoramik' ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
@@ -874,9 +898,24 @@ function Inventory() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-white/70">Kategori</Label>
+              <select
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 text-white rounded-xl h-12 px-3 focus-visible:ring-[#A67C52] focus-visible:outline-none"
+              >
+                <option value="Panoramik" className="bg-[#131316]">Panoramik</option>
+                <option value="Baskı" className="bg-[#131316]">Baskı</option>
+                <option value="Canvas" className="bg-[#131316]">Canvas</option>
+                <option value="Okul İşleri" className="bg-[#131316]">Okul İşleri</option>
+                <option value="Diğer" className="bg-[#131316]">Diğer</option>
+              </select>
+            </div>
+
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {(editForm.name || "").toLowerCase().includes('panoramik') ? (
+              {editForm.category === 'Panoramik' ? (
                 <div className="grid grid-cols-2 gap-4">
                   {[5, 10].map((num) => (
                     <div key={num} className="space-y-2">
