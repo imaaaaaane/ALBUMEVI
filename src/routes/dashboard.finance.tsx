@@ -255,7 +255,7 @@ function AccountingDashboard() {
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["finance_products"],
     queryFn: async () => {
-      const { data, error } = await supabaseClient.from("products").select("id, name, image_url, category, sayfa_fiyatlari");
+      const { data, error } = await supabaseClient.from("products").select("*");
       if (error) throw error;
       return data || [];
     },
@@ -6097,7 +6097,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("products")
-        .select("id, name, sayfa_fiyatlari")
+        .select("*")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
