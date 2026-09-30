@@ -514,8 +514,9 @@ function AccountingDashboard() {
     queryKey: ["print_expenses_overview", teamId],
     enabled: !!teamId,
     queryFn: async () => {
+      if (!teamId) return [];
       let q = supabaseClient.from("print_expenses").select("amount");
-      if (teamId !== "all") {
+      if (teamId && teamId !== "all") {
         q = q.eq("team_id", teamId);
       }
       const { data, error } = await q;
@@ -2585,17 +2586,9 @@ function FirmsListView({
           if (field === "productId" || field === "sayfa_sayisi") {
             const prod = products.find((p: any) => p.id === updated.productId);
             if (prod) {
-              const c = prod?.category;
-              const n = prod?.name || '';
-              const isPanoramik = c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri', 'Diğer'].includes(c) && n.toLowerCase().includes('panoramik'));
-              
-              if (isPanoramik) {
-                const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
-                const p = parseFloat(customPrice);
-                updated.price = isNaN(p) ? 0 : p;
-              } else {
-                updated.price = Number(prod.base_price) || 0;
-              }
+              const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
+              const p = parseFloat(customPrice);
+              updated.price = isNaN(p) ? 0 : p;
             } else {
               updated.price = 0;
             }
@@ -2959,15 +2952,7 @@ function FirmsListView({
                                                 />
                                                 {p.name}
                                               </div>
-                                              {(() => {
-                                                const c = p?.category;
-                                                const n = p?.name || '';
-                                                const isPanoramik = c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri', 'Diğer'].includes(c) && n.toLowerCase().includes('panoramik'));
-                                                const priceText = isPanoramik 
-                                                  ? `${p.sayfa_fiyatlari?.["5"] || 0} ₺`
-                                                  : `${Number(p.base_price || 0).toLocaleString()} ₺`;
-                                                return <span className="text-white/50 text-xs">{priceText}</span>;
-                                              })()}
+                                              <span className="text-white/50 text-xs">{p.sayfa_fiyatlari?.["5"] || 0} ₺</span>
                                             </div>
                                           ))}
                                         </div>
@@ -6129,12 +6114,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryKey: ["print_expenses", teamId],
     enabled: !!teamId,
     queryFn: async () => {
+      if (!teamId) return [];
+      
       let q = supabaseClient
         .from("print_expenses")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (teamId !== "all") {
+      if (teamId && teamId !== "all") {
         q = q.eq("team_id", teamId);
       }
 
