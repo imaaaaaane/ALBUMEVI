@@ -465,7 +465,7 @@ function AccountingDashboard() {
 
       const { data: ordersData, error: oErr } = await supabaseClient
         .from("orders")
-        .select("id, school_id, order_status");
+        .select("id");
 
       if (tErr)
         return schools.map((s) => ({
