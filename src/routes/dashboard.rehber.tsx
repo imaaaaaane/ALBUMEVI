@@ -96,31 +96,38 @@ function RehberComponent() {
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
       if (serviceId && templateId && publicKey) {
-        const emailData = {
-          service_id: serviceId,
-          template_id: templateId,
-          user_id: publicKey,
-          template_params: {
-            subject: `Yeni Okul Raporu: ${prospect.school_name}`,
-            school_name: prospect.school_name,
-            district: prospect.district,
-            principal_name: prospect.principal_name,
-            principal_phone: prospect.principal_phone,
-            meeting_status: prospect.meeting_status.toUpperCase(),
-            presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
-            photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
-            date: new Date().toLocaleString('tr-TR'),
+        try {
+          const emailData = {
+            service_id: serviceId,
+            template_id: templateId,
+            user_id: publicKey,
+            template_params: {
+              subject: `Yeni Okul Raporu: ${prospect.school_name}`,
+              school_name: prospect.school_name,
+              district: prospect.district,
+              principal_name: prospect.principal_name,
+              principal_phone: prospect.principal_phone,
+              meeting_status: prospect.meeting_status.toUpperCase(),
+              presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
+              photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
+              date: new Date().toLocaleString('tr-TR'),
+            }
+          };
+
+          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(emailData)
+          });
+
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error("EmailJS Error:", errText);
+            throw new Error(`Email gönderilemedi: ${errText}`);
           }
-        };
-
-        const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(emailData)
-        });
-
-        if (!res.ok) {
-          throw new Error("Email gönderilemedi");
+        } catch (error: any) {
+          console.error("Email sending failed:", error);
+          throw new Error(error.message || "Email gönderim hatası");
         }
       } else {
         console.warn("EmailJS yapılandırması eksik, sadece PDF oluşturuluyor.");
@@ -158,22 +165,22 @@ function RehberComponent() {
                   display: flex;
                   justify-content: space-between;
                   align-items: center;
-                  background: #111;
-                  padding: 24px;
+                  background: #fdfbf7;
+                  padding: 24px 32px;
                   border-radius: 12px;
                   margin-bottom: 30px;
                   border-bottom: 3px solid #A67C52;
                 }
                 
                 .brand-img {
-                  height: 48px;
+                  height: 80px;
                   object-fit: contain;
                 }
                 
                 .report-title {
-                  font-size: 14px;
-                  font-weight: 600;
-                  color: #fff;
+                  font-size: 16px;
+                  font-weight: 700;
+                  color: #292524;
                   text-transform: uppercase;
                   letter-spacing: 1px;
                 }
@@ -277,8 +284,8 @@ function RehberComponent() {
             <body>
               <div class="report-container">
                 <div class="header">
-                  <img src="${window.location.origin}/logo-light.png" class="brand-img" alt="ALBÜMEVİ Logo" />
-                  <div class="report-title">Okul CRM Raporu</div>
+                  <img src="${window.location.origin}/logo.jpg" class="brand-img" alt="ALBÜMEVİ Logo" />
+                  <div class="report-title">Okul Görüşme ve Süreç Raporu</div>
                 </div>
                 
                 <div class="section">
@@ -344,6 +351,9 @@ function RehberComponent() {
     },
     onSuccess: () => {
       toast.success("Rapor başarıyla gönderildi ve bildirildi.");
+    },
+    onError: (error) => {
+      toast.error(`Rapor Hatası: ${error.message}`);
     }
   });
 
