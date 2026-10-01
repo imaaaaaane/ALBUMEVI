@@ -6118,7 +6118,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           kalan_tutar: item.amount - rowPaid,
           urun_id: item.urun_id,
           adet: item.adet,
-          // aciklama: item.desc, // REMOVED: Database schema does not have aciklama column
+          aciklama: item.desc,
           team_id: teamId === "all" ? null : teamId,
         };
       });
