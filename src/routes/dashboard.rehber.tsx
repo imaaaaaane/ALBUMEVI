@@ -158,26 +158,22 @@ function RehberComponent() {
                   display: flex;
                   justify-content: space-between;
                   align-items: center;
-                  border-bottom: 2px solid #A67C52;
-                  padding-bottom: 20px;
+                  background: #111;
+                  padding: 24px;
+                  border-radius: 12px;
                   margin-bottom: 30px;
+                  border-bottom: 3px solid #A67C52;
                 }
                 
-                .brand {
-                  font-size: 24px;
-                  font-weight: 700;
-                  color: #1a1a1a;
-                  letter-spacing: -0.5px;
-                }
-                
-                .brand span {
-                  color: #A67C52;
+                .brand-img {
+                  height: 48px;
+                  object-fit: contain;
                 }
                 
                 .report-title {
                   font-size: 14px;
                   font-weight: 600;
-                  color: #666;
+                  color: #fff;
                   text-transform: uppercase;
                   letter-spacing: 1px;
                 }
@@ -281,7 +277,7 @@ function RehberComponent() {
             <body>
               <div class="report-container">
                 <div class="header">
-                  <div class="brand">ALBÜM<span>EVİ</span></div>
+                  <img src="${window.location.origin}/logo-light.png" class="brand-img" alt="ALBÜMEVİ Logo" />
                   <div class="report-title">Okul CRM Raporu</div>
                 </div>
                 
