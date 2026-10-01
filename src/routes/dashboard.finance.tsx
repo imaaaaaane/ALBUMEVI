@@ -515,7 +515,7 @@ function AccountingDashboard() {
   const { data: printExpensesData = [] } = useQuery({
     queryKey: ["baski_kayitlari_overview", teamId],
     queryFn: async () => {
-      let q = supabaseClient.from("baski_kayitlari").select("amount, toplam_tutar");
+      let q = supabaseClient.from("baski_kayitlari").select("*");
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -6066,8 +6066,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     queryFn: async () => {
       let q = supabaseClient
         .from("baski_kayitlari")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*");
 
       const { data, error } = await q;
       console.log('FETCHED DATA:', data, 'FETCH ERROR:', error);
@@ -6082,8 +6081,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           product: t.urun_id ? "Ürün ID: " + t.urun_id : (match ? match[1].trim() : "-"),
           quantity: t.adet ?? (match ? parseFloat(match[2]) : "-"),
           desc: t.aciklama || t.description || (match ? (match[3] ? match[3].trim() : "-") : "-"),
-          amount: t.toplam_tutar ?? t.amount ?? 0,
-          paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
+          amount: t.toplam_tutar ?? 0,
+          paidAmount: t.odenen_tutar ?? 0,
         };
       });
     },
