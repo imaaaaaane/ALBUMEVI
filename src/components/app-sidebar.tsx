@@ -127,6 +127,7 @@ export function AppSidebar() {
     if (role === "photographer") {
       return [
         "/dashboard",
+        "/dashboard/rehber",
         "/dashboard/schools",
         "/dashboard/orders",
         "/dashboard/calendar",
