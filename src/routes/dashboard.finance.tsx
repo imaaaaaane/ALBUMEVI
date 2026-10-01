@@ -511,11 +511,11 @@ function AccountingDashboard() {
   });
 
   const { data: printExpensesData = [] } = useQuery({
-    queryKey: ["print_expenses_overview", teamId],
+    queryKey: ["baski_kayitlari_overview", teamId],
     enabled: !!teamId,
     queryFn: async () => {
       if (!teamId) return [];
-      let q = supabaseClient.from("print_expenses").select("amount");
+      let q = supabaseClient.from("baski_kayitlari").select("amount");
       if (teamId && teamId !== "all") {
         q = q.eq("team_id", teamId);
       }
@@ -6111,13 +6111,13 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   });
 
   const { data: baskiTransactions = [] } = useQuery({
-    queryKey: ["print_expenses", teamId],
+    queryKey: ["baski_kayitlari", teamId],
     enabled: !!teamId,
     queryFn: async () => {
       if (!teamId) return [];
       
       let q = supabaseClient
-        .from("print_expenses")
+        .from("baski_kayitlari")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -6156,7 +6156,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       paid: number;
       remaining: number;
     }) => {
-      const { error: txErr } = await supabaseClient.from("print_expenses").insert({
+      const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert({
         amount: amount,
         description: desc,
         paid_amount: paid,
@@ -6166,8 +6166,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       if (txErr) throw txErr;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
@@ -6184,12 +6184,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
   const deleteBaskiExpenseMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabaseClient.from("print_expenses").delete().eq("id", id);
+      const { error } = await supabaseClient.from("baski_kayitlari").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt silindi");
     },
@@ -6199,7 +6199,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     mutationFn: async (input: { id: string; amount: number; paid: number; desc: string }) => {
       const remaining = input.amount - input.paid;
       const { error } = await supabaseClient
-        .from("print_expenses")
+        .from("baski_kayitlari")
         .update({
           amount: input.amount,
           paid_amount: input.paid,
@@ -6210,8 +6210,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["print_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["print_expenses_overview"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt güncellendi");
       setBaskiEditModalOpen(false);
