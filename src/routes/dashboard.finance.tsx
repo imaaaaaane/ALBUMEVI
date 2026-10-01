@@ -6077,9 +6077,6 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (teamId && teamId !== "all") {
-        q = q.eq("team_id", teamId);
-      }
 
       const { data, error } = await q;
       if (error) throw error;
@@ -6090,11 +6087,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         return {
           id: t.id,
           date: new Date(t.created_at).toISOString().split("T")[0],
-          product: match ? match[1].trim() : "-",
-          quantity: match ? parseFloat(match[2]) : (t.adet || "-"),
-          desc: match ? (match[3] ? match[3].trim() : "-") : (t.aciklama || t.description || "-"),
-          amount: t.toplam_tutar !== undefined && t.toplam_tutar !== null ? t.toplam_tutar : t.amount,
-          paidAmount: t.odenen_tutar !== undefined && t.odenen_tutar !== null ? t.odenen_tutar : (t.paid_amount || 0),
+          product: t.urun_id ? "Ürün ID: " + t.urun_id : (match ? match[1].trim() : "-"),
+          quantity: t.adet ?? (match ? parseFloat(match[2]) : "-"),
+          desc: t.aciklama || t.description || (match ? (match[3] ? match[3].trim() : "-") : "-"),
+          amount: t.toplam_tutar ?? t.amount ?? 0,
+          paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
         };
       });
     },
