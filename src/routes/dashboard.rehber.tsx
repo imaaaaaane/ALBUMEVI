@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Send, Phone, MapPin, Building2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Send, Phone, MapPin, Building2, User, ChevronDown, ChevronUp, Edit2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ interface Prospect {
 function RehberComponent() {
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProspect, setEditingProspect] = useState<Prospect | null>(null);
 
   // Form states
   const [schoolName, setSchoolName] = useState("");
@@ -88,6 +89,36 @@ function RehberComponent() {
       toast.success("Durum güncellendi.");
     },
   });
+
+  const deleteProspectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("rehber_prospects").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rehber_prospects"] });
+      toast.success("Okul rehberden silindi.");
+    },
+    onError: (error) => {
+      toast.error("Silme hatası: " + error.message);
+    }
+  });
+
+  const editProspectMutation = useMutation({
+    mutationFn: async (updates: Partial<Prospect> & { id: string }) => {
+      const { id, ...data } = updates;
+      const { error } = await supabase.from("rehber_prospects").update(data).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rehber_prospects"] });
+      toast.success("Okul bilgileri güncellendi.");
+      setEditingProspect(null);
+    },
+    onError: (error) => {
+      toast.error("Güncelleme hatası: " + error.message);
+    }
+  });
   const filteredAndSortedProspects = prospects
     .filter((p) => 
       p.school_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -104,6 +135,14 @@ function RehberComponent() {
       principal_name: principalName,
       principal_phone: principalPhone,
     });
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingProspect) return;
+    if (!editingProspect.school_name || !editingProspect.district) {
+      return toast.error("Okul adı ve bölge zorunludur.");
+    }
+    editProspectMutation.mutate(editingProspect);
   };
 
   return (
@@ -148,6 +187,12 @@ function RehberComponent() {
                 key={item.id || index} 
                 item={item} 
                 updateProspectMutation={updateProspectMutation} 
+                onEdit={() => setEditingProspect(item)}
+                onDelete={() => {
+                  if (window.confirm("Bu okulu rehberden silmek istediğinize emin misiniz?")) {
+                    deleteProspectMutation.mutate(item.id);
+                  }
+                }}
               />
             ))
           )}
@@ -208,11 +253,64 @@ function RehberComponent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!editingProspect} onOpenChange={(open) => !open && setEditingProspect(null)}>
+        <DialogContent className="sm:max-w-[425px] bg-[#111111] border-white/10 text-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Okul Düzenle</DialogTitle>
+          </DialogHeader>
+          {editingProspect && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Okul Adı</Label>
+                <Input
+                  value={editingProspect.school_name}
+                  onChange={(e) => setEditingProspect({ ...editingProspect, school_name: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Bölge</Label>
+                <Input
+                  value={editingProspect.district}
+                  onChange={(e) => setEditingProspect({ ...editingProspect, district: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Müdür Adı</Label>
+                <Input
+                  value={editingProspect.principal_name}
+                  onChange={(e) => setEditingProspect({ ...editingProspect, principal_name: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Müdür Telefonu</Label>
+                <Input
+                  value={editingProspect.principal_phone}
+                  onChange={(e) => setEditingProspect({ ...editingProspect, principal_phone: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              disabled={editProspectMutation.isPending}
+              onClick={handleEditSubmit}
+              className="w-full bg-[#A67C52] hover:bg-[#A67C52]/90 text-white"
+            >
+              {editProspectMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function SchoolCard({ item, updateProspectMutation }: { item: Prospect, updateProspectMutation: any }) {
+function SchoolCard({ item, updateProspectMutation, onEdit, onDelete }: { item: Prospect, updateProspectMutation: any, onEdit: () => void, onDelete: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -320,6 +418,31 @@ function SchoolCard({ item, updateProspectMutation }: { item: Prospect, updatePr
                 }
               }}
             />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-white/5 mt-4 pt-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
 
         </motion.div>
