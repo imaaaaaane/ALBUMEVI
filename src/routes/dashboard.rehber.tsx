@@ -90,14 +90,43 @@ function RehberComponent() {
 
   const sendReportMutation = useMutation({
     mutationFn: async (prospect: Prospect) => {
-      // 1. Create notification in database for CEO
-      const { error } = await supabase.from("notifications").insert([
-        { message: `Yeni okul raporu: ${prospect.school_name} (${prospect.district})` }
-      ]);
-      if (error) throw error;
+      // Send Email Notification via EmailJS
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+      if (serviceId && templateId && publicKey) {
+        const emailData = {
+          service_id: serviceId,
+          template_id: templateId,
+          user_id: publicKey,
+          template_params: {
+            subject: `Yeni Okul Raporu: ${prospect.school_name}`,
+            school_name: prospect.school_name,
+            district: prospect.district,
+            principal_name: prospect.principal_name,
+            principal_phone: prospect.principal_phone,
+            meeting_status: prospect.meeting_status.toUpperCase(),
+            presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
+            photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
+            date: new Date().toLocaleString('tr-TR'),
+          }
+        };
+
+        const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(emailData)
+        });
+
+        if (!res.ok) {
+          throw new Error("Email gönderilemedi");
+        }
+      } else {
+        console.warn("EmailJS yapılandırması eksik, sadece PDF oluşturuluyor.");
+      }
 
       // 2. Generate lightweight PDF using native window.print() approach for simplicity
-      // In a real app we could use jspdf here
       const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(`
