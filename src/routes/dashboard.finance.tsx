@@ -6080,7 +6080,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         
         return {
           id: t.id,
-          date: t.created_at ? new Date(t.created_at).toLocaleDateString('tr-TR') : "-",
+          date: t.created_at ? new Date(t.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-",
           product: "-",
           quantity: t.adet ?? fallbackQty,
           desc: t.aciklama || t.description || "-",
@@ -6203,13 +6203,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
   const handleExportBaskiPDF = () => {
-    const columns = ["Tarih", "Açıklama", "Ürün/Ölçü", "Adet", "Tutar", "Ödenen", "Kalan"];
+    const columns = ["Tarih", "Açıklama", "Adet", "Tutar", "Ödenen", "Kalan"];
     const data = filteredBaskiTransactions.map((tx: any) => {
       const remaining = tx.amount - tx.paidAmount;
       return [
         tx.date,
         tx.desc,
-        tx.product,
         tx.quantity.toString(),
         `${tx.amount.toLocaleString()} ₺`,
         `${tx.paidAmount.toLocaleString()} ₺`,
@@ -6219,7 +6218,6 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
     data.push([
       "GENEL TOPLAM",
-      "",
       "",
       "",
       `${genelToplam.toLocaleString()} ₺`,
@@ -6296,7 +6294,6 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <tr>
                   <th className="px-4 py-3 font-semibold rounded-tl-xl">Tarih</th>
                   <th className="px-4 py-3 font-semibold">Açıklama</th>
-                  <th className="px-4 py-3 font-semibold">Ürün/Ölçü</th>
                   <th className="px-4 py-3 font-semibold text-center">Adet</th>
                   <th className="px-4 py-3 font-semibold text-right">Tutar (₺)</th>
                   <th className="px-4 py-3 font-semibold text-right">Ödenen (₺)</th>
@@ -6308,7 +6305,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 {filteredBaskiTransactions.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4"
                     >
                       Henüz işlem bulunmuyor.
@@ -6322,15 +6319,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     >
                       <td className="px-4 py-3 whitespace-nowrap">{tx.date}</td>
                       <td className="px-4 py-3 font-medium text-white">{tx.desc}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{tx.product}</td>
                       <td className="px-4 py-3 text-center font-mono">{tx.quantity}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-[#A67C52]">
+                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
                         {Number(tx.amount || 0).toLocaleString()} ₺
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">
+                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
                         {Number(tx.paidAmount || 0).toLocaleString()} ₺
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-rose-400">
+                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
                         {Number((tx.amount || 0) - (tx.paidAmount || 0)).toLocaleString()} ₺
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
@@ -6360,19 +6356,19 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={3}
                       className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white"
                     >
                       Genel Toplam:
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
+                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
                       {genelToplam.toLocaleString()} ₺
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-emerald-400">
+                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
                       {totalBaskiPaid.toLocaleString()} ₺
                     </td>
                     <td
-                      className={`px-4 py-4 text-right text-lg font-bold ${totalBaskiRemaining < 0 ? "text-[#12B76A]" : "text-rose-400"}`}
+                      className="px-4 py-4 text-right text-lg font-bold text-white"
                     >
                       {Math.abs(totalBaskiRemaining).toLocaleString()} ₺
                     </td>
