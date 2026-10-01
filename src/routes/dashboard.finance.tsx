@@ -6071,20 +6071,26 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { data, error } = await q;
       console.log('FETCHED DATA:', data, 'FETCH ERROR:', error);
       if (error) throw error;
-      return (data || []).map((t) => {
-        const match = String(t.description || "").match(
-          /^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i,
-        );
+      const mapped = (data || []).map((t) => {
+        let fallbackQty: number | string = "-";
+        if (t.description) {
+          const qtyMatch = String(t.description).match(/\((\d+)\s*Adet\)/i);
+          if (qtyMatch) fallbackQty = parseFloat(qtyMatch[1]);
+        }
+        
         return {
           id: t.id,
-          date: new Date(t.created_at).toISOString().split("T")[0],
+          date: t.created_at ? new Date(t.created_at).toISOString().split("T")[0] : "",
           product: t.urun_id ? "Ürün ID: " + t.urun_id : "-",
-          quantity: t.adet ?? (match ? parseFloat(match[2]) : "-"),
+          quantity: t.adet ?? fallbackQty,
           desc: t.aciklama || t.description || "-",
           amount: t.toplam_tutar ?? t.amount ?? 0,
           paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
+          rawDate: t.created_at ? new Date(t.created_at).getTime() : 0,
         };
       });
+
+      return mapped.sort((a, b) => b.rawDate - a.rawDate);
     },
   });
 
