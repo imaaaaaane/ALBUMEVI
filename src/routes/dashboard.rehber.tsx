@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import emailjs from '@emailjs/browser';
-import { Plus, Send, Phone, MapPin, Building2, User, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Send, Phone, MapPin, Building2, User, ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -43,6 +42,7 @@ function RehberComponent() {
   const [district, setDistrict] = useState("");
   const [principalName, setPrincipalName] = useState("");
   const [principalPhone, setPrincipalPhone] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: prospects = [], isLoading } = useQuery<Prospect[]>({
     queryKey: ["rehber_prospects"],
@@ -88,266 +88,13 @@ function RehberComponent() {
       toast.success("Durum güncellendi.");
     },
   });
+  const filteredAndSortedProspects = prospects
+    .filter((p) => 
+      p.school_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.district.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.school_name.localeCompare(b.school_name, 'tr'));
 
-  const sendReportMutation = useMutation({
-    mutationFn: async (prospect: Prospect) => {
-      // Send Email Notification via EmailJS
-      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
-      if (!serviceId || !templateId || !publicKey) {
-        console.warn("EmailJS yapılandırması eksik, ancak gönderim yine de deneniyor...");
-      }
-
-      try {
-        const templateParams = {
-          subject: `Yeni Okul Raporu: ${prospect.school_name}`,
-          school_name: prospect.school_name,
-          district: prospect.district,
-          principal_name: prospect.principal_name,
-          principal_phone: prospect.principal_phone,
-          meeting_status: prospect.meeting_status.toUpperCase(),
-          notes: prospect.notes || "Not eklenmedi.",
-          date: new Date().toLocaleString('tr-TR'),
-        };
-
-        // OPEN PDF POPUP SYNCHRONOUSLY BEFORE AWAIT
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <title>Rapor: ${prospect.school_name}</title>
-                <style>
-                  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-                  
-                  body { 
-                    font-family: 'Inter', sans-serif; 
-                    padding: 0; 
-                    margin: 0;
-                    color: #1a1a1a; 
-                    background: #fff;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                  }
-                  
-                  .report-container {
-                    max-width: 800px;
-                    margin: 0 auto;
-                    padding: 40px;
-                  }
-                  
-                  .header { 
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background: #fdfbf7;
-                    padding: 24px 32px;
-                    border-radius: 12px;
-                    margin-bottom: 30px;
-                    border-bottom: 3px solid #A67C52;
-                  }
-                  
-                  .brand-img {
-                    height: 80px;
-                    object-fit: contain;
-                  }
-                  
-                  .report-title {
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #292524;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                  }
-                  
-                  .section {
-                    background: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 12px;
-                    padding: 24px;
-                    margin-bottom: 24px;
-                  }
-                  
-                  .section-title {
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #1a1a1a;
-                    margin-top: 0;
-                    margin-bottom: 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                  }
-                  
-                  .info-grid { 
-                    display: grid; 
-                    grid-template-columns: repeat(2, 1fr); 
-                    gap: 20px; 
-                  }
-                  
-                  .info-item {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                  }
-                  
-                  .label { 
-                    font-size: 12px;
-                    font-weight: 500; 
-                    color: #6c757d;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                  }
-                  
-                  .value {
-                    font-size: 15px;
-                    font-weight: 500;
-                    color: #212529;
-                  }
-                  
-                  .status-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                  }
-                  
-                  .status-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid #e9ecef;
-                  }
-                  
-                  .status-row:last-child {
-                    border-bottom: none;
-                    padding-bottom: 0;
-                  }
-                  
-                  .status-label {
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: #495057;
-                  }
-                  
-                  .badge {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                  }
-                  
-                  .badge-success { background: #d1e7dd; color: #0f5132; }
-                  .badge-danger { background: #f8d7da; color: #842029; }
-                  .badge-neutral { background: #e2e3e5; color: #41464b; }
-                  
-                  .footer {
-                    margin-top: 40px;
-                    padding-top: 20px;
-                    border-top: 1px solid #e9ecef;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 12px;
-                    color: #adb5bd;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="report-container">
-                  <div class="header">
-                    <img src="${window.location.origin}/logo.jpg" class="brand-img" alt="ALBÜMEVİ Logo" />
-                    <div class="report-title">Okul Görüşme ve Süreç Raporu</div>
-                  </div>
-                  
-                  <div class="section">
-                    <h2 class="section-title">Genel Bilgiler</h2>
-                    <div class="info-grid">
-                      <div class="info-item">
-                        <span class="label">Okul Adı</span>
-                        <span class="value">${prospect.school_name}</span>
-                      </div>
-                      <div class="info-item">
-                        <span class="label">Bölge</span>
-                        <span class="value">${prospect.district}</span>
-                      </div>
-                      <div class="info-item">
-                        <span class="label">Müdür Adı</span>
-                        <span class="value">${prospect.principal_name || '-'}</span>
-                      </div>
-                      <div class="info-item">
-                        <span class="label">Telefon</span>
-                        <span class="value">${prospect.principal_phone || '-'}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="section">
-                    <h2 class="section-title">Süreç Durumu</h2>
-                    <div class="status-grid">
-                      <div class="status-row">
-                        <span class="status-label">Görüşme Durumu</span>
-                        <span class="badge ${prospect.meeting_status === 'olumlu' ? 'badge-success' : prospect.meeting_status === 'olumsuz' ? 'badge-danger' : 'badge-neutral'}">
-                          ${prospect.meeting_status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="section">
-                    <h2 class="section-title">Notlar</h2>
-                    <div style="font-size: 14px; color: #495057; line-height: 1.5; white-space: pre-wrap;">
-                      ${prospect.notes || 'Herhangi bir not eklenmedi.'}
-                    </div>
-                  </div>
-                  
-                  <div class="footer">
-                    <span>Bu rapor ALBÜMEVİ CRM sistemi tarafından otomatik oluşturulmuştur.</span>
-                    <span>Oluşturulma: ${new Date().toLocaleString('tr-TR')}</span>
-                  </div>
-                </div>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-          printWindow.focus();
-          setTimeout(() => {
-            printWindow.print();
-          }, 250);
-        } else {
-          toast.error("Tarayıcı rapor penceresini engelledi. Pop-up engelleyiciyi kapatın.");
-        }
-
-        console.log("Starting EmailJS send...");
-        const res = await emailjs.send(
-          serviceId || "service_2dkbbzz", 
-          templateId || "template_gzcxthq", 
-          templateParams, 
-          { publicKey: publicKey || "pd1WtDJWsep8YDdaS" }
-        );
-        if (res.status !== 200) {
-          console.error("EmailJS Error:", res.text);
-          throw new Error(`Email gönderilemedi: ${res.text}`);
-        }
-      } catch (error: any) {
-        console.error("Email sending failed:", error);
-        throw new Error(error.text || error.message || "Email gönderim hatası");
-      }
-    },
-    onSuccess: () => {
-      toast.success("Rapor başarıyla gönderildi ve bildirildi.");
-    },
-    onError: (error) => {
-      toast.error(`Rapor Hatası: ${error.message}`);
-    }
-  });
 
   const handleAddSubmit = () => {
     if (!schoolName || !district) return toast.error("Okul adı ve bölge zorunludur.");
@@ -379,20 +126,28 @@ function RehberComponent() {
           </Button>
         </div>
 
+        <div className="relative max-w-md w-full">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Okul adı veya bölge ara..."
+            className="w-full bg-white/5 border-white/10 text-white placeholder-gray-400 h-11 rounded-xl pr-10 focus-visible:ring-[#A67C52]"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             <div className="text-white/50 col-span-full">Yükleniyor...</div>
-          ) : prospects.length === 0 ? (
+          ) : filteredAndSortedProspects.length === 0 ? (
             <div className="text-white/50 col-span-full py-10 text-center">
-              Henüz rehbere okul eklenmedi.
+              Arama kriterlerine uygun okul bulunamadı.
             </div>
           ) : (
-            prospects.map((item, index) => (
+            filteredAndSortedProspects.map((item, index) => (
               <SchoolCard 
                 key={item.id || index} 
                 item={item} 
                 updateProspectMutation={updateProspectMutation} 
-                sendReportMutation={sendReportMutation} 
               />
             ))
           )}
@@ -457,7 +212,7 @@ function RehberComponent() {
   );
 }
 
-function SchoolCard({ item, updateProspectMutation, sendReportMutation }: { item: Prospect, updateProspectMutation: any, sendReportMutation: any }) {
+function SchoolCard({ item, updateProspectMutation }: { item: Prospect, updateProspectMutation: any }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -475,8 +230,18 @@ function SchoolCard({ item, updateProspectMutation, sendReportMutation }: { item
             <Building2 className="w-5 h-5 text-[#A67C52]" />
             {item.school_name}
           </h3>
-          <div className="flex items-center text-sm text-[#9E9696] mt-1 gap-1">
-            <MapPin className="w-3.5 h-3.5" /> {item.district}
+          <div className="flex items-center text-sm text-[#9E9696] mt-1 gap-2">
+            <div className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" /> {item.district}
+            </div>
+            <span className="text-white/20">•</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+              item.meeting_status === 'olumlu' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+              item.meeting_status === 'olumsuz' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+              'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+            }`}>
+              {item.meeting_status}
+            </span>
           </div>
         </div>
         <div className="text-[#9E9696]">
@@ -551,13 +316,6 @@ function SchoolCard({ item, updateProspectMutation, sendReportMutation }: { item
             />
           </div>
 
-          <Button
-            onClick={() => sendReportMutation.mutate(item)}
-            disabled={sendReportMutation.isPending}
-            className="w-full mt-4 bg-white/5 hover:bg-white/10 text-white border border-white/10"
-          >
-            <FileText className="w-4 h-4 mr-2 text-[#A67C52]" /> Rapor Gönder
-          </Button>
         </motion.div>
       )}
     </motion.div>
