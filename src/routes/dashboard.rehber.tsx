@@ -96,32 +96,33 @@ function RehberComponent() {
       const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-      if (serviceId && templateId && publicKey) {
-        try {
-          const templateParams = {
-            subject: `Yeni Okul Raporu: ${prospect.school_name}`,
-            school_name: prospect.school_name,
-            district: prospect.district,
-            principal_name: prospect.principal_name,
-            principal_phone: prospect.principal_phone,
-            meeting_status: prospect.meeting_status.toUpperCase(),
-            presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
-            photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
-            date: new Date().toLocaleString('tr-TR'),
-          };
+      if (!serviceId || !templateId || !publicKey) {
+        console.warn("EmailJS yapılandırması eksik, ancak gönderim yine de deneniyor...");
+      }
 
-          const res = await emailjs.send(serviceId, templateId, templateParams, publicKey);
-          
-          if (res.status !== 200) {
-            console.error("EmailJS Error:", res.text);
-            throw new Error(`Email gönderilemedi: ${res.text}`);
-          }
-        } catch (error: any) {
-          console.error("Email sending failed:", error);
-          throw new Error(error.text || error.message || "Email gönderim hatası");
+      try {
+        const templateParams = {
+          subject: `Yeni Okul Raporu: ${prospect.school_name}`,
+          school_name: prospect.school_name,
+          district: prospect.district,
+          principal_name: prospect.principal_name,
+          principal_phone: prospect.principal_phone,
+          meeting_status: prospect.meeting_status.toUpperCase(),
+          presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
+          photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
+          date: new Date().toLocaleString('tr-TR'),
+        };
+
+        console.log("Starting EmailJS send...");
+        const res = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+        
+        if (res.status !== 200) {
+          console.error("EmailJS Error:", res.text);
+          throw new Error(`Email gönderilemedi: ${res.text}`);
         }
-      } else {
-        console.warn("EmailJS yapılandırması eksik, sadece PDF oluşturuluyor.");
+      } catch (error: any) {
+        console.error("Email sending failed:", error);
+        throw new Error(error.text || error.message || "Email gönderim hatası");
       }
 
       // 2. Generate lightweight PDF using native window.print() approach for simplicity
