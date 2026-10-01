@@ -6504,7 +6504,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                               value={p.name + " " + p.id}
                               onSelect={() => {
                                 setBaskiSelectedProduct(p.id);
-                                const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 1);
+                                const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 1);
                                 setBaskiRemainingAmount(total.toString());
                                 setBaskiPaidAmount("0");
                                 document.dispatchEvent(
@@ -6519,7 +6519,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                                   baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0",
                                 )}
                               />
-                              {p.name} ({p.sayfa_fiyatlari?.["5"] || 0} ₺)
+                              {p.name} ({p.base_price || 0} ₺)
                             </CommandItem>
                           ))}
                       </CommandGroup>
@@ -6538,7 +6538,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   setBaskiQuantity(e.target.value);
                   const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                   if (p) {
-                    const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(e.target.value) || 0);
+                    const total = (parseFloat(p.base_price || "0")) * (parseFloat(e.target.value) || 0);
                     const paid = parseFloat(baskiPaidAmount) || 0;
                     setBaskiRemainingAmount((total - paid).toString());
                   }
@@ -6567,7 +6567,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     setBaskiPaidAmount(e.target.value);
                     const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                     if (p) {
-                      const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 0);
+                      const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 0);
                       const paid = parseFloat(e.target.value) || 0;
                       setBaskiRemainingAmount((total - paid).toString());
                     }
@@ -6592,7 +6592,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
                   {(
-                    (parseFloat(productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.sayfa_fiyatlari?.["5"] || "0") ||
+                    (parseFloat(productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || "0") ||
                       0) * (parseFloat(baskiQuantity) || 0)
                   ).toLocaleString("tr-TR")}{" "}
                   ₺
@@ -6611,7 +6611,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               onClick={() => {
                 const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
                 if (p) {
-                  const total = (parseFloat(p.sayfa_fiyatlari?.["5"] || "0")) * (parseFloat(baskiQuantity) || 0);
+                  const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 0);
                   const desc = `${p.name} (${parseFloat(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
                   addBaskiExpenseMutation.mutate({
                     amount: total,
