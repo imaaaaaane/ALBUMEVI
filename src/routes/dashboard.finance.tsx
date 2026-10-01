@@ -514,13 +514,8 @@ function AccountingDashboard() {
 
   const { data: printExpensesData = [] } = useQuery({
     queryKey: ["baski_kayitlari_overview", teamId],
-    enabled: !!teamId,
     queryFn: async () => {
-      if (!teamId) return [];
-      let q = supabaseClient.from("baski_kayitlari").select("amount");
-      if (teamId && teamId !== "all") {
-        q = q.eq("team_id", teamId);
-      }
+      let q = supabaseClient.from("baski_kayitlari").select("amount, toplam_tutar");
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -528,7 +523,7 @@ function AccountingDashboard() {
   });
 
   const totalPaidBaski = printExpensesData.reduce(
-    (sum, item) => sum + (Number(item.amount) || 0),
+    (sum, item) => sum + (Number(item.toplam_tutar ?? item.amount) || 0),
     0,
   );
 
@@ -6068,10 +6063,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
   const { data: baskiTransactions = [] } = useQuery({
     queryKey: ["baski_kayitlari", teamId],
-    enabled: !!teamId,
     queryFn: async () => {
-      if (!teamId) return [];
-      
       let q = supabaseClient
         .from("baski_kayitlari")
         .select("*")
