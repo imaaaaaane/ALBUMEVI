@@ -640,54 +640,6 @@ function AccountingDashboard() {
     };
   });
 
-  const handlePasscodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passcode === "2026") {
-      setIsAuthenticated(true);
-    } else {
-      toast.error("Hatalı şifre!");
-      setPasscode("");
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-start pt-[20vh] justify-center min-h-screen">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-[#131316] border border-white/5 shadow-2xl rounded-3xl p-8 max-w-sm w-full mx-auto"
-        >
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-[#A67C52]/20 flex items-center justify-center mb-4">
-              <Lock className="w-8 h-8 text-[#A67C52]" />
-            </div>
-            <h2 className="text-xl font-bold text-white">Muhasebe Girişi</h2>
-            <p className="text-white/50 text-sm mt-2 text-center">Lütfen erişim şifresini girin.</p>
-          </div>
-
-          <form onSubmit={handlePasscodeSubmit}>
-            <div className="space-y-4">
-              <Input
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                autoFocus
-                className="bg-white/5 border-white/10 text-white text-center tracking-[1em] font-mono text-2xl h-14 rounded-xl focus-visible:ring-[#A67C52]"
-              />
-              <Button
-                type="submit"
-                className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full"
-              >
-                Giriş Yap
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <PageTransition className="pb-12">
       <AnimatePresence mode="wait">
@@ -6089,8 +6041,7 @@ interface BaskiListViewProps {
 function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const { teamId } = useAuth();
   const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
-  const [baskiSelectedProduct, setBaskiSelectedProduct] = useState("");
-  const [baskiQuantity, setBaskiQuantity] = useState("1");
+  const [baskiLineItems, setBaskiLineItems] = useState([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
   const [baskiAciklama, setBaskiAciklama] = useState("");
   const [baskiPaidAmount, setBaskiPaidAmount] = useState("");
   const [baskiRemainingAmount, setBaskiRemainingAmount] = useState("");
@@ -6151,25 +6102,28 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
   const addBaskiExpenseMutation = useMutation({
     mutationFn: async ({
-      amount,
-      desc,
+      items,
       paid,
-      remaining,
     }: {
-      amount: number;
-      desc: string;
+      items: { amount: number; desc: string; urun_id: string; adet: number }[];
       paid: number;
-      remaining: number;
     }) => {
-      const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert({
-        toplam_tutar: amount,
-        aciklama: desc,
-        odenen_tutar: paid,
-        kalan_tutar: remaining,
-        urun_id: baskiSelectedProduct,
-        adet: parseInt(baskiQuantity) || 1,
-        team_id: teamId === "all" ? null : teamId,
+      let remainingPaid = paid;
+      const rowsToInsert = items.map((item) => {
+        const rowPaid = Math.min(item.amount, remainingPaid);
+        remainingPaid -= rowPaid;
+        return {
+          toplam_tutar: item.amount,
+          odenen_tutar: rowPaid,
+          kalan_tutar: item.amount - rowPaid,
+          urun_id: item.urun_id,
+          adet: item.adet,
+          // aciklama: item.desc, // REMOVED: Database schema does not have aciklama column
+          team_id: teamId === "all" ? null : teamId,
+        };
       });
+
+      const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
       if (txErr) throw txErr;
     },
     onSuccess: () => {
@@ -6178,8 +6132,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
-      setBaskiQuantity("1");
-      setBaskiSelectedProduct("");
+      setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
       setBaskiAciklama("");
       setBaskiPaidAmount("");
       setBaskiRemainingAmount("");
@@ -6475,83 +6428,93 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             <DialogTitle>Baskı Gideri Ekle</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Ürün (Baskı Boyutu)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 hover:text-white"
-                  >
-                    {baskiSelectedProduct
-                      ? (productsForBaski || []).find((p: any) => p.id === baskiSelectedProduct)?.name ||
-                        "Ürün seçin..."
-                      : "Ürün seçin..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[380px] p-0 bg-[#111111] border-white/10 text-white">
-                  <Command className="bg-[#111111]">
-                    <CommandInput
-                      placeholder="Baskı boyutu ara..."
-                      className="text-white border-none focus:ring-0"
-                    />
-                    <CommandList>
-                      <CommandEmpty>Baskı boyutu bulunamadı.</CommandEmpty>
-                      <CommandGroup>
-                        {productsForBaski
-                          .filter((p: any) => {
-                            const n = (p.name || "").toLowerCase();
-                            return n.includes("baskı") || n.includes("baski");
-                          })
-                          .map((p: any) => (
-                            <CommandItem
-                              key={p.id}
-                              value={p.name + " " + p.id}
-                              onSelect={() => {
-                                setBaskiSelectedProduct(p.id);
-                                const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 1);
-                                setBaskiRemainingAmount(total.toString());
-                                setBaskiPaidAmount("0");
-                                document.dispatchEvent(
-                                  new KeyboardEvent("keydown", { key: "Escape" }),
-                                );
-                              }}
-                              className="text-white hover:bg-white/10 hover:text-white cursor-pointer data-[selected=true]:bg-white/10 data-[selected=true]:text-white"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4 text-[#A67C52]",
-                                  baskiSelectedProduct === p.id ? "opacity-100" : "opacity-0",
-                                )}
-                              />
-                              {p.name} ({p.base_price || 0} ₺)
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid gap-2">
-              <Label>Adet</Label>
-              <Input
-                type="number"
-                min="1"
-                value={baskiQuantity}
-                onChange={(e) => {
-                  setBaskiQuantity(e.target.value);
-                  const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
-                  if (p) {
-                    const total = (parseFloat(p.base_price || "0")) * (parseFloat(e.target.value) || 0);
-                    const paid = parseFloat(baskiPaidAmount) || 0;
-                    setBaskiRemainingAmount((total - paid).toString());
-                  }
-                }}
-                className="bg-white/5 border-white/10 text-white"
-              />
+            <div className="space-y-3">
+              <Label>Ürünler</Label>
+              <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+                {baskiLineItems.map((item) => (
+                  <div key={item.id} className="flex gap-2 items-start">
+                    <div className="flex-1 relative">
+                      <Select
+                        value={item.productId}
+                        onValueChange={(val) => {
+                          setBaskiLineItems((prev) =>
+                            prev.map((i) => (i.id === item.id ? { ...i, productId: val } : i))
+                          );
+                          const total = baskiLineItems.reduce((acc, it) => {
+                            const pid = it.id === item.id ? val : it.productId;
+                            const p = productsForBaski.find((prod: any) => prod.id === pid);
+                            return acc + (parseFloat(p?.base_price || "0") * it.quantity);
+                          }, 0);
+                          const paid = parseFloat(baskiPaidAmount) || 0;
+                          setBaskiRemainingAmount(Math.max(0, total - paid).toString());
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 h-10">
+                          <SelectValue placeholder="Ürün seçin..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#111111] border-white/10 text-white max-h-[300px]">
+                          {productsForBaski
+                            .filter((p: any) => {
+                              const n = (p.name || "").toLowerCase();
+                              return n.includes("baskı") || n.includes("baski");
+                            })
+                            .map((p: any) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} ({p.base_price || 0} ₺)
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-20">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const qty = parseFloat(e.target.value) || 1;
+                          setBaskiLineItems((prev) =>
+                            prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i))
+                          );
+                          const total = baskiLineItems.reduce((acc, it) => {
+                            const q = it.id === item.id ? qty : it.quantity;
+                            const p = productsForBaski.find((prod: any) => prod.id === it.productId);
+                            return acc + (parseFloat(p?.base_price || "0") * q);
+                          }, 0);
+                          const paid = parseFloat(baskiPaidAmount) || 0;
+                          setBaskiRemainingAmount(Math.max(0, total - paid).toString());
+                        }}
+                        className="bg-white/5 border-white/10 text-white text-center h-10 px-2"
+                      />
+                    </div>
+                    {baskiLineItems.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setBaskiLineItems((prev) => prev.filter((i) => i.id !== item.id));
+                          setTimeout(() => {
+                            // Let state update trigger a recalculation (simplified for UI)
+                          }, 10);
+                        }}
+                        className="h-10 w-10 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-md shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBaskiLineItems((prev) => [...prev, { id: Math.random().toString(), productId: "", quantity: 1 }])}
+                className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-md h-9 mt-1 border-dashed"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
+              </Button>
             </div>
             <div className="grid gap-2">
               <Label>Açıklama</Label>
@@ -6572,12 +6535,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   value={baskiPaidAmount}
                   onChange={(e) => {
                     setBaskiPaidAmount(e.target.value);
-                    const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
-                    if (p) {
-                      const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 0);
-                      const paid = parseFloat(e.target.value) || 0;
-                      setBaskiRemainingAmount((total - paid).toString());
-                    }
+                    const total = baskiLineItems.reduce((acc, it) => {
+                      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
+                      return acc + (parseFloat(p?.base_price || "0") * it.quantity);
+                    }, 0);
+                    const paid = parseFloat(e.target.value) || 0;
+                    setBaskiRemainingAmount(Math.max(0, total - paid).toString());
                   }}
                   className="bg-white/5 border-white/10 text-white"
                 />
@@ -6594,14 +6557,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 />
               </div>
             </div>
-            {baskiSelectedProduct && (
+            {baskiLineItems.some(item => item.productId) && (
               <div className="p-3 bg-[#D0A36D]/10 border border-[#D0A36D]/20 rounded-md mt-2 flex justify-between items-center">
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
-                  {(
-                    (parseFloat(productsForBaski.find((p: any) => p.id === baskiSelectedProduct)?.base_price || "0") ||
-                      0) * (parseFloat(baskiQuantity) || 0)
-                  ).toLocaleString("tr-TR")}{" "}
+                  {baskiLineItems.reduce((acc, it) => {
+                    const p = productsForBaski.find((prod: any) => prod.id === it.productId);
+                    return acc + (parseFloat(p?.base_price || "0") * it.quantity);
+                  }, 0).toLocaleString("tr-TR")}{" "}
                   ₺
                 </span>
               </div>
@@ -6610,21 +6573,26 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           <DialogFooter>
             <Button
               disabled={
-                !baskiSelectedProduct ||
-                addBaskiExpenseMutation.isPending ||
-                parseFloat(baskiQuantity) < 1 ||
-                !baskiAciklama.trim()
+                !baskiLineItems.some(i => i.productId) ||
+                addBaskiExpenseMutation.isPending
               }
               onClick={() => {
-                const p = productsForBaski.find((p: any) => p.id === baskiSelectedProduct);
-                if (p) {
-                  const total = (parseFloat(p.base_price || "0")) * (parseFloat(baskiQuantity) || 0);
-                  const desc = `${p.name} (${parseFloat(baskiQuantity) || 0} Adet) - ${baskiAciklama.trim()}`;
+                const validItems = baskiLineItems.filter(item => item.productId && item.quantity > 0);
+                if (validItems.length > 0) {
+                  const itemsToInsert = validItems.map(item => {
+                    const p = productsForBaski.find((prod: any) => prod.id === item.productId);
+                    const amount = (parseFloat(p?.base_price || "0")) * item.quantity;
+                    const desc = `${p?.name} (${item.quantity} Adet) - ${baskiAciklama.trim()}`;
+                    return {
+                      amount,
+                      desc,
+                      urun_id: item.productId,
+                      adet: item.quantity
+                    };
+                  });
                   addBaskiExpenseMutation.mutate({
-                    amount: total,
-                    desc,
+                    items: itemsToInsert,
                     paid: parseFloat(baskiPaidAmount) || 0,
-                    remaining: parseFloat(baskiRemainingAmount) || 0,
                   });
                 }
               }}
