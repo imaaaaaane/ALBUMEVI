@@ -6077,10 +6077,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .select("*")
         .order("created_at", { ascending: false });
 
-
       const { data, error } = await q;
+      console.log('FETCHED DATA:', data, 'FETCH ERROR:', error);
       if (error) throw error;
-      return data.map((t) => {
+      return (data || []).map((t) => {
         const match = String(t.description || "").match(
           /^(.*?)\s*\((\d+)\s*Adet\)(?:\s*-\s*(.*))?$/i,
         );
@@ -6189,10 +6189,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const filteredBaskiTransactions = baskiTransactions
     .filter(
       (tx: any) =>
-        tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tx.product.toLowerCase().includes(searchQuery.toLowerCase()),
+        (tx?.desc?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (tx?.product?.toLowerCase() || "").includes(searchQuery.toLowerCase()),
     )
-    .sort((a: any, b: any) => a.desc.localeCompare(b.desc, "tr"));
+    .sort((a: any, b: any) => (a?.desc || "").localeCompare(b?.desc || "", "tr"));
 
   const genelToplam = filteredBaskiTransactions.reduce(
     (sum: number, item: any) => sum + item.amount,
@@ -6328,13 +6328,13 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                       <td className="px-4 py-3 whitespace-nowrap">{tx.product}</td>
                       <td className="px-4 py-3 text-center font-mono">{tx.quantity}</td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-[#A67C52]">
-                        {tx.amount.toLocaleString()} ₺
+                        {Number(tx.amount || 0).toLocaleString()} ₺
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">
-                        {tx.paidAmount.toLocaleString()} ₺
+                        {Number(tx.paidAmount || 0).toLocaleString()} ₺
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-rose-400">
-                        {(tx.amount - tx.paidAmount).toLocaleString()} ₺
+                        {Number((tx.amount || 0) - (tx.paidAmount || 0)).toLocaleString()} ₺
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
                         <Button
