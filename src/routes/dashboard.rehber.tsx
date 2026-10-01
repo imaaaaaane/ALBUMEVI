@@ -387,10 +387,10 @@ function RehberComponent() {
               Henüz rehbere okul eklenmedi.
             </div>
           ) : (
-            prospects.map((p, index) => (
+            prospects.map((item, index) => (
               <SchoolCard 
-                key={p.id || index} 
-                p={p} 
+                key={item.id || index} 
+                item={item} 
                 updateProspectMutation={updateProspectMutation} 
                 sendReportMutation={sendReportMutation} 
               />
@@ -457,7 +457,7 @@ function RehberComponent() {
   );
 }
 
-function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Prospect, updateProspectMutation: any, sendReportMutation: any }) {
+function SchoolCard({ item, updateProspectMutation, sendReportMutation }: { item: Prospect, updateProspectMutation: any, sendReportMutation: any }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -473,10 +473,10 @@ function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Pros
         <div>
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <Building2 className="w-5 h-5 text-[#A67C52]" />
-            {p.school_name}
+            {item.school_name}
           </h3>
           <div className="flex items-center text-sm text-[#9E9696] mt-1 gap-1">
-            <MapPin className="w-3.5 h-3.5" /> {p.district}
+            <MapPin className="w-3.5 h-3.5" /> {item.district}
           </div>
         </div>
         <div className="text-[#9E9696]">
@@ -492,10 +492,10 @@ function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Pros
         >
           <div className="space-y-2 bg-white/[0.02] p-3 rounded-lg border border-white/5">
             <div className="flex items-center gap-2 text-sm text-gray-300">
-              <User className="w-4 h-4 text-white/50" /> {p.principal_name || "Belirtilmedi"}
+              <User className="w-4 h-4 text-white/50" /> {item.principal_name || "Belirtilmedi"}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-300">
-              <Phone className="w-4 h-4 text-white/50" /> {p.principal_phone || "Belirtilmedi"}
+              <Phone className="w-4 h-4 text-white/50" /> {item.principal_phone || "Belirtilmedi"}
             </div>
           </div>
 
@@ -504,10 +504,10 @@ function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Pros
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#9E9696]">Görüşme</span>
                 <Select
-                  value={p.meeting_status === "yapılmadı" ? "yapılmadı" : "yapıldı"}
-                  onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { meeting_status: val === "yapıldı" ? "olumlu" : "yapılmadı" } })}
+                  value={item.meeting_status === "yapılmadı" ? "yapılmadı" : "yapıldı"}
+                  onValueChange={(val) => updateProspectMutation.mutate({ id: item.id, updates: { meeting_status: val === "yapıldı" ? "olumlu" : "yapılmadı" } })}
                 >
-                  <SelectTrigger className={`w-[120px] h-8 text-xs focus:ring-0 ${p.meeting_status === "yapılmadı" ? "bg-white/5 border-white/10 text-white" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}>
+                  <SelectTrigger className={`w-[120px] h-8 text-xs focus:ring-0 ${item.meeting_status === "yapılmadı" ? "bg-white/5 border-white/10 text-white" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-[#111111] border-white/10 text-white">
@@ -517,14 +517,14 @@ function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Pros
                 </Select>
               </div>
 
-              {p.meeting_status !== "yapılmadı" && (
+              {item.meeting_status !== "yapılmadı" && (
                 <div className="flex items-center justify-between pl-4 border-l border-white/10 ml-1">
                   <span className="text-xs text-[#9E9696]">Sonuç</span>
                   <Select
-                    value={p.meeting_status}
-                    onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { meeting_status: val } })}
+                    value={item.meeting_status}
+                    onValueChange={(val) => updateProspectMutation.mutate({ id: item.id, updates: { meeting_status: val } })}
                   >
-                    <SelectTrigger className={`w-[105px] h-7 text-[11px] focus:ring-0 ${p.meeting_status === "olumlu" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                    <SelectTrigger className={`w-[105px] h-7 text-[11px] focus:ring-0 ${item.meeting_status === "olumlu" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#111111] border-white/10 text-white">
@@ -542,17 +542,17 @@ function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Pros
             <Textarea 
               className="bg-white/5 border-white/10 text-white min-h-[80px] text-sm resize-none"
               placeholder="Okul ile ilgili notlar..."
-              defaultValue={p.notes || ""}
+              defaultValue={item.notes || ""}
               onBlur={(e) => {
-                if (e.target.value !== p.notes) {
-                  updateProspectMutation.mutate({ id: p.id, updates: { notes: e.target.value } });
+                if (e.target.value !== item.notes) {
+                  updateProspectMutation.mutate({ id: item.id, updates: { notes: e.target.value } });
                 }
               }}
             />
           </div>
 
           <Button
-            onClick={() => sendReportMutation.mutate(p)}
+            onClick={() => sendReportMutation.mutate(item)}
             disabled={sendReportMutation.isPending}
             className="w-full mt-4 bg-white/5 hover:bg-white/10 text-white border border-white/10"
           >
