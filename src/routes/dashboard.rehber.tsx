@@ -238,6 +238,7 @@ function SchoolCard({ item, updateProspectMutation }: { item: Prospect, updatePr
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
               item.meeting_status === 'olumlu' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
               item.meeting_status === 'olumsuz' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+              item.meeting_status === 'bekleme' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
               'bg-gray-500/10 text-gray-400 border border-gray-500/20'
             }`}>
               {item.meeting_status}
@@ -289,11 +290,16 @@ function SchoolCard({ item, updateProspectMutation }: { item: Prospect, updatePr
                     value={item.meeting_status}
                     onValueChange={(val) => updateProspectMutation.mutate({ id: item.id, updates: { meeting_status: val } })}
                   >
-                    <SelectTrigger className={`w-[105px] h-7 text-[11px] focus:ring-0 ${item.meeting_status === "olumlu" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                    <SelectTrigger className={`w-[105px] h-7 text-[11px] focus:ring-0 ${
+                      item.meeting_status === "olumlu" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : 
+                      item.meeting_status === "bekleme" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                      "bg-red-500/10 border-red-500/20 text-red-400"
+                    }`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#111111] border-white/10 text-white">
                       <SelectItem value="olumlu">Olumlu</SelectItem>
+                      <SelectItem value="bekleme">Bekleme</SelectItem>
                       <SelectItem value="olumsuz">Olumsuz</SelectItem>
                     </SelectContent>
                   </Select>
