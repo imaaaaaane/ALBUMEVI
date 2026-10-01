@@ -332,7 +332,12 @@ function RehberComponent() {
         }
 
         console.log("Starting EmailJS send...");
-        const res = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+        const res = await emailjs.send(
+          serviceId || "service_2dkbbzz", 
+          templateId || "template_gzcxthq", 
+          templateParams, 
+          { publicKey: publicKey || "pd1WtDJWsep8YDdaS" }
+        );
         if (res.status !== 200) {
           console.error("EmailJS Error:", res.text);
           throw new Error(`Email gönderilemedi: ${res.text}`);
