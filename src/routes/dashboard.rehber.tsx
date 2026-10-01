@@ -130,32 +130,212 @@ function RehberComponent() {
       const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(`
+          <!DOCTYPE html>
           <html>
             <head>
+              <meta charset="utf-8">
               <title>Rapor: ${prospect.school_name}</title>
               <style>
-                body { font-family: sans-serif; padding: 40px; color: #333; }
-                h1 { color: #A67C52; }
-                .info-grid { display: grid; grid-template-columns: 150px 1fr; gap: 10px; margin-top: 20px; }
-                .label { font-weight: bold; color: #666; }
-                .status-box { margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                
+                body { 
+                  font-family: 'Inter', sans-serif; 
+                  padding: 0; 
+                  margin: 0;
+                  color: #1a1a1a; 
+                  background: #fff;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                
+                .report-container {
+                  max-width: 800px;
+                  margin: 0 auto;
+                  padding: 40px;
+                }
+                
+                .header { 
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  border-bottom: 2px solid #A67C52;
+                  padding-bottom: 20px;
+                  margin-bottom: 30px;
+                }
+                
+                .brand {
+                  font-size: 24px;
+                  font-weight: 700;
+                  color: #1a1a1a;
+                  letter-spacing: -0.5px;
+                }
+                
+                .brand span {
+                  color: #A67C52;
+                }
+                
+                .report-title {
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #666;
+                  text-transform: uppercase;
+                  letter-spacing: 1px;
+                }
+                
+                .section {
+                  background: #f8f9fa;
+                  border: 1px solid #e9ecef;
+                  border-radius: 12px;
+                  padding: 24px;
+                  margin-bottom: 24px;
+                }
+                
+                .section-title {
+                  font-size: 16px;
+                  font-weight: 600;
+                  color: #1a1a1a;
+                  margin-top: 0;
+                  margin-bottom: 20px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                }
+                
+                .info-grid { 
+                  display: grid; 
+                  grid-template-columns: repeat(2, 1fr); 
+                  gap: 20px; 
+                }
+                
+                .info-item {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                }
+                
+                .label { 
+                  font-size: 12px;
+                  font-weight: 500; 
+                  color: #6c757d;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+                
+                .value {
+                  font-size: 15px;
+                  font-weight: 500;
+                  color: #212529;
+                }
+                
+                .status-grid {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                }
+                
+                .status-row {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding-bottom: 12px;
+                  border-bottom: 1px solid #e9ecef;
+                }
+                
+                .status-row:last-child {
+                  border-bottom: none;
+                  padding-bottom: 0;
+                }
+                
+                .status-label {
+                  font-size: 14px;
+                  font-weight: 500;
+                  color: #495057;
+                }
+                
+                .badge {
+                  display: inline-flex;
+                  align-items: center;
+                  padding: 6px 12px;
+                  border-radius: 6px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+                
+                .badge-success { background: #d1e7dd; color: #0f5132; }
+                .badge-danger { background: #f8d7da; color: #842029; }
+                .badge-neutral { background: #e2e3e5; color: #41464b; }
+                
+                .footer {
+                  margin-top: 40px;
+                  padding-top: 20px;
+                  border-top: 1px solid #e9ecef;
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 12px;
+                  color: #adb5bd;
+                }
               </style>
             </head>
             <body>
-              <h1>Okul Prospekt Raporu</h1>
-              <div class="info-grid">
-                <div class="label">Okul Adı:</div><div>${prospect.school_name}</div>
-                <div class="label">Bölge:</div><div>${prospect.district}</div>
-                <div class="label">Müdür Adı:</div><div>${prospect.principal_name}</div>
-                <div class="label">Telefon:</div><div>${prospect.principal_phone}</div>
+              <div class="report-container">
+                <div class="header">
+                  <div class="brand">ALBÜM<span>EVİ</span></div>
+                  <div class="report-title">Okul CRM Raporu</div>
+                </div>
+                
+                <div class="section">
+                  <h2 class="section-title">Genel Bilgiler</h2>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="label">Okul Adı</span>
+                      <span class="value">${prospect.school_name}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Bölge</span>
+                      <span class="value">${prospect.district}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Müdür Adı</span>
+                      <span class="value">${prospect.principal_name || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="label">Telefon</span>
+                      <span class="value">${prospect.principal_phone || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="section">
+                  <h2 class="section-title">Süreç Durumu</h2>
+                  <div class="status-grid">
+                    <div class="status-row">
+                      <span class="status-label">Görüşme Durumu</span>
+                      <span class="badge ${prospect.meeting_status === 'olumlu' ? 'badge-success' : prospect.meeting_status === 'olumsuz' ? 'badge-danger' : 'badge-neutral'}">
+                        ${prospect.meeting_status}
+                      </span>
+                    </div>
+                    <div class="status-row">
+                      <span class="status-label">Tanıtım Durumu</span>
+                      <span class="badge ${prospect.presentation_status ? 'badge-success' : 'badge-neutral'}">
+                        ${prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI'}
+                      </span>
+                    </div>
+                    <div class="status-row">
+                      <span class="status-label">Çekim Durumu</span>
+                      <span class="badge ${prospect.photoshoot_status ? 'badge-success' : 'badge-neutral'}">
+                        ${prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="footer">
+                  <span>Bu rapor ALBÜMEVİ CRM sistemi tarafından otomatik oluşturulmuştur.</span>
+                  <span>Oluşturulma: ${new Date().toLocaleString('tr-TR')}</span>
+                </div>
               </div>
-              <div class="status-box">
-                <h2>Süreç Durumu</h2>
-                <p><strong>Görüşme:</strong> <span style="text-transform: uppercase;">${prospect.meeting_status}</span></p>
-                <p><strong>Tanıtım:</strong> ${prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI'}</p>
-                <p><strong>Çekim:</strong> ${prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI'}</p>
-              </div>
-              <p style="margin-top: 50px; font-size: 12px; color: #999;">Oluşturulma Tarihi: ${new Date().toLocaleString('tr-TR')}</p>
             </body>
           </html>
         `);
@@ -237,21 +417,40 @@ function RehberComponent() {
                   </div>
 
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#9E9696]">Görüşme</span>
-                      <Select
-                        value={p.meeting_status}
-                        onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { meeting_status: val } })}
-                      >
-                        <SelectTrigger className="w-[120px] h-8 text-xs bg-white/5 border-white/10 text-white focus:ring-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-white/10 text-white">
-                          <SelectItem value="yapılmadı">Yapılmadı</SelectItem>
-                          <SelectItem value="olumlu">Olumlu</SelectItem>
-                          <SelectItem value="olumsuz">Olumsuz</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#9E9696]">Görüşme</span>
+                        <Select
+                          value={p.meeting_status === "yapılmadı" ? "yapılmadı" : "yapıldı"}
+                          onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { meeting_status: val === "yapıldı" ? "olumlu" : "yapılmadı" } })}
+                        >
+                          <SelectTrigger className={`w-[120px] h-8 text-xs focus:ring-0 ${p.meeting_status === "yapılmadı" ? "bg-white/5 border-white/10 text-white" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111111] border-white/10 text-white">
+                            <SelectItem value="yapılmadı">Yapılmadı</SelectItem>
+                            <SelectItem value="yapıldı">Yapıldı</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {p.meeting_status !== "yapılmadı" && (
+                        <div className="flex items-center justify-between pl-4 border-l border-white/10 ml-1">
+                          <span className="text-xs text-[#9E9696]">Sonuç</span>
+                          <Select
+                            value={p.meeting_status}
+                            onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { meeting_status: val } })}
+                          >
+                            <SelectTrigger className={`w-[105px] h-7 text-[11px] focus:ring-0 ${p.meeting_status === "olumlu" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#111111] border-white/10 text-white">
+                              <SelectItem value="olumlu">Olumlu</SelectItem>
+                              <SelectItem value="olumsuz">Olumsuz</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -260,7 +459,7 @@ function RehberComponent() {
                         value={p.presentation_status ? "yapıldı" : "yapılmadı"}
                         onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { presentation_status: val === "yapıldı" } })}
                       >
-                        <SelectTrigger className="w-[120px] h-8 text-xs bg-white/5 border-white/10 text-white focus:ring-0">
+                        <SelectTrigger className={`w-[120px] h-8 text-xs focus:ring-0 ${!p.presentation_status ? "bg-white/5 border-white/10 text-white" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-[#111111] border-white/10 text-white">
@@ -276,7 +475,7 @@ function RehberComponent() {
                         value={p.photoshoot_status ? "yapıldı" : "yapılmadı"}
                         onValueChange={(val) => updateProspectMutation.mutate({ id: p.id, updates: { photoshoot_status: val === "yapıldı" } })}
                       >
-                        <SelectTrigger className="w-[120px] h-8 text-xs bg-white/5 border-white/10 text-white focus:ring-0">
+                        <SelectTrigger className={`w-[120px] h-8 text-xs focus:ring-0 ${!p.photoshoot_status ? "bg-white/5 border-white/10 text-white" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-[#111111] border-white/10 text-white">
