@@ -464,7 +464,7 @@ function SchoolCard({ item, updateProspectMutation, sendReportMutation }: { item
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-[#131316] border border-white/5 p-6 rounded-2xl flex flex-col justify-between overflow-hidden"
+      className="bg-[#131316] border border-white/5 p-6 rounded-2xl flex flex-col justify-between overflow-hidden h-fit"
     >
       <div 
         className="cursor-pointer flex items-center justify-between"
