@@ -135,6 +135,7 @@ interface Expense {
   total_debt: number;
   total_paid: number;
   sira?: number;
+  description?: string;
 }
 
 interface SchoolTransaction {
@@ -432,7 +433,7 @@ function AccountingDashboard() {
     queryFn: async () => {
       const { data: expenses, error: sErr } = await supabaseClient
         .from("common_expenses")
-        .select("id, name, currency, total_debt, total_paid, created_at, sira")
+        .select("id, name, currency, total_debt, total_paid, created_at, sira, description")
         .order("sira", { ascending: true });
       if (sErr) return [];
 
@@ -443,6 +444,7 @@ function AccountingDashboard() {
         total_debt: Number(s.total_debt) || 0,
         total_paid: Number(s.total_paid) || 0,
         sira: s.sira,
+        description: s.description,
       }));
     },
   });
@@ -4902,6 +4904,9 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
                                 <span className="text-xs font-semibold text-[#9E9696] uppercase tracking-wider mt-0.5 block">
                                   Sabit / Değişken Gider
                                 </span>
+                                {f.description && (
+                                  <p className="text-sm text-gray-400 mt-1">{f.description}</p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-8 justify-between sm:justify-end flex-1 sm:flex-none">
