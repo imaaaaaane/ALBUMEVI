@@ -113,9 +113,226 @@ function RehberComponent() {
           date: new Date().toLocaleString('tr-TR'),
         };
 
+        // OPEN PDF POPUP SYNCHRONOUSLY BEFORE AWAIT
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="utf-8">
+                <title>Rapor: ${prospect.school_name}</title>
+                <style>
+                  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                  
+                  body { 
+                    font-family: 'Inter', sans-serif; 
+                    padding: 0; 
+                    margin: 0;
+                    color: #1a1a1a; 
+                    background: #fff;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                  }
+                  
+                  .report-container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 40px;
+                  }
+                  
+                  .header { 
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: #fdfbf7;
+                    padding: 24px 32px;
+                    border-radius: 12px;
+                    margin-bottom: 30px;
+                    border-bottom: 3px solid #A67C52;
+                  }
+                  
+                  .brand-img {
+                    height: 80px;
+                    object-fit: contain;
+                  }
+                  
+                  .report-title {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #292524;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                  }
+                  
+                  .section {
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 12px;
+                    padding: 24px;
+                    margin-bottom: 24px;
+                  }
+                  
+                  .section-title {
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #1a1a1a;
+                    margin-top: 0;
+                    margin-bottom: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  }
+                  
+                  .info-grid { 
+                    display: grid; 
+                    grid-template-columns: repeat(2, 1fr); 
+                    gap: 20px; 
+                  }
+                  
+                  .info-item {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                  }
+                  
+                  .label { 
+                    font-size: 12px;
+                    font-weight: 500; 
+                    color: #6c757d;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  }
+                  
+                  .value {
+                    font-size: 15px;
+                    font-weight: 500;
+                    color: #212529;
+                  }
+                  
+                  .status-grid {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                  }
+                  
+                  .status-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid #e9ecef;
+                  }
+                  
+                  .status-row:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                  }
+                  
+                  .status-label {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #495057;
+                  }
+                  
+                  .badge {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  }
+                  
+                  .badge-success { background: #d1e7dd; color: #0f5132; }
+                  .badge-danger { background: #f8d7da; color: #842029; }
+                  .badge-neutral { background: #e2e3e5; color: #41464b; }
+                  
+                  .footer {
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 1px solid #e9ecef;
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 12px;
+                    color: #adb5bd;
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="report-container">
+                  <div class="header">
+                    <img src="${window.location.origin}/logo.jpg" class="brand-img" alt="ALBÜMEVİ Logo" />
+                    <div class="report-title">Okul Görüşme ve Süreç Raporu</div>
+                  </div>
+                  
+                  <div class="section">
+                    <h2 class="section-title">Genel Bilgiler</h2>
+                    <div class="info-grid">
+                      <div class="info-item">
+                        <span class="label">Okul Adı</span>
+                        <span class="value">${prospect.school_name}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="label">Bölge</span>
+                        <span class="value">${prospect.district}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="label">Müdür Adı</span>
+                        <span class="value">${prospect.principal_name || '-'}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="label">Telefon</span>
+                        <span class="value">${prospect.principal_phone || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="section">
+                    <h2 class="section-title">Süreç Durumu</h2>
+                    <div class="status-grid">
+                      <div class="status-row">
+                        <span class="status-label">Görüşme Durumu</span>
+                        <span class="badge ${prospect.meeting_status === 'olumlu' ? 'badge-success' : prospect.meeting_status === 'olumsuz' ? 'badge-danger' : 'badge-neutral'}">
+                          ${prospect.meeting_status}
+                        </span>
+                      </div>
+                      <div class="status-row">
+                        <span class="status-label">Tanıtım Durumu</span>
+                        <span class="badge ${prospect.presentation_status ? 'badge-success' : 'badge-neutral'}">
+                          ${prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI'}
+                        </span>
+                      </div>
+                      <div class="status-row">
+                        <span class="status-label">Çekim Durumu</span>
+                        <span class="badge ${prospect.photoshoot_status ? 'badge-success' : 'badge-neutral'}">
+                          ${prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="footer">
+                    <span>Bu rapor ALBÜMEVİ CRM sistemi tarafından otomatik oluşturulmuştur.</span>
+                    <span>Oluşturulma: ${new Date().toLocaleString('tr-TR')}</span>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        } else {
+          toast.error("Tarayıcı rapor penceresini engelledi. Pop-up engelleyiciyi kapatın.");
+        }
+
         console.log("Starting EmailJS send...");
         const res = await emailjs.send(serviceId, templateId, templateParams, publicKey);
-        
         if (res.status !== 200) {
           console.error("EmailJS Error:", res.text);
           throw new Error(`Email gönderilemedi: ${res.text}`);
@@ -123,222 +340,6 @@ function RehberComponent() {
       } catch (error: any) {
         console.error("Email sending failed:", error);
         throw new Error(error.text || error.message || "Email gönderim hatası");
-      }
-
-      // 2. Generate lightweight PDF using native window.print() approach for simplicity
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Rapor: ${prospect.school_name}</title>
-              <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-                
-                body { 
-                  font-family: 'Inter', sans-serif; 
-                  padding: 0; 
-                  margin: 0;
-                  color: #1a1a1a; 
-                  background: #fff;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
-                }
-                
-                .report-container {
-                  max-width: 800px;
-                  margin: 0 auto;
-                  padding: 40px;
-                }
-                
-                .header { 
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  background: #fdfbf7;
-                  padding: 24px 32px;
-                  border-radius: 12px;
-                  margin-bottom: 30px;
-                  border-bottom: 3px solid #A67C52;
-                }
-                
-                .brand-img {
-                  height: 80px;
-                  object-fit: contain;
-                }
-                
-                .report-title {
-                  font-size: 16px;
-                  font-weight: 700;
-                  color: #292524;
-                  text-transform: uppercase;
-                  letter-spacing: 1px;
-                }
-                
-                .section {
-                  background: #f8f9fa;
-                  border: 1px solid #e9ecef;
-                  border-radius: 12px;
-                  padding: 24px;
-                  margin-bottom: 24px;
-                }
-                
-                .section-title {
-                  font-size: 16px;
-                  font-weight: 600;
-                  color: #1a1a1a;
-                  margin-top: 0;
-                  margin-bottom: 20px;
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                }
-                
-                .info-grid { 
-                  display: grid; 
-                  grid-template-columns: repeat(2, 1fr); 
-                  gap: 20px; 
-                }
-                
-                .info-item {
-                  display: flex;
-                  flex-direction: column;
-                  gap: 4px;
-                }
-                
-                .label { 
-                  font-size: 12px;
-                  font-weight: 500; 
-                  color: #6c757d;
-                  text-transform: uppercase;
-                  letter-spacing: 0.5px;
-                }
-                
-                .value {
-                  font-size: 15px;
-                  font-weight: 500;
-                  color: #212529;
-                }
-                
-                .status-grid {
-                  display: flex;
-                  flex-direction: column;
-                  gap: 16px;
-                }
-                
-                .status-row {
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  padding-bottom: 12px;
-                  border-bottom: 1px solid #e9ecef;
-                }
-                
-                .status-row:last-child {
-                  border-bottom: none;
-                  padding-bottom: 0;
-                }
-                
-                .status-label {
-                  font-size: 14px;
-                  font-weight: 500;
-                  color: #495057;
-                }
-                
-                .badge {
-                  display: inline-flex;
-                  align-items: center;
-                  padding: 6px 12px;
-                  border-radius: 6px;
-                  font-size: 12px;
-                  font-weight: 600;
-                  text-transform: uppercase;
-                  letter-spacing: 0.5px;
-                }
-                
-                .badge-success { background: #d1e7dd; color: #0f5132; }
-                .badge-danger { background: #f8d7da; color: #842029; }
-                .badge-neutral { background: #e2e3e5; color: #41464b; }
-                
-                .footer {
-                  margin-top: 40px;
-                  padding-top: 20px;
-                  border-top: 1px solid #e9ecef;
-                  display: flex;
-                  justify-content: space-between;
-                  font-size: 12px;
-                  color: #adb5bd;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="report-container">
-                <div class="header">
-                  <img src="${window.location.origin}/logo.jpg" class="brand-img" alt="ALBÜMEVİ Logo" />
-                  <div class="report-title">Okul Görüşme ve Süreç Raporu</div>
-                </div>
-                
-                <div class="section">
-                  <h2 class="section-title">Genel Bilgiler</h2>
-                  <div class="info-grid">
-                    <div class="info-item">
-                      <span class="label">Okul Adı</span>
-                      <span class="value">${prospect.school_name}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="label">Bölge</span>
-                      <span class="value">${prospect.district}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="label">Müdür Adı</span>
-                      <span class="value">${prospect.principal_name || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                      <span class="label">Telefon</span>
-                      <span class="value">${prospect.principal_phone || '-'}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="section">
-                  <h2 class="section-title">Süreç Durumu</h2>
-                  <div class="status-grid">
-                    <div class="status-row">
-                      <span class="status-label">Görüşme Durumu</span>
-                      <span class="badge ${prospect.meeting_status === 'olumlu' ? 'badge-success' : prospect.meeting_status === 'olumsuz' ? 'badge-danger' : 'badge-neutral'}">
-                        ${prospect.meeting_status}
-                      </span>
-                    </div>
-                    <div class="status-row">
-                      <span class="status-label">Tanıtım Durumu</span>
-                      <span class="badge ${prospect.presentation_status ? 'badge-success' : 'badge-neutral'}">
-                        ${prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI'}
-                      </span>
-                    </div>
-                    <div class="status-row">
-                      <span class="status-label">Çekim Durumu</span>
-                      <span class="badge ${prospect.photoshoot_status ? 'badge-success' : 'badge-neutral'}">
-                        ${prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="footer">
-                  <span>Bu rapor ALBÜMEVİ CRM sistemi tarafından otomatik oluşturulmuştur.</span>
-                  <span>Oluşturulma: ${new Date().toLocaleString('tr-TR')}</span>
-                </div>
-              </div>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 250);
       }
     },
     onSuccess: () => {
