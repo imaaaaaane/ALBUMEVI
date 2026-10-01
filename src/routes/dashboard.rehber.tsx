@@ -388,7 +388,7 @@ function RehberComponent() {
             </div>
           ) : (
             prospects.map((p, index) => (
-              <ProspectCard 
+              <SchoolCard 
                 key={p.id || index} 
                 p={p} 
                 updateProspectMutation={updateProspectMutation} 
@@ -457,8 +457,8 @@ function RehberComponent() {
   );
 }
 
-function ProspectCard({ p, updateProspectMutation, sendReportMutation }: { p: Prospect, updateProspectMutation: any, sendReportMutation: any }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function SchoolCard({ p, updateProspectMutation, sendReportMutation }: { p: Prospect, updateProspectMutation: any, sendReportMutation: any }) {
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <motion.div
@@ -468,7 +468,7 @@ function ProspectCard({ p, updateProspectMutation, sendReportMutation }: { p: Pr
     >
       <div 
         className="cursor-pointer flex items-center justify-between"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setIsOpen(!isOpen)}
       >
         <div>
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -480,11 +480,11 @@ function ProspectCard({ p, updateProspectMutation, sendReportMutation }: { p: Pr
           </div>
         </div>
         <div className="text-[#9E9696]">
-          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </div>
       </div>
 
-      {isExpanded && (
+      {isOpen && (
         <motion.div 
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
