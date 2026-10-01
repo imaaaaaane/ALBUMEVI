@@ -6091,10 +6091,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           id: t.id,
           date: new Date(t.created_at).toISOString().split("T")[0],
           product: match ? match[1].trim() : "-",
-          quantity: match ? parseFloat(match[2]) : "-",
-          desc: match ? (match[3] ? match[3].trim() : "-") : t.description || "-",
-          amount: t.amount,
-          paidAmount: t.paid_amount || 0,
+          quantity: match ? parseFloat(match[2]) : (t.adet || "-"),
+          desc: match ? (match[3] ? match[3].trim() : "-") : (t.aciklama || t.description || "-"),
+          amount: t.toplam_tutar !== undefined && t.toplam_tutar !== null ? t.toplam_tutar : t.amount,
+          paidAmount: t.odenen_tutar !== undefined && t.odenen_tutar !== null ? t.odenen_tutar : (t.paid_amount || 0),
         };
       });
     },
@@ -6126,10 +6126,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
       if (txErr) throw txErr;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
       setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
@@ -6147,10 +6148,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { error } = await supabaseClient.from("baski_kayitlari").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt silindi");
     },
   });
@@ -6169,10 +6171,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .eq("id", input.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
+      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
       toast.success("Kayıt güncellendi");
       setBaskiEditModalOpen(false);
     },
