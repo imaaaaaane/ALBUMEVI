@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import emailjs from '@emailjs/browser';
 import { Plus, Send, Phone, MapPin, Building2, User, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -97,37 +98,27 @@ function RehberComponent() {
 
       if (serviceId && templateId && publicKey) {
         try {
-          const emailData = {
-            service_id: serviceId,
-            template_id: templateId,
-            user_id: publicKey,
-            template_params: {
-              subject: `Yeni Okul Raporu: ${prospect.school_name}`,
-              school_name: prospect.school_name,
-              district: prospect.district,
-              principal_name: prospect.principal_name,
-              principal_phone: prospect.principal_phone,
-              meeting_status: prospect.meeting_status.toUpperCase(),
-              presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
-              photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
-              date: new Date().toLocaleString('tr-TR'),
-            }
+          const templateParams = {
+            subject: `Yeni Okul Raporu: ${prospect.school_name}`,
+            school_name: prospect.school_name,
+            district: prospect.district,
+            principal_name: prospect.principal_name,
+            principal_phone: prospect.principal_phone,
+            meeting_status: prospect.meeting_status.toUpperCase(),
+            presentation_status: prospect.presentation_status ? 'YAPILDI' : 'YAPILMADI',
+            photoshoot_status: prospect.photoshoot_status ? 'YAPILDI' : 'YAPILMADI',
+            date: new Date().toLocaleString('tr-TR'),
           };
 
-          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(emailData)
-          });
-
-          if (!res.ok) {
-            const errText = await res.text();
-            console.error("EmailJS Error:", errText);
-            throw new Error(`Email gönderilemedi: ${errText}`);
+          const res = await emailjs.send(serviceId, templateId, templateParams, publicKey);
+          
+          if (res.status !== 200) {
+            console.error("EmailJS Error:", res.text);
+            throw new Error(`Email gönderilemedi: ${res.text}`);
           }
         } catch (error: any) {
           console.error("Email sending failed:", error);
-          throw new Error(error.message || "Email gönderim hatası");
+          throw new Error(error.text || error.message || "Email gönderim hatası");
         }
       } else {
         console.warn("EmailJS yapılandırması eksik, sadece PDF oluşturuluyor.");
