@@ -6080,8 +6080,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         
         return {
           id: t.id,
-          date: t.created_at ? new Date(t.created_at).toISOString().split("T")[0] : "",
-          product: t.urun_id ? "Ürün ID: " + t.urun_id : "-",
+          date: t.created_at ? new Date(t.created_at).toLocaleDateString('tr-TR') : "-",
+          product: "-",
           quantity: t.adet ?? fallbackQty,
           desc: t.aciklama || t.description || "-",
           amount: t.toplam_tutar ?? t.amount ?? 0,
