@@ -6162,10 +6162,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       remaining: number;
     }) => {
       const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert({
-        amount: amount,
-        description: desc,
-        paid_amount: paid,
-        remaining_amount: remaining,
+        toplam_tutar: amount,
+        aciklama: desc,
+        odenen_tutar: paid,
+        kalan_tutar: remaining,
+        urun_id: baskiSelectedProduct,
+        adet: parseInt(baskiQuantity) || 1,
         team_id: teamId === "all" ? null : teamId,
       });
       if (txErr) throw txErr;
@@ -6206,10 +6208,10 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { error } = await supabaseClient
         .from("baski_kayitlari")
         .update({
-          amount: input.amount,
-          paid_amount: input.paid,
-          remaining_amount: remaining > 0 ? remaining : 0,
-          description: input.desc,
+          toplam_tutar: input.amount,
+          odenen_tutar: input.paid,
+          kalan_tutar: remaining > 0 ? remaining : 0,
+          aciklama: input.desc,
         })
         .eq("id", input.id);
       if (error) throw error;
