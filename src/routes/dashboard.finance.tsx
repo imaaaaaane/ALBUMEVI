@@ -6078,11 +6078,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         return {
           id: t.id,
           date: new Date(t.created_at).toISOString().split("T")[0],
-          product: t.urun_id ? "Ürün ID: " + t.urun_id : (match ? match[1].trim() : "-"),
+          product: t.urun_id ? "Ürün ID: " + t.urun_id : "-",
           quantity: t.adet ?? (match ? parseFloat(match[2]) : "-"),
-          desc: t.aciklama || t.description || (match ? (match[3] ? match[3].trim() : "-") : "-"),
-          amount: t.toplam_tutar ?? 0,
-          paidAmount: t.odenen_tutar ?? 0,
+          desc: t.aciklama || t.description || "-",
+          amount: t.toplam_tutar ?? t.amount ?? 0,
+          paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
         };
       });
     },
