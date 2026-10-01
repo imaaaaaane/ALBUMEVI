@@ -23,6 +23,7 @@ import {
   Moon,
   Sun,
   Box,
+  PhoneCall,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -54,6 +55,7 @@ import { toast } from "sonner";
 
 const SIDEBAR_ITEMS = [
   { title: "Genel Bakış", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Rehber", url: "/dashboard/rehber", icon: PhoneCall },
   { title: "Okul Yönetimi", url: "/dashboard/schools", icon: School },
   { title: "Siparişler", url: "/dashboard/orders", icon: ClipboardList },
   { title: "Ürün Envanteri", url: "/dashboard/inventory", icon: Package },

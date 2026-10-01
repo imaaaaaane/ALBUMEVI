@@ -17,13 +17,14 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardCalendarRouteImport } from './routes/dashboard.calendar'
 import { Route as DashboardEbatlamaRouteImport } from './routes/dashboard.ebatlama'
 import { Route as DashboardFinanceRouteImport } from './routes/dashboard.finance'
-import { Route as DashboardInventoryRouteImport } from './routes/dashboard.inventory'
 import { Route as DashboardHamMaddeRouteImport } from './routes/dashboard.ham-madde'
+import { Route as DashboardInventoryRouteImport } from './routes/dashboard.inventory'
 import { Route as DashboardMaliyetRouteImport } from './routes/dashboard.maliyet'
 import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardOrdersRouteImport } from './routes/dashboard.orders'
 import { Route as DashboardPhotographersRouteImport } from './routes/dashboard.photographers'
 import { Route as DashboardPortfolioRouteImport } from './routes/dashboard.portfolio'
+import { Route as DashboardRehberRouteImport } from './routes/dashboard.rehber'
 import { Route as DashboardSchoolsRouteImport } from './routes/dashboard.schools'
 import { Route as PortalSchoolIdRouteImport } from './routes/portal.$schoolId'
 import { Route as SchoolSlugRouteImport } from './routes/school.$slug'
@@ -68,15 +69,14 @@ const DashboardFinanceRoute = DashboardFinanceRouteImport.update({
   path: '/finance',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardInventoryRoute = DashboardInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => DashboardRoute,
-} as any)
-
 const DashboardHamMaddeRoute = DashboardHamMaddeRouteImport.update({
   id: '/ham-madde',
   path: '/ham-madde',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardInventoryRoute = DashboardInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardMaliyetRoute = DashboardMaliyetRouteImport.update({
@@ -104,6 +104,11 @@ const DashboardPortfolioRoute = DashboardPortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardRehberRoute = DashboardRehberRouteImport.update({
+  id: '/rehber',
+  path: '/rehber',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSchoolsRoute = DashboardSchoolsRouteImport.update({
   id: '/schools',
   path: '/schools',
@@ -128,13 +133,14 @@ export interface FileRoutesByFullPath {
   '/dashboard/calendar': typeof DashboardCalendarRoute
   '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
-  '/dashboard/inventory': typeof DashboardInventoryRoute
   '/dashboard/ham-madde': typeof DashboardHamMaddeRoute
+  '/dashboard/inventory': typeof DashboardInventoryRoute
   '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
   '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/rehber': typeof DashboardRehberRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
@@ -147,12 +153,14 @@ export interface FileRoutesByTo {
   '/dashboard/calendar': typeof DashboardCalendarRoute
   '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
+  '/dashboard/ham-madde': typeof DashboardHamMaddeRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
   '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
   '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/rehber': typeof DashboardRehberRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
@@ -167,12 +175,14 @@ export interface FileRoutesById {
   '/dashboard/calendar': typeof DashboardCalendarRoute
   '/dashboard/ebatlama': typeof DashboardEbatlamaRoute
   '/dashboard/finance': typeof DashboardFinanceRoute
+  '/dashboard/ham-madde': typeof DashboardHamMaddeRoute
   '/dashboard/inventory': typeof DashboardInventoryRoute
   '/dashboard/maliyet': typeof DashboardMaliyetRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/orders': typeof DashboardOrdersRoute
   '/dashboard/photographers': typeof DashboardPhotographersRoute
   '/dashboard/portfolio': typeof DashboardPortfolioRoute
+  '/dashboard/rehber': typeof DashboardRehberRoute
   '/dashboard/schools': typeof DashboardSchoolsRoute
   '/portal/$schoolId': typeof PortalSchoolIdRoute
   '/school/$slug': typeof SchoolSlugRoute
@@ -188,13 +198,14 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/ebatlama'
     | '/dashboard/finance'
-    | '/dashboard/inventory'
     | '/dashboard/ham-madde'
+    | '/dashboard/inventory'
     | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/photographers'
     | '/dashboard/portfolio'
+    | '/dashboard/rehber'
     | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
@@ -207,13 +218,14 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/ebatlama'
     | '/dashboard/finance'
-    | '/dashboard/inventory'
     | '/dashboard/ham-madde'
+    | '/dashboard/inventory'
     | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/photographers'
     | '/dashboard/portfolio'
+    | '/dashboard/rehber'
     | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
@@ -227,13 +239,14 @@ export interface FileRouteTypes {
     | '/dashboard/calendar'
     | '/dashboard/ebatlama'
     | '/dashboard/finance'
-    | '/dashboard/inventory'
     | '/dashboard/ham-madde'
+    | '/dashboard/inventory'
     | '/dashboard/maliyet'
     | '/dashboard/notes'
     | '/dashboard/orders'
     | '/dashboard/photographers'
     | '/dashboard/portfolio'
+    | '/dashboard/rehber'
     | '/dashboard/schools'
     | '/portal/$schoolId'
     | '/school/$slug'
@@ -307,18 +320,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardFinanceRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/inventory': {
-      id: '/dashboard/inventory'
-      path: '/inventory'
-      fullPath: '/dashboard/inventory'
-      preLoaderRoute: typeof DashboardInventoryRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/ham-madde': {
       id: '/dashboard/ham-madde'
       path: '/ham-madde'
       fullPath: '/dashboard/ham-madde'
       preLoaderRoute: typeof DashboardHamMaddeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/inventory': {
+      id: '/dashboard/inventory'
+      path: '/inventory'
+      fullPath: '/dashboard/inventory'
+      preLoaderRoute: typeof DashboardInventoryRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/maliyet': {
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPortfolioRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/rehber': {
+      id: '/dashboard/rehber'
+      path: '/rehber'
+      fullPath: '/dashboard/rehber'
+      preLoaderRoute: typeof DashboardRehberRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/schools': {
       id: '/dashboard/schools'
       path: '/schools'
@@ -384,13 +404,14 @@ interface DashboardRouteChildren {
   DashboardCalendarRoute: typeof DashboardCalendarRoute
   DashboardEbatlamaRoute: typeof DashboardEbatlamaRoute
   DashboardFinanceRoute: typeof DashboardFinanceRoute
-  DashboardInventoryRoute: typeof DashboardInventoryRoute
   DashboardHamMaddeRoute: typeof DashboardHamMaddeRoute
+  DashboardInventoryRoute: typeof DashboardInventoryRoute
   DashboardMaliyetRoute: typeof DashboardMaliyetRoute
   DashboardNotesRoute: typeof DashboardNotesRoute
   DashboardOrdersRoute: typeof DashboardOrdersRoute
   DashboardPhotographersRoute: typeof DashboardPhotographersRoute
   DashboardPortfolioRoute: typeof DashboardPortfolioRoute
+  DashboardRehberRoute: typeof DashboardRehberRoute
   DashboardSchoolsRoute: typeof DashboardSchoolsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
@@ -399,13 +420,14 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardCalendarRoute: DashboardCalendarRoute,
   DashboardEbatlamaRoute: DashboardEbatlamaRoute,
   DashboardFinanceRoute: DashboardFinanceRoute,
-  DashboardInventoryRoute: DashboardInventoryRoute,
   DashboardHamMaddeRoute: DashboardHamMaddeRoute,
+  DashboardInventoryRoute: DashboardInventoryRoute,
   DashboardMaliyetRoute: DashboardMaliyetRoute,
   DashboardNotesRoute: DashboardNotesRoute,
   DashboardOrdersRoute: DashboardOrdersRoute,
   DashboardPhotographersRoute: DashboardPhotographersRoute,
   DashboardPortfolioRoute: DashboardPortfolioRoute,
+  DashboardRehberRoute: DashboardRehberRoute,
   DashboardSchoolsRoute: DashboardSchoolsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
