@@ -5264,6 +5264,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           contribution_per_student: input.contribution,
           is_active: true,
           status: "Aktif",
+          show_in_finance: true,
         })
         .select("id, name, currency")
         .single();
