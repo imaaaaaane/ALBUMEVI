@@ -463,6 +463,7 @@ function AccountingDashboard() {
         .select(
           "id, name, currency, created_at, paid_amount, remaining_amount, contribution_per_student",
         )
+        .neq("show_in_finance", false)
         .order("created_at", { ascending: false });
       if (sErr) return [];
 
@@ -5329,8 +5330,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
   const deleteSchoolMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseClient.from("school_transactions").delete().eq("school_id", id);
-      await supabaseClient.from("schools").delete().eq("id", id);
+      await supabaseClient.from("schools").update({ show_in_finance: false }).eq("id", id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
