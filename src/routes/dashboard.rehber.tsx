@@ -44,6 +44,10 @@ function RehberComponent() {
   const [principalName, setPrincipalName] = useState("");
   const [principalPhone, setPrincipalPhone] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [regionFilter, setRegionFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const targetRegions = ["Batman", "Bitlis", "Diyarbakır", "Elazığ", "Mardin", "Siirt", "Şırnak"];
 
   const { data: prospects = [], isLoading } = useQuery<Prospect[]>({
     queryKey: ["rehber_prospects"],
@@ -120,11 +124,18 @@ function RehberComponent() {
     }
   });
   const filteredAndSortedProspects = prospects
-    .filter((p) => 
-      p.school_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.district.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .sort((a, b) => a.school_name.localeCompare(b.school_name, 'tr'));
+    .filter((p) => {
+      const schoolName = p.school_name || "";
+      const district = p.district || "";
+      const meetingStatus = p.meeting_status || "";
+      
+      const matchesSearch = schoolName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            district.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesRegion = regionFilter === 'all' || district.toLowerCase() === regionFilter.toLowerCase();
+      const matchesStatus = statusFilter === 'all' || meetingStatus === statusFilter;
+      return matchesSearch && matchesRegion && matchesStatus;
+    })
+    .sort((a, b) => (a.school_name || "").localeCompare(b.school_name || "", 'tr'));
 
 
   const handleAddSubmit = () => {
@@ -165,13 +176,42 @@ function RehberComponent() {
           </Button>
         </div>
 
-        <div className="relative max-w-md w-full">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Okul adı veya bölge ara..."
-            className="w-full bg-white/5 border-white/10 text-white placeholder-gray-400 h-11 rounded-xl pr-10 focus-visible:ring-[#A67C52]"
-          />
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative max-w-md w-full">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Okul adı veya bölge ara..."
+              className="w-full bg-white/5 border-white/10 text-white placeholder-gray-400 h-11 rounded-xl pr-10 focus-visible:ring-[#A67C52]"
+            />
+          </div>
+          
+          <Select value={regionFilter} onValueChange={setRegionFilter}>
+            <SelectTrigger className="bg-[#131316] border-white/5 text-white h-11 w-full md:w-[200px] rounded-xl">
+              <SelectValue placeholder="Tüm Bölgeler" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#111111] border-white/10 text-white">
+              <SelectItem value="all">Tüm Bölgeler</SelectItem>
+              {targetRegions.map((region) => (
+                <SelectItem key={region} value={region.toLowerCase()}>
+                  {region}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="bg-[#131316] border-white/5 text-white h-11 w-full md:w-[200px] rounded-xl">
+              <SelectValue placeholder="Tüm Durumlar" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#111111] border-white/10 text-white">
+              <SelectItem value="all">Tüm Durumlar</SelectItem>
+              <SelectItem value="olumlu">Olumlu</SelectItem>
+              <SelectItem value="olumsuz">Olumsuz</SelectItem>
+              <SelectItem value="bekleme">Bekleme</SelectItem>
+              <SelectItem value="yapılmadı">Yapılmadı</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -6045,6 +6045,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const [baskiEditAmount, setBaskiEditAmount] = useState("");
   const [baskiEditPaid, setBaskiEditPaid] = useState("");
   const [baskiEditDesc, setBaskiEditDesc] = useState("");
+  const [baskiEditDate, setBaskiEditDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const queryClient = useQueryClient();
@@ -6078,15 +6079,17 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           if (qtyMatch) fallbackQty = parseFloat(qtyMatch[1]);
         }
         
+        const dbDate = t.created_at || t.tarih || t.date || new Date().toISOString();
+
         return {
           id: t.id,
-          date: t.created_at ? new Date(t.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-",
+          date: new Date(dbDate).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
           product: "-",
           quantity: t.adet ?? fallbackQty,
           desc: t.aciklama || t.description || "-",
           amount: t.toplam_tutar ?? t.amount ?? 0,
           paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
-          rawDate: t.created_at ? new Date(t.created_at).getTime() : 0,
+          rawDate: new Date(dbDate).getTime(),
         };
       });
 
@@ -6120,17 +6123,20 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
       if (txErr) throw txErr;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: () => {
       toast.success("Baskı gideri başarıyla kaydedildi.");
       setBaskiModalOpen(false);
       setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
       setBaskiAciklama("");
       setBaskiPaidAmount("");
       setBaskiRemainingAmount("");
+
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
+      ]);
     },
     onError: (error) => {
       toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
@@ -6142,17 +6148,20 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       const { error } = await supabaseClient.from("baski_kayitlari").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: () => {
       toast.success("Kayıt silindi");
+
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
+      ]);
     },
   });
 
   const editBaskiExpenseMutation = useMutation({
-    mutationFn: async (input: { id: string; amount: number; paid: number; desc: string }) => {
+    mutationFn: async (input: { id: string; amount: number; paid: number; desc: string; date: string }) => {
       const remaining = input.amount - input.paid;
       const { error } = await supabaseClient
         .from("baski_kayitlari")
@@ -6161,17 +6170,21 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           odenen_tutar: input.paid,
           kalan_tutar: remaining > 0 ? remaining : 0,
           aciklama: input.desc,
+          created_at: new Date(input.date).toISOString(),
         })
         .eq("id", input.id);
       if (error) throw error;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] });
-      await queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] });
-      await queryClient.invalidateQueries({ queryKey: ["finance_metrics"] });
+    onSuccess: () => {
       toast.success("Kayıt güncellendi");
       setBaskiEditModalOpen(false);
+
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
+      ]);
     },
   });
 
@@ -6180,6 +6193,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     setBaskiEditAmount(String(tx.amount));
     setBaskiEditPaid(String(tx.paidAmount));
     setBaskiEditDesc(tx.desc);
+    setBaskiEditDate(tx.rawDate ? new Date(tx.rawDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16));
     setBaskiEditModalOpen(true);
   };
 
@@ -6604,6 +6618,15 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label>Tarih ve Saat</Label>
+              <Input
+                type="datetime-local"
+                value={baskiEditDate}
+                onChange={(e) => setBaskiEditDate(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label>Açıklama</Label>
               <Input
                 type="text"
@@ -6645,6 +6668,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     amount: parseFloat(baskiEditAmount) || 0,
                     paid: parseFloat(baskiEditPaid) || 0,
                     desc: baskiEditDesc,
+                    date: baskiEditDate,
                   });
                 }
               }}
