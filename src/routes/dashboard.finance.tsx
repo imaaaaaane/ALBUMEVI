@@ -5249,6 +5249,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       name: string;
       currency: string;
       rest: number;
+      taken: number;
       desc: string;
       contribution: number;
     }) => {
@@ -5268,6 +5269,15 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         .single();
       if (sErr) throw sErr;
 
+      if (input.taken > 0) {
+        await supabaseClient.from("school_transactions").insert({
+          school_id: school.id,
+          transaction_type: "debt",
+          amount: input.taken,
+          description: "İlk Satış Kaydı",
+          currency: input.currency,
+        });
+      }
       if (input.rest > 0) {
         await supabaseClient.from("school_transactions").insert({
           school_id: school.id,
@@ -5298,6 +5308,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       name: string;
       currency: string;
       restDiff: number;
+      takenDiff: number;
       paid_amount: number;
       contribution: number;
     }) => {
@@ -5310,6 +5321,16 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           contribution_per_student: input.contribution,
         })
         .eq("id", input.id);
+
+      if (input.takenDiff !== 0) {
+        await supabaseClient.from("school_transactions").insert({
+          school_id: input.id,
+          transaction_type: "debt",
+          amount: input.takenDiff,
+          description: "Bakiye Düzenlemesi (Satış)",
+          currency: input.currency,
+        });
+      }
 
       if (input.restDiff !== 0) {
         await supabaseClient.from("school_transactions").insert({
@@ -5372,6 +5393,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       name: newSchoolName.trim(),
       currency: newSchoolCurrency,
       rest: parseFloat(newSchoolRest) || 0,
+      taken: parseFloat(newSchoolTaken) || 0,
       desc: newSchoolDesc.trim(),
       contribution: parseFloat(newSchoolContribution) || 0,
     });
@@ -5384,12 +5406,18 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     if (!school) return;
     const oldPaid = school.paid_amount || 0;
     const newPaid = parseFloat(editSchoolRest) || 0;
-    const diff = newPaid - oldPaid;
+    const restDiff = newPaid - oldPaid;
+    
+    const oldTaken = school.transactions.filter(tx => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const newTaken = parseFloat(editSchoolTaken) || 0;
+    const takenDiff = newTaken - oldTaken;
+
     editSchoolMutation.mutate({
       id: editSchoolId,
       name: editSchoolName.trim(),
       currency: editSchoolCurrency,
-      restDiff: diff,
+      restDiff,
+      takenDiff,
       paid_amount: newPaid,
       contribution: parseFloat(editSchoolContribution) || 0,
     });
@@ -5428,10 +5456,11 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       columns,
       data,
       summary: [
-        { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
+        { label: "Toplam Satış", value: `${taken.toLocaleString()} ₺` },
         { label: "Katkı Payı", value: `${getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺` },
+        { label: "Net Borç", value: `${(taken - getSchoolContribution(selectedSchool, exchangeRates)).toLocaleString()} ₺` },
         { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
-        { label: "Kalan Borç", value: `${remaining.toLocaleString()} ₺` },
+        { label: "Kalan Ödeme", value: `${remaining.toLocaleString()} ₺` },
       ],
       filename: `${selectedSchool.name.replace(/ /g, "_")}_Okul_Islem_Gecmisi.pdf`,
     });
@@ -5723,6 +5752,19 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">
+                Toplam Satış (₺)
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newSchoolTaken}
+                onChange={(e) => setNewSchoolTaken(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">
                 Okul Katkı Payı (₺)
               </Label>
               <Input
@@ -5801,6 +5843,19 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">
+                Toplam Satış (₺)
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={editSchoolTaken}
+                onChange={(e) => setEditSchoolTaken(e.target.value)}
+                className="h-11 border-white/10 bg-white/5 text-white rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-300">
                 Okul Katkı Payı (₺)
               </Label>
               <Input
@@ -5860,10 +5915,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   </h3>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
-                    Toplam Borç
+                    Toplam Satış
                   </span>
                   <span className="font-mono text-sm font-bold text-white block mt-0.5">
                     {getSchoolDebt(selectedSchool, exchangeRates).toLocaleString()} ₺
@@ -5877,6 +5932,21 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                     {getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺
                   </span>
                 </div>
+                {(() => {
+                  const taken = getSchoolDebt(selectedSchool, exchangeRates);
+                  const contribution = getSchoolContribution(selectedSchool, exchangeRates);
+                  const netDebt = taken - contribution;
+                  return (
+                    <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                      <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                        Net Borç
+                      </span>
+                      <span className="font-mono text-sm font-bold text-white block mt-0.5">
+                        {netDebt.toLocaleString()} ₺
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
                     Ödenen
