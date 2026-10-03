@@ -33,6 +33,16 @@ interface Prospect {
   notes?: string;
 }
 
+const regionMapping: Record<string, string[]> = {
+  "Batman": ["batman", "merkez", "sason", "kozluk", "hasankeyf", "beşiri", "gercüş"],
+  "Diyarbakır": ["diyarbakır", "bismil", "sur", "yenişehir", "kayapınar", "bağlar", "ergani", "çınar", "silvan", "kulp", "lice", "çermik", "dicle", "kocaköy", "hazro", "eğil", "çüngüş"],
+  "Şırnak": ["şırnak", "cizre", "silopi", "idil", "uludere", "beytüşşebap", "güçlükonak"],
+  "Mardin": ["mardin", "midyat", "kızıltepe", "artuklu", "nusaybin", "derik", "mazıdağı", "dargeçit", "savur", "ömerli", "yeşilli"],
+  "Siirt": ["siirt", "kurtalan", "pervari", "baykan", "şirvan", "eruh", "tillo"],
+  "Bitlis": ["bitlis", "tatvan", "ahlat", "hizan", "mutki", "adilcevaz", "güroymak"],
+  "Elazığ": ["elazığ", "merkez", "akovacık", "alacakaya", "arıcak", "baskil", "karakoçan", "keban", "kovancılar", "maden", "palu", "sivrice"]
+};
+
 function RehberComponent() {
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -47,7 +57,7 @@ function RehberComponent() {
   const [regionFilter, setRegionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const targetRegions = ["Batman", "Bismil", "Bitlis", "Cizre", "Diyarbakır", "Elazığ", "Mardin", "Siirt", "Şırnak"];
+  const targetRegions = Object.keys(regionMapping);
 
   const { data: prospects = [], isLoading } = useQuery<Prospect[]>({
     queryKey: ["rehber_prospects"],
@@ -131,7 +141,8 @@ function RehberComponent() {
       
       const matchesSearch = schoolName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             district.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRegion = regionFilter === 'all' || district.toLowerCase() === regionFilter.toLowerCase();
+      const matchesRegion = regionFilter === 'all' || 
+        (regionMapping[regionFilter] && regionMapping[regionFilter].some(d => district.toLowerCase().includes(d)));
       const matchesStatus = statusFilter === 'all' || meetingStatus === statusFilter;
       return matchesSearch && matchesRegion && matchesStatus;
     })
