@@ -189,13 +189,19 @@ const getExpenseRemaining = (f: Expense, rates?: Record<string, number>) =>
   getExpenseDebt(f, rates) - getExpensePaid(f, rates);
 
 const getSchoolPaid = (f: School, rates?: Record<string, number>) =>
-  getConvertedAmount((f.paid_amount || 0) + (f.total_contribution || 0), f.currency, rates);
+  getConvertedAmount(f.paid_amount || 0, f.currency, rates);
 const getSchoolDebt = (f: School, rates?: Record<string, number>) =>
   f.transactions
     .filter((tx) => tx.type === "debt")
     .reduce((sum, tx) => sum + getConvertedAmount(tx.amount, tx.currency || f.currency, rates), 0);
-const getSchoolRemaining = (f: School, rates?: Record<string, number>) =>
-  getSchoolDebt(f, rates) - getSchoolPaid(f, rates);
+const getSchoolContribution = (f: School, rates?: Record<string, number>) =>
+  getConvertedAmount(f.total_contribution || f.contribution_per_student || 0, f.currency, rates);
+const getSchoolRemaining = (f: School, rates?: Record<string, number>) => {
+  const debt = getSchoolDebt(f, rates);
+  const contribution = getSchoolContribution(f, rates);
+  const paid = getSchoolPaid(f, rates);
+  return (debt - contribution) - paid;
+};
 
 function AccountingDashboard() {
   const navigate = useNavigate();
@@ -2535,7 +2541,7 @@ function FirmsListView({
           if (field === "productId" || field === "sayfa_sayisi") {
             const prod = products.find((p: any) => p.id === updated.productId);
             if (prod) {
-              const customPrice = prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
+              const customPrice = prod.base_price || prod.fiyat || prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
               const p = parseFloat(customPrice);
               updated.price = isNaN(p) ? 0 : p;
             } else {
@@ -2901,7 +2907,7 @@ function FirmsListView({
                                                 />
                                                 {p.name}
                                               </div>
-                                              <span className="text-white/50 text-xs">{p.sayfa_fiyatlari?.["5"] || 0} ₺</span>
+                                              <span className="text-white/50 text-xs">{(p.base_price || p.fiyat || p.sayfa_fiyatlari?.["5"] || 0)} ₺</span>
                                             </div>
                                           ))}
                                         </div>
@@ -5423,6 +5429,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       data,
       summary: [
         { label: "Toplam Borç", value: `${taken.toLocaleString()} ₺` },
+        { label: "Katkı Payı", value: `${getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺` },
         { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
         { label: "Kalan Borç", value: `${remaining.toLocaleString()} ₺` },
       ],
@@ -5716,7 +5723,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">
-                Öğrenci Başına Katkı (₺)
+                Okul Katkı Payı (₺)
               </Label>
               <Input
                 type="number"
@@ -5794,7 +5801,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">
-                Öğrenci Başına Katkı (₺)
+                Okul Katkı Payı (₺)
               </Label>
               <Input
                 type="number"
@@ -5853,21 +5860,29 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   </h3>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
-                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
-                    Ödenen
-                  </span>
-                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
-                    {getSchoolPaid(selectedSchool, exchangeRates).toLocaleString()} ₺
-                  </span>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 py-4 bg-white/[0.01] border-b border-white/5">
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                   <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
                     Toplam Borç
                   </span>
                   <span className="font-mono text-sm font-bold text-white block mt-0.5">
                     {getSchoolDebt(selectedSchool, exchangeRates).toLocaleString()} ₺
+                  </span>
+                </div>
+                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Katkı Payı
+                  </span>
+                  <span className="font-mono text-sm font-bold text-[#A67C52] block mt-0.5">
+                    {getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺
+                  </span>
+                </div>
+                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                  <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
+                    Ödenen
+                  </span>
+                  <span className="font-mono text-sm font-bold text-[#12B76A] block mt-0.5">
+                    {getSchoolPaid(selectedSchool, exchangeRates).toLocaleString()} ₺
                   </span>
                 </div>
                 {(() => {
