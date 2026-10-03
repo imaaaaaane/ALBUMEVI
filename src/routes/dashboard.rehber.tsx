@@ -47,7 +47,7 @@ function RehberComponent() {
   const [regionFilter, setRegionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const targetRegions = ["Batman", "Bitlis", "Diyarbakır", "Elazığ", "Mardin", "Siirt", "Şırnak"];
+  const targetRegions = ["Batman", "Bismil", "Bitlis", "Cizre", "Diyarbakır", "Elazığ", "Mardin", "Siirt", "Şırnak"];
 
   const { data: prospects = [], isLoading } = useQuery<Prospect[]>({
     queryKey: ["rehber_prospects"],
