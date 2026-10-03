@@ -141,8 +141,19 @@ function RehberComponent() {
       
       const matchesSearch = schoolName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             district.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRegion = regionFilter === 'all' || 
-        (regionMapping[regionFilter] && regionMapping[regionFilter].some(d => district.toLowerCase().includes(d)));
+      const matchesRegion = regionFilter === 'all' || (() => {
+        // 1. Find the correct key in the mapping regardless of uppercase/lowercase
+        const activeProvinceKey = Object.keys(regionMapping).find(k => k.toLowerCase() === regionFilter.toLowerCase());
+        if (!activeProvinceKey) return false;
+        
+        // 2. Safely normalize the school's district string
+        const schoolDistrict = (district || "").toLowerCase().trim();
+        const validDistricts = regionMapping[activeProvinceKey];
+        
+        // 3. Match if the school district includes the province name itself OR any of its mapped districts
+        return schoolDistrict.includes(activeProvinceKey.toLowerCase()) || 
+               validDistricts.some(d => schoolDistrict.includes(d));
+      })();
       const matchesStatus = statusFilter === 'all' || meetingStatus === statusFilter;
       return matchesSearch && matchesRegion && matchesStatus;
     })
