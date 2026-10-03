@@ -5540,15 +5540,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                       </div>
                       <div>
                         {(() => {
-                          const netBalance = -remaining;
-                          const isPositive = netBalance > 0;
-                          const isNegative = netBalance < 0;
-                          const color = isPositive
-                            ? "text-emerald-500"
-                            : isNegative
-                              ? "text-red-500"
+                          const isOwed = remaining > 0;
+                          const isOverpaid = remaining < 0;
+                          const color = isOwed
+                            ? "text-red-500"
+                            : isOverpaid
+                              ? "text-emerald-500"
                               : "text-white/70";
-                          const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                          const sign = isOverpaid ? "- " : "";
                           return (
                             <>
                               <span className="text-[10px] font-bold text-[#9E9696] uppercase tracking-wider block">
@@ -5556,7 +5555,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                               </span>
                               <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
                                 {sign}
-                                {Math.abs(netBalance).toLocaleString()} ₺
+                                {Math.abs(remaining).toLocaleString()} ₺
                               </span>
                             </>
                           );
@@ -5615,15 +5614,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </h4>
             </div>
             {(() => {
-              const netBalance = -totalRemaining;
-              const isPositive = netBalance > 0;
-              const isNegative = netBalance < 0;
-              const color = isPositive
-                ? "text-emerald-500"
-                : isNegative
-                  ? "text-red-500"
+              const isOwed = totalRemaining > 0;
+              const isOverpaid = totalRemaining < 0;
+              const color = isOwed
+                ? "text-red-500"
+                : isOverpaid
+                  ? "text-emerald-500"
                   : "text-white/70";
-              const sign = isPositive ? "+ " : isNegative ? "- " : "";
+              const sign = isOverpaid ? "- " : "";
               return (
                 <div
                   onClick={() => setBreakdownType("remaining")}
@@ -5634,7 +5632,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
                     {sign}
-                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {Math.abs(Math.round(totalRemaining)).toLocaleString()} ₺
                   </h4>
                 </div>
               );
@@ -5874,15 +5872,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                 </div>
                 {(() => {
                   const rem = getSchoolRemaining(selectedSchool, exchangeRates);
-                  const netBalance = -rem;
-                  const isPositive = netBalance > 0;
-                  const isNegative = netBalance < 0;
-                  const color = isPositive
-                    ? "text-emerald-500"
-                    : isNegative
-                      ? "text-red-500"
+                  const isOwed = rem > 0;
+                  const isOverpaid = rem < 0;
+                  const color = isOwed
+                    ? "text-red-500"
+                    : isOverpaid
+                      ? "text-emerald-500"
                       : "text-white/70";
-                  const sign = isPositive ? "+ " : isNegative ? "- " : "";
+                  const sign = isOverpaid ? "- " : "";
                   return (
                     <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                       <span className="text-[9px] font-bold text-[#9E9696] uppercase tracking-wider block">
@@ -5890,7 +5887,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                       </span>
                       <span className={`font-mono text-sm font-bold block mt-0.5 ${color}`}>
                         {sign}
-                        {Math.abs(netBalance).toLocaleString()} ₺
+                        {Math.abs(rem).toLocaleString()} ₺
                       </span>
                     </div>
                   );
