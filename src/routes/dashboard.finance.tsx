@@ -2523,10 +2523,17 @@ function FirmsListView({
     }
   };
 
+  const getProductPrice = (prod: any, pages?: string) => {
+    if (prod.sayfa_fiyatlari && Object.keys(prod.sayfa_fiyatlari).length > 0) {
+      return Number(prod.sayfa_fiyatlari[pages || "5"]) || 0;
+    }
+    return Number(prod.base_price || prod.fiyat) || 0;
+  };
+
   const addLineItem = () =>
     setLineItems([
       ...lineItems,
-      { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" },
+      { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
     ]);
   const removeLineItem = (id: string) => setLineItems(lineItems.filter((item) => item.id !== id));
 
@@ -2542,9 +2549,7 @@ function FirmsListView({
           if (field === "productId" || field === "sayfa_sayisi") {
             const prod = products.find((p: any) => p.id === updated.productId);
             if (prod) {
-              const customPrice = prod.base_price || prod.fiyat || prod.sayfa_fiyatlari?.[updated.sayfa_sayisi || "5"] || prod.sayfa_fiyatlari?.["5"] || "0";
-              const p = parseFloat(customPrice);
-              updated.price = isNaN(p) ? 0 : p;
+              updated.price = getProductPrice(prod, updated.sayfa_sayisi);
             } else {
               updated.price = 0;
             }
@@ -2908,7 +2913,7 @@ function FirmsListView({
                                                 />
                                                 {p.name}
                                               </div>
-                                              <span className="text-white/50 text-xs">{(p.base_price || p.fiyat || p.sayfa_fiyatlari?.["5"] || 0)} ₺</span>
+                                              <span className="text-white/50 text-xs">{getProductPrice(p, "5")} ₺</span>
                                             </div>
                                           ))}
                                         </div>
@@ -2930,23 +2935,31 @@ function FirmsListView({
                               className="bg-white/5 border-white/10 rounded-xl h-11 text-white text-center px-1"
                             />
                           </div>
-                          <div className="w-20">
-                            <Select
-                              value={item.sayfa_sayisi || "1"}
-                              onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}
-                            >
-                              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11 px-2">
-                                <SelectValue placeholder="Sayfa" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#111111] text-white border-white/10 min-w-[80px]">
-                                {[...Array(10)].map((_, i) => (
-                                  <SelectItem key={i + 1} value={String(i + 1)}>
-                                    {i + 1}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {(() => {
+                            const p = products.find((prod: any) => prod.id === item.productId);
+                            const category = p?.category?.toUpperCase() || "";
+                            const hasPages = p && category !== "CANVAS" && category !== "OKUL İŞLERİ";
+                            if (!hasPages) return null;
+                            return (
+                              <div className="w-20">
+                                <Select
+                                  value={item.sayfa_sayisi || "5"}
+                                  onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}
+                                >
+                                  <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11 px-2">
+                                    <SelectValue placeholder="Sayfa" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-[#111111] text-white border-white/10 min-w-[80px]">
+                                    {[...Array(10)].map((_, i) => (
+                                      <SelectItem key={i + 1} value={String(i + 1)}>
+                                        {i + 1}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          })()}
                           {lineItems.length > 1 && (
                             <Button
                               type="button"
