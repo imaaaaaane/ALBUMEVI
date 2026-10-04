@@ -5308,8 +5308,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       id: string;
       name: string;
       currency: string;
-      restDiff: number;
-      takenDiff: number;
+      taken_amount: number;
       paid_amount: number;
       contribution: number;
     }) => {
@@ -5323,21 +5322,23 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         })
         .eq("id", input.id);
 
-      if (input.takenDiff !== 0) {
+      await supabaseClient.from("school_transactions").delete().eq("school_id", input.id);
+
+      if (input.taken_amount > 0) {
         await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "debt",
-          amount: input.takenDiff,
+          amount: input.taken_amount,
           description: "Bakiye Düzenlemesi (Satış)",
           currency: input.currency,
         });
       }
 
-      if (input.restDiff !== 0) {
+      if (input.paid_amount > 0) {
         await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "payment",
-          amount: input.restDiff,
+          amount: input.paid_amount,
           description: "Bakiye Düzenlemesi (Ödenen)",
           currency: input.currency,
         });
@@ -5405,20 +5406,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     if (!editSchoolId) return;
     const school = schools.find((f) => f.id === editSchoolId);
     if (!school) return;
-    const oldPaid = school.paid_amount || 0;
     const newPaid = parseFloat(editSchoolRest) || 0;
-    const restDiff = newPaid - oldPaid;
-    
-    const oldTaken = school.transactions.filter(tx => tx.type === "debt").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
     const newTaken = parseFloat(editSchoolTaken) || 0;
-    const takenDiff = newTaken - oldTaken;
 
     editSchoolMutation.mutate({
       id: editSchoolId,
       name: editSchoolName.trim(),
       currency: editSchoolCurrency,
-      restDiff,
-      takenDiff,
+      taken_amount: newTaken,
       paid_amount: newPaid,
       contribution: parseFloat(editSchoolContribution) || 0,
     });
