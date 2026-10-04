@@ -2525,9 +2525,9 @@ function FirmsListView({
 
   const getProductPrice = (prod: any, pages?: string) => {
     if (prod.sayfa_fiyatlari && Object.keys(prod.sayfa_fiyatlari).length > 0) {
-      return Number(prod.sayfa_fiyatlari[pages || "5"]) || 0;
+      return Number(prod.sayfa_fiyatlari[pages || ""] || prod.sayfa_fiyatlari["5"] || 0);
     }
-    return Number(prod.base_price || prod.fiyat) || 0;
+    return Number(prod.base_price || prod.fiyat || 0);
   };
 
   const addLineItem = () =>
