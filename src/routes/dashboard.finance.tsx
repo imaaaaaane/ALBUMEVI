@@ -2950,11 +2950,8 @@ function FirmsListView({
                                     <SelectValue placeholder="Sayfa" />
                                   </SelectTrigger>
                                   <SelectContent className="bg-[#111111] text-white border-white/10 min-w-[80px]">
-                                    {[...Array(10)].map((_, i) => (
-                                      <SelectItem key={i + 1} value={String(i + 1)}>
-                                        {i + 1}
-                                      </SelectItem>
-                                    ))}
+                                    <SelectItem value="5">5</SelectItem>
+                                    <SelectItem value="10">10</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
