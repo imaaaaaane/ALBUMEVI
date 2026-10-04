@@ -2524,10 +2524,14 @@ function FirmsListView({
   };
 
   const getProductPrice = (prod: any, pages?: string) => {
+    let price = 0;
     if (prod.sayfa_fiyatlari && Object.keys(prod.sayfa_fiyatlari).length > 0) {
-      return Number(prod.sayfa_fiyatlari[pages || ""] || prod.sayfa_fiyatlari["5"] || 0);
+      price = Number(prod.sayfa_fiyatlari[pages || ""] || prod.sayfa_fiyatlari["5"] || 0);
     }
-    return Number(prod.base_price || prod.fiyat || 0);
+    if (price === 0) {
+      price = Number(prod.base_price || prod.fiyat || 0);
+    }
+    return price;
   };
 
   const addLineItem = () =>
