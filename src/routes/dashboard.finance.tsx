@@ -5285,22 +5285,24 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       if (sErr) throw sErr;
 
       if (input.taken > 0) {
-        await supabaseClient.from("school_transactions").insert({
+        const { error: tErr } = await supabaseClient.from("school_transactions").insert({
           school_id: school.id,
           transaction_type: "debt",
           amount: input.taken,
           description: "İlk Satış Kaydı",
           currency: input.currency,
         });
+        if (tErr) throw tErr;
       }
       if (input.rest > 0) {
-        await supabaseClient.from("school_transactions").insert({
+        const { error: pErr } = await supabaseClient.from("school_transactions").insert({
           school_id: school.id,
           transaction_type: "payment",
           amount: input.rest,
           description: "İlk Ödeme Kaydı",
           currency: input.currency,
         });
+        if (pErr) throw pErr;
       }
       return school;
     },
@@ -5314,6 +5316,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       setNewSchoolRest("");
       setNewSchoolContribution("");
       setNewSchoolCurrency("TRY");
+    },
+    onError: (error: any) => {
+      console.error("addSchoolMutation error:", error);
+      toast.error("Okul eklenirken hata: " + error.message);
     },
   });
 
@@ -5336,32 +5342,39 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         })
         .eq("id", input.id);
 
-      await supabaseClient.from("school_transactions").delete().eq("school_id", input.id);
+      const { error: delErr } = await supabaseClient.from("school_transactions").delete().eq("school_id", input.id);
+      if (delErr) throw delErr;
 
       if (input.taken_amount > 0) {
-        await supabaseClient.from("school_transactions").insert({
+        const { error: tErr } = await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "debt",
           amount: input.taken_amount,
           description: "Bakiye Düzenlemesi (Satış)",
           currency: input.currency,
         });
+        if (tErr) throw tErr;
       }
 
       if (input.paid_amount > 0) {
-        await supabaseClient.from("school_transactions").insert({
+        const { error: pErr } = await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "payment",
           amount: input.paid_amount,
           description: "Bakiye Düzenlemesi (Ödenen)",
           currency: input.currency,
         });
+        if (pErr) throw pErr;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("Okul güncellendi");
       setEditSchoolId(null);
+    },
+    onError: (error: any) => {
+      console.error("editSchoolMutation error:", error);
+      toast.error("Okul düzenlenirken hata: " + error.message);
     },
   });
 
