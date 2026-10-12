@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx-js-style";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/portal/$schoolId")({
   component: SchoolPortal,
@@ -116,6 +117,7 @@ function SchoolPortal() {
   // Auth State
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   // Selection State
   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
@@ -703,9 +705,17 @@ function SchoolPortal() {
                       className="bg-white/5 border-white/10 text-white h-12 rounded-xl focus-visible:ring-[#A67C52]"
                     />
                   </div>
+                  <div className="flex justify-center pt-2">
+                    <Turnstile
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      options={{ theme: "dark" }}
+                    />
+                  </div>
                   <Button
                     type="submit"
-                    className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full mt-2"
+                    disabled={!turnstileToken}
+                    className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-12 rounded-xl w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Giriş Yap
                   </Button>

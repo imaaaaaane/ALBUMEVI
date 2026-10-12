@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { motion, AnimatePresence } from "framer-motion";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/login")({
   component: SchoolLogin,
@@ -21,6 +22,7 @@ function SchoolLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showGuide, setShowGuide] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const m = useMutation({
     mutationFn: async ({ data }: { data: { username: string; password: string } }) => {
@@ -188,10 +190,17 @@ function SchoolLogin() {
                     className="h-12 border-white/20 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/50 rounded-xl"
                   />
                 </div>
+                <div className="flex justify-center pt-2">
+                  <Turnstile
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    options={{ theme: "dark" }}
+                  />
+                </div>
                 <Button
                   type="submit"
                   className="w-full h-12 bg-white text-black hover:bg-gray-200 font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={m.isPending}
+                  disabled={m.isPending || !turnstileToken}
                 >
                   {m.isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                   Giriş Yap

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { supabase } from "@/integrations/supabase/client";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/admin-login")({
   component: AdminLogin,
@@ -19,6 +20,7 @@ function AdminLogin() {
   const { t, dir } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const m = useMutation({
     mutationFn: async ({ data }: { data: { email: string; password: string } }) => {
@@ -151,10 +153,17 @@ function AdminLogin() {
                 className="h-11 border-white/10 bg-white/5 text-white placeholder:text-gray-500 focus-visible:ring-[#A67C52]"
               />
             </div>
+            <div className="flex justify-center pt-2">
+              <Turnstile
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                onSuccess={(token) => setTurnstileToken(token)}
+                options={{ theme: "dark" }}
+              />
+            </div>
             <Button
               type="submit"
               className="w-full h-11 bg-[#A67C52] hover:bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-[0.98] disabled:opacity-50"
-              disabled={m.isPending}
+              disabled={m.isPending || !turnstileToken}
             >
               {m.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Panele Gir
