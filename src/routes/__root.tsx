@@ -56,24 +56,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
+      { title: "ALBÜMEVİ - Okul Fotoğrafçılığı, Mezuniyet Albümü ve Hatıra Çekimi" },
       {
         name: "description",
         content:
-          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
+          "Batman, Diyarbakır, Mardin, Siirt ve Şırnak genelinde profesyonel okul fotoğraf çekimi, anaokulu ve ilkokul mezuniyet albümü. Panoramik albüm, ahşap albüm, kumbara, çerçeve seçenekleri ve öğretmenlere özel online fotoğraf seçim portalı.",
       },
-      { property: "og:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
+      {
+        name: "keywords",
+        content:
+          "Batman okul fotoğraf çekimi, Batman anaokulu mezuniyet çekimi, Batman ilkokul mezuniyet çekimi, okul fotoğrafçısı, panoramik albüm, ahşap albüm, kumbara, çerçeve, anaokulu kep cübbe fotoğraf çekimi, Diyarbakır okul fotoğraf çekimi, Siirt, Mardin, Şırnak",
+      },
+      { property: "og:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı, Mezuniyet Albümü ve Hatıra Çekimi" },
       {
         property: "og:description",
         content:
-          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
+          "Batman, Diyarbakır, Mardin, Siirt ve Şırnak genelinde profesyonel okul fotoğraf çekimi, anaokulu ve ilkokul mezuniyet albümü. Panoramik albüm, ahşap albüm, kumbara, çerçeve seçenekleri ve öğretmenlere özel online fotoğraf seçim portalı.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı ve Kesim Optimizasyonu" },
+      { name: "twitter:title", content: "ALBÜMEVİ - Okul Fotoğrafçılığı, Mezuniyet Albümü ve Hatıra Çekimi" },
       {
         name: "twitter:description",
         content:
-          "ALBÜMEVİ: Profesyonel okul fotoğrafçılığı portalı, öğrenci paket seçimi ve mobilya ebatlama/kesim optimizasyonu sistemi.",
+          "Batman, Diyarbakır, Mardin, Siirt ve Şırnak genelinde profesyonel okul fotoğraf çekimi, anaokulu ve ilkokul mezuniyet albümü. Panoramik albüm, ahşap albüm, kumbara, çerçeve seçenekleri ve öğretmenlere özel online fotoğraf seçim portalı.",
       },
       {
         property: "og:image",

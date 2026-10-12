@@ -728,6 +728,22 @@ function Landing() {
         </div>
       </motion.section>
 
+      {/* SEO SECTION */}
+      <section className="px-6 py-12 max-w-7xl mx-auto border-t border-white/5 bg-[#0A0A0A]">
+        <div className="text-sm text-gray-500 leading-relaxed max-w-5xl mx-auto text-center">
+          <h2 className="text-white/80 font-semibold mb-2">Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri</h2>
+          <p className="mb-4">
+            ALBÜMEVİ olarak <strong>Batman, Diyarbakır, Mardin, Siirt</strong> ve <strong>Şırnak</strong> genelinde anaokulu, anasınıfı ve ilkokul öğrencileri için profesyonel <strong>mezuniyet ve hatıra fotoğraf çekimi</strong> hizmetleri sunmaktayız. Stüdyo kalitesindeki ekipmanlarımızla okul ortamında gerçekleştirdiğimiz çekimlerde, çocukların en doğal anlarını ölümsüzleştiriyoruz.
+          </p>
+          <p className="mb-4">
+            Geniş ürün yelpazemiz; yüksek kaliteli <strong>Panoramik Albüm</strong>, el işçiliği <strong>Ahşap Albüm</strong>, özel tasarım <strong>Kumbara</strong> ve <strong>Çerçeve</strong> ile <strong>Kep ve Cübbe çekimleri</strong> gibi kalıcı hatıra seçeneklerini içermektedir. Velilere teslim edilecek tüm ürünler, laboratuvarımızda en ince detayına kadar düzenlenip basılır.
+          </p>
+          <p>
+            <strong>Öğretmenlere Özel Online Portal:</strong> Geliştirdiğimiz yenilikçi Öğretmen Portalı sayesinde fotoğraf seçim süreci tamamen dijitalleşmiştir. Öğretmenler; öğrencilerin çekilen fotoğraflarını online sistem üzerinden kolayca seçebilir, her bir öğrenci veya sınıf için özel notlar ekleyebilir ve toplam sipariş adetlerini anlık olarak kolayca takip edebilirler. Bu sistem, okul idaresinin ve öğretmenlerin iş yükünü tamamen ortadan kaldırır.
+          </p>
+        </div>
+      </section>
+
       {/* FOOTER & CONTACT (Standard Scroll) */}
       <footer id="iletisim" className="border-t border-white/5 bg-[#0D0D0D] pt-24 pb-8">
         <motion.div
