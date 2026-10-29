@@ -34,13 +34,14 @@ const PROCESS_STEPS: Array<{
   title: string;
   desc: string;
   bgImage?: string;
+  enhancedGlass?: boolean;
 }> = [
   {
     icon: Calendar,
     title: "Planlama",
     desc: "Okul yönetimiyle görüşüp, öğrencilere sunulacak ürün paketlerini ve çekim gününü netleştiriyoruz.",
     bgImage:
-      "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=800&auto=format&fit=crop",
   },
   {
     icon: Camera,
@@ -53,13 +54,14 @@ const PROCESS_STEPS: Array<{
     title: "Sipariş ve Öğrenci Seçimi",
     desc: "Öğretmenlerimiz, sistemimiz üzerinden hangi öğrencilerin ürün/paket alacağını seçerek sipariş listelerini oluşturur.",
     bgImage: "/choice.jpg",
+    enhancedGlass: true,
   },
   {
     icon: Package,
     title: "Teslimat",
     desc: "Yüksek kaliteli ürünler özenle hazırlanıyor ve zamanında okula teslim ediliyor.",
     bgImage:
-      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=800&auto=format&fit=crop",
   },
 ];
 
@@ -691,14 +693,21 @@ function Landing() {
                     transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
                     className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden bg-zinc-900/50 border border-white/15 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/15"
                   >
-                    {/* Background Image + Lighter Readable Gradient Overlay */}
+                    {/* Background Image + Readable Gradient Overlay */}
                     {step.bgImage && (
                       <>
-                        <div
-                          className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-700 z-0"
-                          style={{ backgroundImage: `url(${step.bgImage})` }}
+                        <img
+                          src={step.bgImage}
+                          alt={step.title}
+                          className="absolute inset-0 w-full h-full object-cover object-center rotate-0 scale-100 group-hover:scale-105 transition-transform duration-700 z-0"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/50 to-zinc-950/30 group-hover:via-zinc-950/40 group-hover:to-zinc-950/20 transition-all duration-500 z-[1]" />
+                        <div
+                          className={`absolute inset-0 transition-all duration-500 z-[1] ${
+                            step.enhancedGlass
+                              ? "bg-zinc-950/50 backdrop-blur-md"
+                              : "bg-gradient-to-t from-zinc-950/90 via-zinc-950/50 to-zinc-950/30 group-hover:via-zinc-950/40 group-hover:to-zinc-950/20"
+                          }`}
+                        />
                       </>
                     )}
 
@@ -710,16 +719,24 @@ function Landing() {
                     </div>
 
                     {/* Content */}
-                    <div className="relative z-20 p-8 sm:p-12 pl-12 md:pl-12">
-                      <div className="w-14 h-14 rounded-2xl bg-zinc-950/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[#D4B8A8] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <Icon className="w-7 h-7" />
+                    <div className="relative z-20 p-6 sm:p-10">
+                      <div
+                        className={
+                          step.enhancedGlass
+                            ? "p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-2xl border border-white/20 shadow-2xl"
+                            : "p-2"
+                        }
+                      >
+                        <div className="w-14 h-14 rounded-2xl bg-zinc-950/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[#D4B8A8] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <Icon className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-2xl font-bold mb-4 text-white drop-shadow-md group-hover:text-[#D4B8A8] transition-colors duration-300">
+                          {step.title}
+                        </h3>
+                        <p className="text-zinc-100 drop-shadow-sm leading-relaxed text-sm sm:text-base">
+                          {step.desc}
+                        </p>
                       </div>
-                      <h3 className="text-2xl font-bold mb-4 text-white drop-shadow-md group-hover:text-[#D4B8A8] transition-colors duration-300">
-                        {step.title}
-                      </h3>
-                      <p className="text-zinc-100 drop-shadow-sm leading-relaxed text-sm sm:text-base">
-                        {step.desc}
-                      </p>
                     </div>
                   </motion.div>
                 </div>
