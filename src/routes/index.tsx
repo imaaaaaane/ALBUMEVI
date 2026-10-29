@@ -90,9 +90,12 @@ const PROCESS_STEPS: Array<{
 ];
 
 const GALLERY_IMAGES = [
-  { id: "g1", src: "/galeri1.jpg?v=3", title: "Stüdyo Konsepti" },
-  { id: "g3", src: "/galeri3.jpg?v=3", title: "Okulumu Çok Seviyorum" },
-  { id: "g4", src: "/galeri4.jpg?v=3", title: "Eğlenceli Hatıra Çekimi" },
+  { id: "g1", src: "/galeri1.png", title: "Stüdyo Konsepti" },
+  { id: "g2", src: "/galeri2.png", title: "Okul Portreleri" },
+  { id: "g3", src: "/galeri3.png", title: "Okulumu Çok Seviyorum" },
+  { id: "g4", src: "/galeri4.png", title: "Eğlenceli Hatıra Çekimi" },
+  { id: "g5", src: "/galeri5.png", title: "Özel Stüdyo Kadrajı" },
+  { id: "g6", src: "/galeri6.png", title: "Renkli Okul Anıları" },
 ];
 
 const FAQS = [
@@ -351,7 +354,8 @@ function Landing() {
                     priority
                     fill
                     sizes="(max-width: 640px) 144px, 176px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    style={{ imageOrientation: "from-image", transform: "none" }}
+                    className="object-cover object-center !transform-none !rotate-0"
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
@@ -370,7 +374,8 @@ function Landing() {
                     priority
                     fill
                     sizes="(max-width: 640px) 144px, 176px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    style={{ imageOrientation: "from-image", transform: "none" }}
+                    className="object-cover object-center !transform-none !rotate-0"
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
@@ -630,12 +635,7 @@ function Landing() {
               duration: 36,
             }}
           >
-            {[
-              ...GALLERY_IMAGES,
-              ...GALLERY_IMAGES,
-              ...GALLERY_IMAGES,
-              ...GALLERY_IMAGES,
-            ].map((item, idx) => (
+            {[...GALLERY_IMAGES, ...GALLERY_IMAGES].map((item, idx) => (
               <div
                 key={`${item.id}-${idx}`}
                 className="group relative w-64 sm:w-72 md:w-80 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900/60 border border-white/10 p-2 shadow-2xl hover:border-[#D4B8A8]/50 hover:scale-105 transition-all duration-500"
