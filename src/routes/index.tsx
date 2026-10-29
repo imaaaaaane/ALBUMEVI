@@ -63,6 +63,45 @@ const PROCESS_STEPS: Array<{
   },
 ];
 
+const PRODUCTS = [
+  {
+    id: "01",
+    title: "Anıların Bavulu",
+    subtitle: "Kancalı Geçme Ahşap Bavul Çerçeve",
+    image: "/urun1.jpg",
+  },
+  {
+    id: "02",
+    title: "İlk Gün • Son Gün",
+    subtitle: "Çift Taraflı Ahşap Kitap Hatırası",
+    image: "/urun2.jpg",
+  },
+  {
+    id: "03",
+    title: "Hayallerime Yolculuk",
+    subtitle: "Özel Tasarım Balon Ahşap Stand",
+    image: "/urun3.jpg",
+  },
+  {
+    id: "04",
+    title: "Hatıra Sahnesi",
+    subtitle: "Birlikte Büyüdük 3B Ahşap Sahne",
+    image: "/urun4.jpg",
+  },
+  {
+    id: "05",
+    title: "Masamdaki Hatıra",
+    subtitle: "İsimlikli & Kalemlikli Okul Çerçevesi",
+    image: "/urun5.jpg",
+  },
+  {
+    id: "06",
+    title: "Anı Sandığım",
+    subtitle: "Fotoğraflı Ahşap Mezuniyet Hatıra Kutusu",
+    image: "/urun6.jpg",
+  },
+];
+
 const FAQS = [
   {
     q: "Mezuniyet cübbe ve keplerini siz mi temin ediyorsunuz?",
@@ -857,21 +896,51 @@ function Landing() {
         </div>
       </motion.section>
 
-      {/* SEO SECTION */}
-      <section className="px-6 py-12 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950">
-        <div className="text-sm text-zinc-500 leading-relaxed max-w-5xl mx-auto text-center">
-          <h2 className="font-serif text-lg text-[#D4B8A8] font-medium italic mb-3">
-            Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri
+      {/* PRODUCTS GALLERY SECTION (Özel Tasarım Ahşap Ürünlerimiz) */}
+      <section id="urunler" className="relative px-6 py-24 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950">
+        <div className="text-center mb-14">
+          <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
+            Özel Koleksiyon • 3mm Ahşap Tasarımlar
+          </p>
+          <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+            Okul Hatırası Ürünlerimiz
           </h2>
-          <p className="mb-4">
-            ALBÜMEVİ olarak <strong>Batman, Diyarbakır, Mardin, Siirt</strong> ve <strong>Şırnak</strong> genelinde anaokulu, anasınıfı ve ilkokul öğrencileri için profesyonel <strong>mezuniyet ve hatıra fotoğraf çekimi</strong> hizmetleri sunmaktayız. Stüdyo kalitesindeki ekipmanlarımızla okul ortamında gerçekleştirdiğimiz çekimlerde, çocukların en doğal anlarını ölümsüzleştiriyoruz.
+          <p className="text-zinc-400 mt-4 max-w-2xl mx-auto text-sm sm:text-base">
+            Çocukların en değerli okul anılarını ölümsüzleştiren, el işçiliği özel tasarım ahşap hatıra ürünlerimiz.
           </p>
-          <p className="mb-4">
-            Geniş ürün yelpazemiz; yüksek kaliteli <strong>Panoramik Albüm</strong>, el işçiliği <strong>Ahşap Albüm</strong>, özel tasarım <strong>Kumbara</strong> ve <strong>Çerçeve</strong> ile <strong>Kep ve Cübbe çekimleri</strong> gibi kalıcı hatıra seçeneklerini içermektedir. Velilere teslim edilecek tüm ürünler, laboratuvarımızda en ince detayına kadar düzenlenip basılır.
-          </p>
-          <p>
-            <strong>Öğretmenlere Özel Online Portal:</strong> Geliştirdiğimiz yenilikçi Öğretmen Portalı sayesinde fotoğraf seçim süreci tamamen dijitalleşmiştir. Öğretmenler; öğrencilerin çekilen fotoğraflarını online sistem üzerinden kolayca seçebilir, her bir öğrenci veya sınıf için özel notlar ekleyebilir ve toplam sipariş adetlerini anlık olarak kolayca takip edebilirler. Bu sistem, okul idaresinin ve öğretmenlerin iş yükünü tamamen ortadan kaldırır.
-          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {PRODUCTS.map((product) => (
+            <div
+              key={product.id}
+              className="group rounded-xl overflow-hidden bg-zinc-900 border border-white/10 p-3 hover:scale-105 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/15 transition-all duration-300 flex flex-col"
+            >
+              <div className="relative overflow-hidden rounded-lg aspect-[4/3] bg-zinc-950">
+                <img
+                  src={product.image}
+                  alt={product.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                />
+                <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider bg-zinc-950/80 backdrop-blur-md text-[#D4B8A8] border border-white/15">
+                  {product.id}
+                </span>
+              </div>
+
+              <div className="pt-4 pb-2 px-2 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg sm:text-xl font-medium italic text-white group-hover:text-[#D4B8A8] transition-colors">
+                    {product.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">{product.subtitle}</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#D4B8A8] shrink-0 group-hover:bg-[#D4B8A8] group-hover:text-zinc-950 transition-colors duration-300">
+                  <Package className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
