@@ -110,7 +110,7 @@ const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) 
   return (
     <motion.h1
       variants={heroItemVariants}
-      className="font-serif text-5xl md:text-7xl font-semibold italic leading-[1.1] tracking-tight text-white"
+      className="font-serif text-4xl sm:text-5xl lg:text-[3.35rem] font-semibold italic leading-[1.12] tracking-tight text-white max-w-md"
     >
       {displayedText1}
       {isTyping1 && <span className="animate-pulse">|</span>}
@@ -304,45 +304,45 @@ function Landing() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 mx-auto max-w-7xl px-6 w-full"
+          className="relative z-10 mx-auto max-w-[1440px] px-6 lg:px-12 w-full"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end">
+          <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8">
             {/* Editorial Typography Column */}
             <motion.div
               variants={heroContainerVariants}
               initial="hidden"
               animate="visible"
-              className="lg:col-span-7 space-y-8"
+              className="w-full max-w-md space-y-6 text-left shrink-0"
             >
               <TypewriterHeadline text1={t("hero.title1")} text2={t("hero.title2")} />
 
               <motion.p
                 variants={heroItemVariants}
-                className="text-lg md:text-xl text-zinc-300/90 max-w-2xl leading-relaxed font-light"
+                className="text-base md:text-lg text-zinc-300/90 max-w-md leading-relaxed font-light"
               >
                 {t("hero.subtitle")}
               </motion.p>
 
               <motion.div variants={heroItemVariants} className="pt-2">
-                <div className="flex flex-wrap items-center gap-5">
+                <div className="flex flex-wrap items-center gap-4">
                   <a
                     href="#galeri"
-                    className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D0A36D] to-[#B8864B] hover:from-[#E2B67C] hover:to-[#C8965B] text-zinc-950 px-8 py-4 rounded-full font-bold tracking-wide transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_rgba(208,163,109,0.25)]"
+                    className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#D0A36D] to-[#B8864B] hover:from-[#E2B67C] hover:to-[#C8965B] text-zinc-950 px-6 py-3.5 rounded-full text-sm font-bold tracking-wide transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_rgba(208,163,109,0.25)]"
                   >
-                    Portfolyoyu İncele <ArrowRight className="w-5 h-5" />
+                    Portfolyoyu İncele <ArrowRight className="w-4 h-4" />
                   </a>
 
-                  <div className="flex items-center gap-4 px-6 py-3.5 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl shadow-xl">
+                  <div className="flex items-center gap-3 px-4 py-2.5 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl shadow-xl">
                     <div className="flex flex-col">
-                      <div className="flex gap-1 text-[#D0A36D] text-sm mb-0.5">
+                      <div className="flex gap-1 text-[#D0A36D] text-xs mb-0.5">
                         <span>★</span>
                         <span>★</span>
                         <span>★</span>
                         <span>★</span>
                         <span>★</span>
                       </div>
-                      <p className="text-white text-sm font-bold tracking-wide">500+ Mutlu Okul</p>
-                      <p className="text-zinc-400 text-[11px]">Sistemi aktif kullanıyor</p>
+                      <p className="text-white text-xs font-bold tracking-wide">500+ Mutlu Okul</p>
+                      <p className="text-zinc-400 text-[10px]">Sistemi aktif kullanıyor</p>
                     </div>
                   </div>
                 </div>
@@ -354,37 +354,37 @@ function Landing() {
               variants={heroImageVariants}
               initial="hidden"
               animate="visible"
-              className="lg:col-span-5 grid grid-cols-2 gap-4"
+              className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0"
             >
-              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl">
+              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl">
                 <div className="overflow-hidden rounded-xl">
                   <img
                     src="/home1.jpg"
                     alt="Editorial Portrait 1"
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-44 sm:h-52 object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
-                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
+                <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider text-[#E6C79C]">
                     Kaliteli Çekim
                   </span>
-                  <Camera className="w-3.5 h-3.5 text-[#D0A36D]" />
+                  <Camera className="w-3 h-3 text-[#D0A36D]" />
                 </div>
               </div>
 
-              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl lg:translate-y-6">
+              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl lg:translate-y-4">
                 <div className="overflow-hidden rounded-xl">
                   <img
                     src="/home2.jpg"
                     alt="Editorial Portrait 2"
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-44 sm:h-52 object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
-                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
+                <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider text-[#E6C79C]">
                     Özel Ürünler
                   </span>
-                  <Award className="w-3.5 h-3.5 text-[#D0A36D]" />
+                  <Award className="w-3 h-3 text-[#D0A36D]" />
                 </div>
               </div>
             </motion.div>
