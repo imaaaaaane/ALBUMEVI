@@ -16,10 +16,11 @@ import {
   FolderDown,
   Folder,
   Download,
+  Pencil,
 } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { uploadFileToR2, getR2FileUrl } from "../lib/r2";
+import { uploadFileToR2, getR2FileUrl, getR2PublicUrl, deleteFileFromR2 } from "../lib/r2";
 import {
   Accordion,
   AccordionContent,
@@ -92,39 +93,226 @@ interface SchoolClass {
   students: Student[];
 }
 
+function ClassPhotoPreview({ src, alt }: { src: string; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!src) return;
+    if (src.startsWith("http") || src.startsWith("blob:") || src.startsWith("data:")) {
+      setUrl(src);
+    } else {
+      getR2FileUrl(src)
+        .then((signedUrl) => {
+          if (active) setUrl(signedUrl);
+        })
+        .catch(() => {
+          if (active) setUrl(getR2PublicUrl(src));
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [src]);
+
+  if (!url) {
+    return <div className="w-full h-full animate-pulse bg-white/10 rounded-lg" />;
+  }
+  return <img src={url} alt={alt} className="w-full h-full object-cover rounded-lg" />;
+}
+
+function LocalFilePreview({ file }: { file: File }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!previewUrl) {
+    return <div className="w-full h-full animate-pulse bg-white/10 rounded-lg" />;
+  }
+  return <img src={previewUrl} alt={file.name} className="w-full h-full object-cover rounded-lg" />;
+}
+
 function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [existingStudents, setExistingStudents] = useState<
+    Array<{ id: string; name: string; image_url: string }>
+  >([]);
+  const [removedStudents, setRemovedStudents] = useState<
+    Array<{ id: string; name: string; image_url: string }>
+  >([]);
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
+
+  const resetForm = () => {
+    setIsEditing(false);
+    setEditingClassId(null);
+    setNewClassName("");
+    setSelectedFiles([]);
+    setExistingStudents([]);
+    setRemovedStudents([]);
+  };
 
   const { data: classes = [], refetch } = useQuery({
     queryKey: ["classes", schoolSlug],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("classes")
-        .select("id, name, students(count)")
+        .select("id, name, students(id, name, image_url)")
         .eq("school_id", schoolSlug)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data.map((c: any) => ({
         id: c.id,
         className: c.name,
-        studentCount: c.students?.[0]?.count ?? 0,
+        studentCount: c.students?.length ?? 0,
+        students: c.students ?? [],
       }));
     },
     enabled: open,
   });
 
+  const handleEditClass = async (classItem: any) => {
+    setIsEditing(true);
+    setEditingClassId(classItem.id);
+    setNewClassName(classItem.className);
+    setSelectedFiles([]);
+    setRemovedStudents([]);
+    setExistingStudents(classItem.students || []);
+
+    setIsLoadingPhotos(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("students")
+        .select("id, name, image_url")
+        .eq("class_id", classItem.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setExistingStudents(data || []);
+    } catch (err: any) {
+      toast.error("Sınıf fotoğrafları yüklenirken bir hata oluştu.");
+    } finally {
+      setIsLoadingPhotos(false);
+    }
+  };
+
+  const handleRemoveExistingPhoto = (student: { id: string; name: string; image_url: string }) => {
+    setExistingStudents((prev) => prev.filter((s) => s.id !== student.id));
+    setRemovedStudents((prev) => [...prev, student]);
+  };
+
+  const handleRemoveSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const parseStudentName = (fileName: string, fallbackIndex: number) => {
+    let originalName = fileName;
+    const lastDotIdx = originalName.lastIndexOf(".");
+    const fileExt = lastDotIdx !== -1 ? originalName.substring(lastDotIdx + 1) : "jpg";
+    if (lastDotIdx !== -1) {
+      originalName = originalName.substring(0, lastDotIdx);
+    }
+    originalName = originalName.replace(/[_-]/g, " ").trim();
+    if (!originalName) {
+      originalName = `Öğrenci ${fallbackIndex}`;
+    }
+    return { originalName, fileExt };
+  };
+
+  const updateClassMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingClassId || !newClassName.trim()) return;
+
+      // 1. Update class name in DB without duplicating
+      const { error: classError } = await (supabase as any)
+        .from("classes")
+        .update({ name: newClassName.trim() })
+        .eq("id", editingClassId);
+      if (classError) throw classError;
+
+      // 2. Delete removed photos from storage and DB
+      if (removedStudents.length > 0) {
+        for (const student of removedStudents) {
+          if (student.image_url) {
+            try {
+              let objectKey = student.image_url;
+              if (objectKey.startsWith("http")) {
+                const urlObj = new URL(objectKey);
+                objectKey = urlObj.pathname.replace(/^\/+/, "");
+              }
+              await deleteFileFromR2(objectKey);
+            } catch (storageErr) {
+              console.error("Storage delete error:", storageErr);
+            }
+          }
+        }
+
+        const removedIds = removedStudents.map((s) => s.id);
+        const { error: deleteStudentsErr } = await (supabase as any)
+          .from("students")
+          .delete()
+          .in("id", removedIds);
+        if (deleteStudentsErr) throw deleteStudentsErr;
+      }
+
+      // 3. Upload newly added photos and insert student records
+      if (selectedFiles.length > 0) {
+        const studentInserts = [];
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          const { originalName, fileExt } = parseStudentName(
+            file.name,
+            existingStudents.length + i + 1,
+          );
+
+          const fileName = `${Math.random().toString(36).substring(2, 10)}-${Date.now()}.${fileExt}`;
+          const filePath = `${schoolSlug}/${editingClassId}/${fileName}`;
+
+          await uploadFileToR2(file, filePath);
+
+          studentInserts.push({
+            class_id: editingClassId,
+            name: originalName,
+            image_url: filePath,
+          });
+        }
+
+        const { error: insertStudentsErr } = await (supabase as any)
+          .from("students")
+          .insert(studentInserts);
+        if (insertStudentsErr) throw insertStudentsErr;
+      }
+    },
+    onSuccess: () => {
+      const updatedName = newClassName.trim();
+      resetForm();
+      refetch();
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success(`${updatedName} sınıfı başarıyla güncellendi.`);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Sınıf güncellenirken bir hata oluştu.");
+    },
+  });
+
   const handleAddClass = async () => {
-    if (!newClassName || selectedFiles.length === 0) return;
+    if (!newClassName.trim() || selectedFiles.length === 0) return;
 
     setIsProcessing(true);
 
     try {
       const { data: newClass, error: classError } = await (supabase as any)
         .from("classes")
-        .insert({ school_id: schoolSlug, name: newClassName })
+        .insert({ school_id: schoolSlug, name: newClassName.trim() })
         .select()
         .single();
 
@@ -135,18 +323,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-
-        let originalName = file.name;
-        const lastDotIdx = originalName.lastIndexOf(".");
-        const fileExt = lastDotIdx !== -1 ? originalName.substring(lastDotIdx + 1) : "jpg";
-        if (lastDotIdx !== -1) {
-          originalName = originalName.substring(0, lastDotIdx);
-        }
-        // Replace underscores and hyphens with spaces
-        originalName = originalName.replace(/[_-]/g, " ").trim();
-        if (!originalName) {
-          originalName = `Öğrenci ${i + 1}`;
-        }
+        const { originalName, fileExt } = parseStudentName(file.name, i + 1);
 
         const fileName = `${Math.random().toString(36).substring(2, 10)}-${Date.now()}.${fileExt}`;
         const filePath = `${schoolSlug}/${newClassId}/${fileName}`;
@@ -165,14 +342,23 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
         .insert(studentInserts);
       if (studentsError) throw studentsError;
 
-      setNewClassName("");
-      setSelectedFiles([]);
+      const createdName = newClassName.trim();
+      resetForm();
       refetch();
-      toast.success(`${newClassName} sınıfı ve ${studentInserts.length} öğrenci oluşturuldu.`);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success(`${createdName} sınıfı ve ${studentInserts.length} öğrenci oluşturuldu.`);
     } catch (error: any) {
       toast.error(error.message || "Fotoğraflar işlenirken bir hata oluştu.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (isEditing) {
+      updateClassMutation.mutate();
+    } else {
+      handleAddClass();
     }
   };
 
@@ -181,15 +367,30 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
     try {
       const { error } = await (supabase as any).from("classes").delete().eq("id", id);
       if (error) throw error;
+      if (editingClassId === id) {
+        resetForm();
+      }
       refetch();
+      qc.invalidateQueries({ queryKey: ["orders"] });
       toast.success("Sınıf silindi.");
     } catch (err: any) {
       toast.error("Sınıf silinemedi.");
     }
   };
 
+  const isBusy = isProcessing || updateClassMutation.isPending;
+  const totalPhotosCount = existingStudents.length + selectedFiles.length;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          resetForm();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -199,7 +400,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
           Şubeleri Yönet
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md bg-[#131316] border border-white/10 text-white">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#131316] border border-white/10 text-white">
         <DialogHeader>
           <DialogTitle className="text-white">Şubeleri Yönet</DialogTitle>
         </DialogHeader>
@@ -214,53 +415,149 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
                 className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-[#A67C52]"
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-white/70">Öğrenci Fotoğrafları (VSK)</Label>
-              <div className="relative group border-2 border-dashed border-white/20 hover:border-[#A67C52] rounded-xl p-6 text-center transition-colors bg-white/5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-white/70">Öğrenci Fotoğrafları (VSK)</Label>
+                {totalPhotosCount > 0 && (
+                  <span className="text-xs text-[#A67C52] font-medium">
+                    Toplam {totalPhotosCount} fotoğraf
+                  </span>
+                )}
+              </div>
+              <div className="relative group border-2 border-dashed border-white/20 hover:border-[#A67C52] rounded-xl p-5 text-center transition-colors bg-white/5">
                 <input
                   type="file"
                   multiple
                   accept="image/*"
                   onChange={(e) => {
-                    if (e.target.files) {
-                      setSelectedFiles(Array.from(e.target.files));
+                    if (e.target.files && e.target.files.length > 0) {
+                      const filesArray = Array.from(e.target.files);
+                      setSelectedFiles((prev) => [...prev, ...filesArray]);
+                      e.target.value = "";
                     }
                   }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <div className="pointer-events-none flex flex-col items-center gap-2">
-                  <UploadCloud className="w-8 h-8 text-[#A67C52]" />
-                  {selectedFiles.length > 0 ? (
-                    <p className="text-white font-medium">
-                      {selectedFiles.length} fotoğraf seçildi
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-white font-medium">Fotoğrafları sürükleyin veya seçin</p>
-                      <p className="text-white/50 text-xs">
-                        Aynı anda birden fazla fotoğraf seçebilirsiniz.
-                      </p>
-                    </>
-                  )}
+                <div className="pointer-events-none flex flex-col items-center gap-1.5">
+                  <UploadCloud className="w-7 h-7 text-[#A67C52]" />
+                  <p className="text-white font-medium text-sm">
+                    {isEditing
+                      ? "Yeni fotoğraf eklemek için sürükleyin veya seçin"
+                      : "Fotoğrafları sürükleyin veya seçin"}
+                  </p>
+                  <p className="text-white/50 text-xs">
+                    Aynı anda birden fazla fotoğraf seçebilirsiniz.
+                  </p>
                 </div>
               </div>
+
+              {/* Photo Preview Area */}
+              {(isLoadingPhotos || existingStudents.length > 0 || selectedFiles.length > 0) && (
+                <div className="border border-white/10 rounded-xl p-3 bg-black/30 max-h-[220px] overflow-y-auto">
+                  {isLoadingPhotos ? (
+                    <div className="flex items-center justify-center py-6 text-white/50 text-xs gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#A67C52]" />
+                      Fotoğraflar yükleniyor...
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                      {existingStudents.map((student) => (
+                        <div
+                          key={student.id}
+                          className="relative group rounded-lg border border-white/10 bg-white/5 p-1.5 flex flex-col items-center"
+                        >
+                          <div className="w-full aspect-square overflow-hidden rounded-md bg-black/40">
+                            <ClassPhotoPreview src={student.image_url} alt={student.name} />
+                          </div>
+                          <span
+                            className="mt-1 text-[11px] text-white/80 truncate w-full text-center"
+                            title={student.name}
+                          >
+                            {student.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingPhoto(student)}
+                            title="Fotoğrafı Kaldır"
+                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors cursor-pointer"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {selectedFiles.map((file, idx) => {
+                        const { originalName } = parseStudentName(file.name, idx + 1);
+                        return (
+                          <div
+                            key={`${file.name}-${idx}`}
+                            className="relative group rounded-lg border border-[#A67C52]/40 bg-[#A67C52]/10 p-1.5 flex flex-col items-center"
+                          >
+                            <div className="w-full aspect-square overflow-hidden rounded-md bg-black/40">
+                              <LocalFilePreview file={file} />
+                            </div>
+                            <span
+                              className="mt-1 text-[11px] text-white truncate w-full text-center"
+                              title={originalName}
+                            >
+                              {originalName}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSelectedFile(idx)}
+                              title="Fotoğrafı Kaldır"
+                              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors cursor-pointer"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <Button
-              onClick={handleAddClass}
-              disabled={isProcessing || !newClassName || selectedFiles.length === 0}
-              className="w-full h-10 px-0 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl"
-            >
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sınıfı Ekle"}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetForm}
+                  disabled={isBusy}
+                  className="h-10 px-4 bg-transparent border-white/10 text-white/70 hover:bg-white/5 hover:text-white rounded-xl"
+                >
+                  İptal
+                </Button>
+              )}
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  isBusy ||
+                  !newClassName.trim() ||
+                  (!isEditing && selectedFiles.length === 0)
+                }
+                className="flex-1 h-10 px-0 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl"
+              >
+                {isBusy ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : isEditing ? (
+                  "Güncelle"
+                ) : (
+                  "Sınıfı Ekle"
+                )}
+              </Button>
+            </div>
           </div>
 
-          <div className="border border-white/10 rounded-xl mt-4 max-h-[300px] overflow-y-auto">
+          <div className="border border-white/10 rounded-xl mt-4 max-h-[260px] overflow-y-auto">
             <Table>
               <TableHeader className="bg-white/5">
                 <TableRow className="border-white/10 hover:bg-transparent">
                   <TableHead className="text-white/70">Şube</TableHead>
                   <TableHead className="text-right text-white/70">Öğr. Sayısı</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[90px] text-right text-white/70">İşlem</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -274,19 +571,33 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
                   classes.map((c: any) => (
                     <TableRow
                       key={c.id}
-                      className="border-white/10 hover:bg-white/5 transition-colors"
+                      className={`border-white/10 hover:bg-white/5 transition-colors ${
+                        isEditing && editingClassId === c.id ? "bg-[#A67C52]/10" : ""
+                      }`}
                     >
                       <TableCell className="font-medium text-white">{c.className}</TableCell>
                       <TableCell className="text-right text-white/70">{c.studentCount}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                          onClick={() => handleDeleteClass(c.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Düzenle"
+                            className="h-8 w-8 text-white/40 hover:text-[#A67C52] hover:bg-[#A67C52]/10 rounded-lg"
+                            onClick={() => handleEditClass(c)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Sil"
+                            className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                            onClick={() => handleDeleteClass(c.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
