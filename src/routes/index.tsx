@@ -790,40 +790,39 @@ function Landing() {
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[520px] h-[520px] bg-[#D4B8A8]/10 blur-[160px] rounded-full pointer-events-none" />
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center">
-          {/* Left: Prominent Portrait Image + Overlapping Floating Testimonial */}
+          {/* Left: Prominent Portrait Image + Below Testimonial Card */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-6 relative pb-8 sm:pb-10 lg:pr-6"
+            className="lg:col-span-6 flex flex-col gap-6"
           >
-            <div className="group relative aspect-[4/5] w-full rounded-3xl overflow-hidden bg-zinc-900/40 border border-white/15 p-2.5 shadow-2xl shadow-[#D4B8A8]/10 hover:border-[#D4B8A8]/40 transition-all duration-500">
-              <div className="relative w-full h-full overflow-hidden rounded-2xl">
+            <div className="group relative w-full rounded-3xl overflow-hidden bg-zinc-900/40 border border-white/15 p-2.5 shadow-2xl shadow-[#D4B8A8]/10 hover:border-[#D4B8A8]/40 transition-all duration-500">
+              <div className="relative w-full overflow-hidden rounded-2xl">
                 <img
                   src="/urun4.jpg"
                   alt="Albümevi Özel Tasarım Okul Hatıraları"
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+                  className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none" />
               </div>
             </div>
 
-            {/* Overlapping Floating Glassmorphism Testimonial Card */}
+            {/* Cleanly Positioned Glassmorphism Testimonial Card Below Image */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.25, ease: "easeOut" }}
-              className="absolute -bottom-2 right-2 sm:right-0 sm:-bottom-4 max-w-sm backdrop-blur-xl bg-zinc-950/75 bg-gradient-to-br from-white/15 to-white/5 border border-white/20 p-5 sm:p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.65)] hover:-translate-y-1 hover:border-[#D4B8A8]/50 transition-all duration-300 z-20"
+              transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+              className="w-full backdrop-blur-xl bg-zinc-900/40 border border-white/15 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-[#D4B8A8]/50 transition-all duration-300"
             >
-              <div className="flex items-center justify-between gap-4 mb-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#D4B8A8]">
+              <div className="flex items-center justify-between gap-4 mb-2.5">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4B8A8]">
                   Okul Müdürü, Batman
                 </p>
                 <div className="flex text-[#D4B8A8] text-xs tracking-wider">★★★★★</div>
               </div>
-              <p className="font-serif italic text-white/95 text-sm sm:text-base leading-relaxed">
+              <p className="font-serif italic text-white/95 text-base leading-relaxed">
                 “{t("whyus.testimonial.text")}”
               </p>
             </motion.div>
