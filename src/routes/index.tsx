@@ -393,99 +393,94 @@ function Landing() {
       </div>
 
       {/* SERVICES GRID SECTION - Editorial & Glassmorphism */}
-      <div
-        id="hizmetler"
-        ref={servicesContainerRef}
-        className="katana-container katana-container-services"
-      >
-        <div className="katana-sticky">
-          <div className="katana-mask flex items-center justify-center bg-zinc-950">
+      <section id="hizmetler" className="relative bg-zinc-950 py-24 md:py-32 overflow-visible">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="mx-auto max-w-7xl px-6 w-full"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mx-auto max-w-7xl px-6 py-24 w-full"
+              className="lg:col-span-5 space-y-5"
             >
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                <motion.div
-                  initial={{ opacity: 0, x: -30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="lg:col-span-5 space-y-6"
-                >
-                  <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
-                    {t("services.badge")}
-                  </p>
-                  <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-                    {t("services.title")}
-                  </h2>
-                  <p className="text-zinc-400 leading-relaxed">{t("services.subtitle")}</p>
+              <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
+                {t("services.badge")}
+              </p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-[1.2] tracking-tight text-white pt-1">
+                Premium Fotoğraf Deneyimi
+              </h2>
+              <p className="text-zinc-400 leading-relaxed">{t("services.subtitle")}</p>
 
-                  {/* Editorial Natural-Ratio Frame */}
-                  <div className="group relative rounded-3xl mt-8 w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
-                    <div className="overflow-hidden rounded-2xl relative">
-                      <img
-                        src="/pic6.jpg"
-                        alt="Photographer"
-                        className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 backdrop-blur-md bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
-                        <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
-                        <span className="text-[#D0A36D] font-semibold">100% Orijinal</span>
-                      </div>
-                    </div>
+              {/* Large Left Vertical Feature Image (Replace src="/pic6.jpg" when ready) */}
+              <div className="group relative rounded-3xl mt-6 w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
+                <div className="overflow-hidden rounded-2xl relative aspect-[4/5] max-h-[460px] w-full">
+                  <img
+                    src="/pic6.jpg"
+                    alt="Premium Fotoğraf Deneyimi"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 backdrop-blur-md bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
+                    <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
+                    <span className="text-[#D0A36D] font-semibold">100% Orijinal</span>
                   </div>
-                </motion.div>
-
-                <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 lg:pt-8">
-                  {[
-                    {
-                      icon: <Camera />,
-                      title: t("services.card1.title"),
-                      desc: t("services.card1.desc"),
-                    },
-                    {
-                      icon: <Users />,
-                      title: t("services.card2.title"),
-                      desc: t("services.card2.desc"),
-                    },
-                    {
-                      icon: <Clock />,
-                      title: t("services.card3.title"),
-                      desc: t("services.card3.desc"),
-                    },
-                    {
-                      icon: <Award />,
-                      title: t("services.card4.title"),
-                      desc: t("services.card4.desc"),
-                    },
-                  ].map((service, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                      viewport={{ once: true, margin: "-100px" }}
-                      transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                      className="group backdrop-blur-md bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-[#D0A36D]/40 hover:bg-white/[0.08] transition-all duration-500 shadow-xl"
-                    >
-                      <div className="w-12 h-12 bg-[#D0A36D]/15 border border-[#D0A36D]/30 rounded-2xl flex items-center justify-center text-[#D0A36D] mb-6 group-hover:scale-110 transition-transform duration-500">
-                        {service.icon}
-                      </div>
-                      <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#E6C79C] transition-colors">
-                        {service.title}
-                      </h3>
-                      <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
-                    </motion.div>
-                  ))}
                 </div>
               </div>
             </motion.div>
+
+            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6 lg:pt-4">
+              {[
+                {
+                  icon: Camera,
+                  title: t("services.card1.title"),
+                  desc: t("services.card1.desc"),
+                },
+                {
+                  icon: Users,
+                  title: t("services.card2.title"),
+                  desc: t("services.card2.desc"),
+                },
+                {
+                  icon: Clock,
+                  title: t("services.card3.title"),
+                  desc: t("services.card3.desc"),
+                },
+                {
+                  icon: Award,
+                  title: t("services.card4.title"),
+                  desc: t("services.card4.desc"),
+                },
+              ].map((service, idx) => {
+                const ServiceIcon = service.icon;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-80px" }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
+                    className="group backdrop-blur-md bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-[#D0A36D]/40 hover:bg-white/[0.08] transition-all duration-500 shadow-xl flex flex-col justify-start overflow-visible"
+                  >
+                    <div className="w-12 h-12 shrink-0 bg-[#D0A36D]/15 border border-[#D0A36D]/30 rounded-2xl flex items-center justify-center text-[#D0A36D] mb-6 group-hover:scale-110 transition-transform duration-500">
+                      <ServiceIcon className="w-6 h-6 text-[#D0A36D]" />
+                    </div>
+                    <h3 className="text-xl font-bold leading-snug mb-3 text-white group-hover:text-[#E6C79C] transition-colors">
+                      {service.title}
+                    </h3>
+                    <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </section>
 
       {/* PHOTOGRAPHERS SECTION */}
       <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
