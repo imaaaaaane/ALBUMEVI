@@ -146,7 +146,7 @@ function Landing() {
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D4AF37]/30 font-sans antialiased"
+      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D4B8A8]/30 font-sans antialiased"
     >
       {/* MINIMALIST HIGH-END NAVBAR */}
       <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/80 border-b border-white/5">
@@ -186,7 +186,7 @@ function Landing() {
           <div className="flex items-center gap-3">
             <Link
               to="/admin-login"
-              className="inline-flex items-center justify-center px-4 py-1.5 text-xs uppercase tracking-[0.15em] font-medium border border-white/15 rounded-full hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors text-white"
+              className="inline-flex items-center justify-center px-4 py-1.5 text-xs uppercase tracking-[0.15em] font-medium border border-white/15 rounded-full hover:border-[#D4B8A8] hover:text-[#D4B8A8] transition-colors text-white"
             >
               {t("cta.adminLogin")}
             </Link>
@@ -195,74 +195,120 @@ function Landing() {
         </div>
       </header>
 
-      {/* HERO SECTION: Full-screen dark photography background + Left-aligned Serif/Clean Headline + Muted Gold CTA */}
+      {/* HERO SECTION: Full-screen background with lighter overlay + Sleek Serif Headline + /home1.jpg & /home2.jpg overlapping cards */}
       <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
         <div className="absolute inset-0 z-0">
           <img
-            src="/pic6.jpg"
+            src="/pic1.jpg"
             alt="Albumevi Photography Studio"
-            className="w-full h-full object-cover object-center grayscale-[30%]"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-zinc-950/80" />
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-zinc-950/60" />
+          {/* Lighter, balanced dark overlay so the background image pops out while text stays readable */}
+          <div className="absolute inset-0 bg-zinc-950/45" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-zinc-950/40 to-transparent" />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-28 md:py-36 w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-3xl space-y-8 text-left"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
-              ALBÜMEVİ • OKUL & MEZUNİYET FOTOĞRAFÇILIĞI
-            </p>
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-24 md:py-32 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-7 space-y-8 text-left"
+            >
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">
+                ALBÜMEVİ • OKUL & MEZUNİYET FOTOĞRAFÇILIĞI
+              </p>
 
-            <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-normal tracking-tight leading-[1.06] text-white">
-              {t("hero.title1")} <br />
-              <span className="italic font-light text-[#D4AF37]">{t("hero.title2")}</span>
-            </h1>
+              <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-normal tracking-tight leading-[1.08] text-white">
+                {t("hero.title1")} <br />
+                <span className="italic font-light text-[#D4B8A8]">{t("hero.title2")}</span>
+              </h1>
 
-            <p className="text-base md:text-lg text-zinc-400 max-w-xl leading-relaxed font-light">
-              {t("hero.subtitle")}
-            </p>
+              <p className="text-base md:text-lg text-zinc-300 max-w-xl leading-relaxed font-light">
+                {t("hero.subtitle")}
+              </p>
 
-            <div className="pt-4 flex flex-wrap items-center gap-6">
-              <a
-                href="#galeri"
-                className="inline-flex items-center gap-3 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-8 py-4 rounded-none sm:rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-300"
-              >
-                Portfolyoyu İncele <ArrowRight className="w-4 h-4" />
-              </a>
+              <div className="pt-2 flex flex-wrap items-center gap-6">
+                <a
+                  href="#galeri"
+                  className="inline-flex items-center gap-3 bg-[#D4B8A8] hover:bg-[#C4A695] text-zinc-950 px-8 py-4 rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-300 shadow-lg"
+                >
+                  Portfolyoyu İncele <ArrowRight className="w-4 h-4" />
+                </a>
 
-              <button
-                type="button"
-                onClick={() => setIsContactModalOpen(true)}
-                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white transition-colors py-4 px-2 cursor-pointer"
-              >
-                İletişime Geç <ChevronRight className="w-4 h-4 text-[#D4AF37]" />
-              </button>
-            </div>
-
-            <div className="pt-12 border-t border-white/10 grid grid-cols-3 gap-8 max-w-lg">
-              <div>
-                <p className="font-serif text-3xl md:text-4xl text-white">500+</p>
-                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">Mutlu Okul</p>
+                <button
+                  type="button"
+                  onClick={() => setIsContactModalOpen(true)}
+                  className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-zinc-300 hover:text-white transition-colors py-4 px-2 cursor-pointer"
+                >
+                  İletişime Geç <ChevronRight className="w-4 h-4 text-[#D4B8A8]" />
+                </button>
               </div>
-              <div>
-                <p className="font-serif text-3xl md:text-4xl text-white">100%</p>
-                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">
-                  Stüdyo Kalitesi
-                </p>
+
+              <div className="pt-10 border-t border-white/15 grid grid-cols-3 gap-8 max-w-lg">
+                <div>
+                  <p className="font-serif text-3xl md:text-4xl text-white">500+</p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-300 mt-1">
+                    Mutlu Okul
+                  </p>
+                </div>
+                <div>
+                  <p className="font-serif text-3xl md:text-4xl text-white">100%</p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-300 mt-1">
+                    Stüdyo Kalitesi
+                  </p>
+                </div>
+                <div>
+                  <p className="font-serif text-3xl md:text-4xl text-white">5 İl</p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-300 mt-1">
+                    Bölge Genelinde
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-serif text-3xl md:text-4xl text-white">5 İl</p>
-                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">
-                  Bölge Genelinde
-                </p>
+            </motion.div>
+
+            {/* Right Side Two Overlapping Thumbnail Cards (/home1.jpg & /home2.jpg) */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-5 grid grid-cols-2 gap-5 items-center"
+            >
+              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/15 p-2.5 shadow-2xl">
+                <div className="overflow-hidden rounded-xl aspect-[4/5]">
+                  <img
+                    src="/home1.jpg"
+                    alt="Stüdyo Portre Çekimi"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
+                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-[#D4B8A8]">
+                    Stüdyo Kalitesi
+                  </span>
+                  <Camera strokeWidth={1.5} className="w-3.5 h-3.5 text-[#D4B8A8]" />
+                </div>
               </div>
-            </div>
-          </motion.div>
+
+              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/15 p-2.5 shadow-2xl lg:translate-y-8">
+                <div className="overflow-hidden rounded-xl aspect-[4/5]">
+                  <img
+                    src="/home2.jpg"
+                    alt="Özel Tasarım Mezuniyet Albümü"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
+                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-[#D4B8A8]">
+                    Özel Tasarım Albüm
+                  </span>
+                  <Award strokeWidth={1.5} className="w-3.5 h-3.5 text-[#D4B8A8]" />
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -271,7 +317,7 @@ function Landing() {
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
             <div className="lg:col-span-4 space-y-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">
                 {t("services.badge")}
               </p>
               <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight leading-tight text-white">
@@ -280,7 +326,7 @@ function Landing() {
               <p className="text-zinc-400 text-sm md:text-base leading-relaxed font-light">
                 {t("services.subtitle")}
               </p>
-              <div className="w-12 h-px bg-[#D4AF37]/60 pt-2" />
+              <div className="w-12 h-px bg-[#D4B8A8]/60 pt-2" />
             </div>
 
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12">
@@ -293,11 +339,11 @@ function Landing() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.5, delay: idx * 0.08 }}
-                    className="group space-y-4 border-t border-white/10 pt-6 hover:border-[#D4AF37]/60 transition-colors duration-500"
+                    className="group space-y-4 border-t border-white/10 pt-6 hover:border-[#D4B8A8]/60 transition-colors duration-500"
                   >
                     <Icon
                       strokeWidth={1.25}
-                      className="w-7 h-7 text-[#D4AF37] transition-transform duration-500 group-hover:translate-x-1"
+                      className="w-7 h-7 text-[#D4B8A8] transition-transform duration-500 group-hover:translate-x-1"
                     />
                     <h3 className="text-lg font-medium tracking-wide text-white">
                       {service.title}
@@ -318,7 +364,7 @@ function Landing() {
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
             <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">
                 PORTFOLYO • SEÇKİN ÇALIŞMALAR
               </p>
               <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
@@ -355,7 +401,7 @@ function Landing() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37]">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4B8A8]">
                         ALBÜMEVİ
                       </p>
                       <p className="font-serif text-lg text-white mt-0.5">
@@ -374,7 +420,7 @@ function Landing() {
       <section id="surec" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="max-w-2xl mb-20 space-y-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">SÜREÇ</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">SÜREÇ</p>
             <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
               Nasıl Çalışıyoruz
             </h2>
@@ -390,13 +436,13 @@ function Landing() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-60px" }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="space-y-5 border-t border-white/10 pt-8 group hover:border-[#D4AF37]/60 transition-colors"
+                  className="space-y-5 border-t border-white/10 pt-8 group hover:border-[#D4B8A8]/60 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-serif text-xs tracking-[0.2em] text-[#D4AF37]">
+                    <span className="font-serif text-xs tracking-[0.2em] text-[#D4B8A8]">
                       0{idx + 1}
                     </span>
-                    <Icon strokeWidth={1.25} className="w-6 h-6 text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                    <Icon strokeWidth={1.25} className="w-6 h-6 text-zinc-400 group-hover:text-[#D4B8A8] transition-colors" />
                   </div>
                   <h3 className="text-xl font-medium text-white">{step.title}</h3>
                   <p className="text-zinc-400 text-sm leading-relaxed font-light">{step.desc}</p>
@@ -413,7 +459,7 @@ function Landing() {
           <div className="mx-auto max-w-7xl px-6 lg:px-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+                <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">
                   EKİBİMİZ
                 </p>
                 <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
@@ -454,7 +500,7 @@ function Landing() {
                       <h3 className="text-lg font-medium text-white">
                         {photographer.full_name || photographer.name}
                       </h3>
-                      <p className="text-xs uppercase tracking-[0.2em] text-[#D4AF37] mt-1">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[#D4B8A8] mt-1">
                         {photographer.role || photographer.title || "Fotoğrafçı"}
                       </p>
                     </div>
@@ -463,7 +509,7 @@ function Landing() {
                         href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4AF37] transition-colors pt-1"
+                        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4B8A8] transition-colors pt-1"
                       >
                         <Phone className="w-3.5 h-3.5" />
                         <span>{photographer.phone}</span>
@@ -490,19 +536,19 @@ function Landing() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 p-6 bg-zinc-950/85 backdrop-blur-md border border-white/10 rounded-xl">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] mb-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[#D4B8A8] mb-2">
                     Okul Müdürü, Batman
                   </p>
                   <p className="text-white text-sm font-light leading-relaxed mb-3">
                     {t("whyus.testimonial.text")}
                   </p>
-                  <div className="text-[#D4AF37] text-xs tracking-widest">★★★★★</div>
+                  <div className="text-[#D4B8A8] text-xs tracking-widest">★★★★★</div>
                 </div>
               </div>
             </div>
 
             <div className="lg:col-span-7 space-y-8">
-              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">
                 {t("whyus.badge")}
               </p>
               <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight leading-tight text-white">
@@ -525,7 +571,7 @@ function Landing() {
                     key={idx}
                     className="flex items-center gap-3 py-3 border-b border-white/5 text-sm text-zinc-300 font-light"
                   >
-                    <CheckCircle2 strokeWidth={1.5} className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                    <CheckCircle2 strokeWidth={1.5} className="w-4 h-4 text-[#D4B8A8] shrink-0" />
                     <span>{feature}</span>
                   </div>
                 ))}
@@ -535,7 +581,7 @@ function Landing() {
                 <button
                   type="button"
                   onClick={() => setIsContactModalOpen(true)}
-                  className="inline-flex items-center gap-3 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-8 py-4 rounded-none sm:rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-3 bg-[#D4B8A8] hover:bg-[#C4A695] text-zinc-950 px-8 py-4 rounded-none sm:rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-colors cursor-pointer"
                 >
                   {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
                 </button>
@@ -549,7 +595,7 @@ function Landing() {
       <section id="sss" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
         <div className="mx-auto max-w-4xl px-6 lg:px-10">
           <div className="mb-16 space-y-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">SSS</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#D4B8A8] font-medium">SSS</p>
             <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
               Sıkça Sorulan Sorular
             </h2>
@@ -565,7 +611,7 @@ function Landing() {
                 >
                   <span
                     className={`text-base md:text-lg font-normal transition-colors ${
-                      activeFaq === idx ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
+                      activeFaq === idx ? "text-[#D4B8A8]" : "text-white group-hover:text-[#D4B8A8]"
                     }`}
                   >
                     {faq.q}
@@ -573,7 +619,7 @@ function Landing() {
                   <ChevronDown
                     strokeWidth={1.25}
                     className={`w-5 h-5 shrink-0 transition-transform duration-300 ${
-                      activeFaq === idx ? "rotate-180 text-[#D4AF37]" : "text-zinc-400"
+                      activeFaq === idx ? "rotate-180 text-[#D4B8A8]" : "text-zinc-400"
                     }`}
                   />
                 </button>
@@ -628,7 +674,7 @@ function Landing() {
       <footer id="iletisim" className="border-t border-white/10 bg-zinc-950 pt-28 pb-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
           <div className="lg:col-span-5 space-y-8">
-            <p className="text-[#D4AF37] text-xs font-medium tracking-[0.3em] uppercase">
+            <p className="text-[#D4B8A8] text-xs font-medium tracking-[0.3em] uppercase">
               {t("contact.badge")}
             </p>
             <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
@@ -638,7 +684,7 @@ function Landing() {
 
             <div className="space-y-6 pt-4">
               <div className="flex items-start gap-4">
-                <Phone strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+                <Phone strokeWidth={1.25} className="w-5 h-5 text-[#D4B8A8] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
                     {t("contact.phone")}
@@ -647,7 +693,7 @@ function Landing() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <Mail strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+                <Mail strokeWidth={1.25} className="w-5 h-5 text-[#D4B8A8] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
                     {t("contact.email")}
@@ -656,7 +702,7 @@ function Landing() {
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4B8A8] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
                     {t("contact.address")}
@@ -673,7 +719,7 @@ function Landing() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-colors"
+                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-[#D4B8A8] hover:border-[#D4B8A8] transition-colors"
               >
                 <Instagram strokeWidth={1.25} className="w-4 h-4" />
               </a>
@@ -690,13 +736,13 @@ function Landing() {
             />
             <div className="relative z-10 m-4 p-4 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-white/10 w-full flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37]" />
+                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4B8A8]" />
                 <div>
                   <p className="text-white text-sm font-medium">{t("contact.map.title")}</p>
                   <p className="text-xs text-zinc-400">{t("contact.map.subtitle")}</p>
                 </div>
               </div>
-              <span className="text-[#D4AF37] text-xs uppercase tracking-[0.15em] flex items-center gap-1">
+              <span className="text-[#D4B8A8] text-xs uppercase tracking-[0.15em] flex items-center gap-1">
                 {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
               </span>
             </div>
@@ -756,7 +802,7 @@ function Landing() {
 
               <div className="p-6 space-y-8">
                 <div className="flex flex-col items-center justify-center text-center bg-zinc-900/60 rounded-2xl p-8 border border-white/10">
-                  <div className="w-24 h-24 rounded-full p-1 border border-[#D4AF37]/60 mb-4 overflow-hidden">
+                  <div className="w-24 h-24 rounded-full p-1 border border-[#D4B8A8]/60 mb-4 overflow-hidden">
                     <img
                       src="/pic4.jpg"
                       alt="Amine Himmich"
@@ -764,7 +810,7 @@ function Landing() {
                     />
                   </div>
                   <h4 className="font-serif text-2xl text-white">Amine Himmich</h4>
-                  <p className="text-[#D4AF37] text-xs tracking-[0.2em] uppercase mt-1">
+                  <p className="text-[#D4B8A8] text-xs tracking-[0.2em] uppercase mt-1">
                     Kurucu & Baş Fotoğrafçı
                   </p>
                   <div className="pt-5">
@@ -772,7 +818,7 @@ function Landing() {
                       href="https://wa.me/905362100021"
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-6 py-2.5 rounded-md text-xs uppercase tracking-[0.15em] font-semibold transition-colors"
+                      className="inline-flex items-center justify-center gap-2 bg-[#D4B8A8] hover:bg-[#C4A695] text-zinc-950 px-6 py-2.5 rounded-md text-xs uppercase tracking-[0.15em] font-semibold transition-colors"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       0536 210 00 21
@@ -812,7 +858,7 @@ function Landing() {
                               href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4AF37] transition-colors mt-1"
+                              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4B8A8] transition-colors mt-1"
                             >
                               <Phone className="w-3 h-3" />
                               {photographer.phone || "Telefon Yok"}
