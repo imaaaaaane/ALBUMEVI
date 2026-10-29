@@ -314,16 +314,6 @@ function Landing() {
               animate="visible"
               className="lg:col-span-7 space-y-8"
             >
-              <motion.div
-                variants={heroItemVariants}
-                className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-md bg-white/5 border border-white/10"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#D0A36D] animate-pulse" />
-                <span className="text-xs uppercase tracking-[0.25em] text-[#E6C79C] font-semibold">
-                  Sinematik Okul & Mezuniyet Fotoğrafçılığı
-                </span>
-              </motion.div>
-
               <TypewriterHeadline text1={t("hero.title1")} text2={t("hero.title2")} />
 
               <motion.p
@@ -376,7 +366,7 @@ function Landing() {
                 </div>
                 <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
-                    Stüdyo Kalitesi
+                    Kaliteli Çekim
                   </span>
                   <Camera className="w-3.5 h-3.5 text-[#D0A36D]" />
                 </div>
@@ -392,7 +382,7 @@ function Landing() {
                 </div>
                 <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
-                    Özel Tasarım Albüm
+                    Özel Ürünler
                   </span>
                   <Award className="w-3.5 h-3.5 text-[#D0A36D]" />
                 </div>
