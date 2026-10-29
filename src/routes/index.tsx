@@ -287,7 +287,7 @@ function Landing() {
         {/* Full-Width Real Photo Background with Slow Zoom */}
         <div className="absolute inset-0 z-0 group overflow-hidden">
           <img
-            src="/pic1.jpg"
+            src="/hero1.jpg"
             alt="Albumevi Editorial Hero"
             className="w-full h-full object-cover object-center scale-105 group-hover:scale-100 transition-transform duration-1000 ease-out"
           />
