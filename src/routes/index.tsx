@@ -394,47 +394,56 @@ function Landing() {
 
       {/* SERVICES GRID SECTION - Editorial & Glassmorphism */}
       <section id="hizmetler" className="relative bg-zinc-950 py-24 md:py-32 overflow-visible">
+        {/* Ambient Luxury Glow */}
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[480px] h-[480px] bg-[#D4B8A8]/10 blur-[150px] rounded-full pointer-events-none" />
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mx-auto max-w-7xl px-6 w-full"
+          className="relative z-10 mx-auto max-w-7xl px-6 w-full"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="lg:col-span-5 space-y-5"
+              className="lg:col-span-5 flex flex-col justify-between space-y-6"
             >
-              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
-                {t("services.badge")}
-              </p>
-              <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium italic leading-[1.2] tracking-tight text-white pt-1">
-                Premium Fotoğraf Deneyimi
-              </h2>
-              <p className="text-zinc-400 leading-relaxed">{t("services.subtitle")}</p>
+              <div className="space-y-4">
+                <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
+                  {t("services.badge")}
+                </p>
+                <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium italic leading-[1.18] tracking-tight text-white">
+                  Premium Fotoğraf Deneyimi
+                </h2>
+                <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
+                  {t("services.subtitle")}
+                </p>
+              </div>
 
-              {/* Large Left Vertical Feature Image (Replace src="/pic6.jpg" when ready) */}
-              <div className="group relative rounded-3xl mt-6 w-full overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="overflow-hidden rounded-2xl relative aspect-[4/5] max-h-[460px] w-full">
+              {/* Large Left Vertical Editorial Image */}
+              <div className="group relative rounded-2xl w-full overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-2.5 shadow-2xl shadow-[#D4B8A8]/20 hover:border-[#D4B8A8]/40 transition-all duration-300">
+                <div className="overflow-hidden rounded-2xl relative aspect-[4/5] w-full">
                   <img
-                    src="/pic6.jpg"
+                    src="/hizmet.jpg"
                     alt="Premium Fotoğraf Deneyimi"
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-xl">
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/15 to-transparent" />
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-zinc-900/60 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-xl shadow-lg">
                     <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
-                    <span className="text-[#D4B8A8] font-semibold">100% Orijinal</span>
+                    <span className="text-[#D4B8A8] font-semibold tracking-wider uppercase text-[11px]">
+                      100% Orijinal
+                    </span>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6 lg:pt-4">
+            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6 content-end">
               {[
                 {
                   icon: Camera,
@@ -465,14 +474,16 @@ function Landing() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-80px" }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                    className="group bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 flex flex-col justify-start overflow-visible"
+                    className="group relative bg-zinc-900/40 backdrop-blur-xl p-8 rounded-2xl border border-white/10 hover:border-[#D4B8A8]/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 flex flex-col justify-between min-h-[260px] overflow-visible"
                   >
-                    <div className="w-12 h-12 shrink-0 bg-[#D4B8A8]/15 border border-[#D4B8A8]/30 rounded-2xl flex items-center justify-center text-[#D4B8A8] mb-6 group-hover:scale-110 transition-transform duration-300">
-                      <ServiceIcon className="w-6 h-6 text-[#D4B8A8]" />
+                    <div>
+                      <div className="w-12 h-12 shrink-0 bg-[#D4B8A8]/10 border border-[#D4B8A8]/30 rounded-xl flex items-center justify-center text-[#D4B8A8] mb-6 group-hover:scale-110 group-hover:bg-[#D4B8A8]/20 transition-all duration-300 shadow-lg shadow-[#D4B8A8]/10">
+                        <ServiceIcon className="w-5 h-5 text-[#D4B8A8]" />
+                      </div>
+                      <h3 className="font-serif text-xl sm:text-2xl font-medium italic leading-snug mb-3 text-white group-hover:text-[#D4B8A8] transition-colors duration-300">
+                        {service.title}
+                      </h3>
                     </div>
-                    <h3 className="text-xl font-bold leading-snug mb-3 text-white group-hover:text-[#D4B8A8] transition-colors duration-300">
-                      {service.title}
-                    </h3>
                     <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
                   </motion.div>
                 );
