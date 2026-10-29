@@ -233,18 +233,18 @@ function Landing() {
       dir={dir}
       className="min-h-screen bg-zinc-950 text-white selection:bg-[#D0A36D]/30 font-sans"
     >
-      {/* HEADER: Floating Glassmorphism Editorial Header */}
-      <header className="fixed top-4 left-0 right-0 z-50 px-4 sm:px-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <Link to="/" className="flex items-center gap-2.5">
+      {/* HEADER: Sleek Glassmorphism Editorial Navbar */}
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/75 border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 py-3">
+          <Link to="/" className="flex items-center shrink-0">
             <img
               src="/logo-light.png"
               alt="Albumevi Logo"
-              className="w-40 md:w-48 lg:w-56 h-auto object-contain"
+              className="w-36 md:w-44 h-11 object-cover object-center"
             />
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-sm text-zinc-300 font-medium tracking-wide">
+          <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300 font-medium tracking-wide">
             <a href="#hizmetler" className="hover:text-[#D0A36D] transition-colors">
               {t("nav.services")}
             </a>
@@ -266,14 +266,14 @@ function Landing() {
             <a href="#iletisim" className="hover:text-[#D0A36D] transition-colors">
               {t("nav.contact")}
             </a>
-          </div>
+          </nav>
 
           <div className="flex items-center gap-3">
             <MotionLink
               to="/admin-login"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 text-sm font-medium backdrop-blur-md bg-white/5 border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white"
+              className="inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium backdrop-blur-md bg-white/5 border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white"
             >
               {t("cta.adminLogin")}
             </MotionLink>
