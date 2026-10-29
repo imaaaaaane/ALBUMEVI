@@ -23,11 +23,37 @@ import {
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n";
-import { useEffect, useRef, useState } from "react";
+import { type ImgHTMLAttributes, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2PublicUrl } from "@/lib/r2";
+
+type OptimizedImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+  priority?: boolean;
+  fill?: boolean;
+};
+
+function Image({
+  priority = false,
+  fill = false,
+  sizes,
+  className = "",
+  loading,
+  decoding,
+  ...props
+}: OptimizedImageProps) {
+  return (
+    <img
+      {...props}
+      sizes={sizes}
+      loading={priority ? "eager" : (loading ?? "lazy")}
+      decoding={priority ? "sync" : (decoding ?? "async")}
+      fetchPriority={priority ? "high" : "auto"}
+      className={`${fill ? "absolute inset-0 w-full h-full" : ""} ${className}`.trim()}
+    />
+  );
+}
 
 const PROCESS_STEPS: Array<{
   icon: typeof Calendar;
@@ -212,9 +238,11 @@ function Landing() {
       <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/75 border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center shrink-0">
-            <img
+            <Image
               src="/logo-light.png"
               alt="Albumevi Logo"
+              priority
+              sizes="176px"
               className="w-36 md:w-44 h-11 object-cover object-center"
             />
           </Link>
@@ -261,10 +289,13 @@ function Landing() {
       <div className="relative min-h-screen flex items-end lg:items-center justify-center overflow-hidden pt-28 pb-16 lg:py-24">
         {/* Full-Width Real Photo Background with Slow Zoom */}
         <div className="absolute inset-0 z-0 group overflow-hidden">
-          <img
+          <Image
             src="/hero1.jpg"
             alt="Albumevi Editorial Hero"
-            className="w-full h-full object-cover object-center scale-105 group-hover:scale-100 transition-transform duration-1000 ease-out"
+            priority
+            fill
+            sizes="100vw"
+            className="object-cover object-center scale-105 group-hover:scale-100 transition-transform duration-1000 ease-out"
           />
           {/* Lighter Dark Cinematic Gradient Overlays so background image pops out */}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-transparent" />
@@ -313,11 +344,14 @@ function Landing() {
             {/* Right Side Floating Editorial Glass Showcase */}
             <div className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0">
               <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="overflow-hidden rounded-xl">
-                  <img
+                <div className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl">
+                  <Image
                     src="/home1.jpg"
                     alt="Editorial Portrait 1"
-                    className="w-full h-44 sm:h-52 object-cover group-hover:scale-105 transition-transform duration-700"
+                    priority
+                    fill
+                    sizes="(max-width: 640px) 144px, 176px"
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
@@ -329,11 +363,14 @@ function Landing() {
               </div>
 
               <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 lg:translate-y-4 transition-all duration-300 hover:-translate-y-1 lg:hover:translate-y-3 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="overflow-hidden rounded-xl">
-                  <img
+                <div className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl">
+                  <Image
                     src="/home2.jpg"
                     alt="Editorial Portrait 2"
-                    className="w-full h-44 sm:h-52 object-cover group-hover:scale-105 transition-transform duration-700"
+                    priority
+                    fill
+                    sizes="(max-width: 640px) 144px, 176px"
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
@@ -384,10 +421,12 @@ function Landing() {
               {/* Large Left Vertical Editorial Image */}
               <div className="group relative rounded-2xl w-full overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-2.5 shadow-2xl shadow-orange-500/15 hover:border-amber-400/50 transition-all duration-300">
                 <div className="overflow-hidden rounded-2xl relative aspect-[4/5] w-full">
-                  <img
+                  <Image
                     src="/hizmet.jpg"
                     alt="Premium Fotoğraf Deneyimi"
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/15 to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-zinc-900/70 backdrop-blur-xl border border-white/15 px-4 py-3 rounded-xl shadow-lg">
@@ -521,8 +560,8 @@ function Landing() {
 
               {/* Colorful Gradient Ring around Profile Picture */}
               <div className="relative z-10 w-44 h-44 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-orange-500 to-rose-500 shadow-[0_0_25px_rgba(249,115,22,0.3)] group-hover:shadow-[0_0_35px_rgba(249,115,22,0.55)] transition-all duration-500 mb-5">
-                <div className="w-full h-full rounded-full p-1 bg-zinc-950 overflow-hidden">
-                  <img
+                <div className="relative w-full h-full rounded-full p-1 bg-zinc-950 overflow-hidden">
+                  <Image
                     src={
                       photographer.img
                         ? getR2PublicUrl(photographer.img)
@@ -531,7 +570,9 @@ function Landing() {
                           : ""
                     }
                     alt={photographer.name || photographer.full_name}
-                    className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
+                    fill
+                    sizes="176px"
+                    className="object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
               </div>
@@ -600,15 +641,16 @@ function Landing() {
                 className="group relative w-64 sm:w-72 md:w-80 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900/60 border border-white/10 p-2 shadow-2xl hover:border-[#D4B8A8]/50 hover:scale-105 transition-all duration-500"
               >
                 <div className="relative w-full h-full overflow-hidden rounded-xl">
-                  <img
+                  <Image
                     src={item.src}
                     alt={item.title}
-                    loading="lazy"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     style={{
                       transform: "none",
                       imageOrientation: "from-image",
                     }}
-                    className="w-full h-full object-cover object-center rotate-0 transition-all duration-500"
+                    className="object-cover object-center rotate-0 transition-all duration-500"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                     <span className="bg-zinc-950/75 backdrop-blur-md border border-white/15 rounded-lg px-3.5 py-1.5 text-[11px] text-[#D4B8A8] font-semibold tracking-wider uppercase">
@@ -661,10 +703,12 @@ function Landing() {
                     {/* Background Image + Readable Gradient Overlay */}
                     {step.bgImage && (
                       <>
-                        <img
+                        <Image
                           src={step.bgImage}
                           alt={step.title}
-                          className={`absolute inset-0 w-full h-full object-cover rotate-0 scale-100 group-hover:scale-105 transition-transform duration-700 z-0 ${
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className={`object-cover rotate-0 scale-100 group-hover:scale-105 transition-transform duration-700 z-0 ${
                             step.enhancedGlass
                               ? "object-left-top brightness-150 contrast-125"
                               : "object-center"
@@ -1028,7 +1072,12 @@ function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <img src="/logo-light.png" alt="Albumevi Logo" className="h-12 md:h-16 w-auto object-contain" />
+            <Image
+              src="/logo-light.png"
+              alt="Albumevi Logo"
+              sizes="176px"
+              className="h-12 md:h-16 w-auto object-contain"
+            />
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
