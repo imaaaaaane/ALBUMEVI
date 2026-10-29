@@ -796,26 +796,28 @@ function Landing() {
         {/* Subtle Champagne Ambient Glow */}
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[520px] h-[520px] bg-[#D4B8A8]/10 blur-[160px] rounded-full pointer-events-none" />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center">
-          {/* Left: Prominent Portrait Image + Below Testimonial Card */}
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          {/* Left: Editorial Typography, CTA & Testimonial Card */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-6 flex flex-col gap-6"
+            className="lg:col-span-6 flex flex-col gap-8"
           >
-            <div className="group relative w-full rounded-3xl overflow-hidden bg-zinc-900/40 border border-white/15 p-2.5 shadow-2xl shadow-[#D4B8A8]/10 hover:border-[#D4B8A8]/40 transition-all duration-500">
-              <div className="relative w-full overflow-hidden rounded-2xl">
-                <img
-                  src="/urun4.jpg"
-                  alt="Albümevi Özel Tasarım Okul Hatıraları"
-                  className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
+            <div className="space-y-4">
+              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
+                {t("whyus.badge")}
+              </p>
+              <h2 className="font-serif text-4xl sm:text-5xl font-medium italic leading-[1.15] tracking-tight text-white">
+                {t("whyus.title")}
+              </h2>
+              <p className="text-zinc-400 text-base sm:text-lg leading-relaxed font-light">
+                {t("whyus.desc")}
+              </p>
             </div>
 
-            {/* Cleanly Positioned Glassmorphism Testimonial Card Below Image */}
+            {/* Cleanly Positioned Glassmorphism Testimonial Card */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -833,28 +835,27 @@ function Landing() {
                 “{t("whyus.testimonial.text")}”
               </p>
             </motion.div>
+
+            <div className="pt-1">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setIsContactModalOpen(true)}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-semibold px-9 py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(212,184,168,0.35)] shadow-[0_8px_24px_rgba(212,184,168,0.2)] cursor-pointer"
+              >
+                {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
+              </motion.button>
+            </div>
           </motion.div>
 
-          {/* Right: Editorial Typography & Staggered Features List */}
+          {/* Right: Staggered Features List */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-6 space-y-8"
+            className="lg:col-span-6"
           >
-            <div className="space-y-4">
-              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
-                {t("whyus.badge")}
-              </p>
-              <h2 className="font-serif text-4xl sm:text-5xl font-medium italic leading-[1.15] tracking-tight text-white">
-                {t("whyus.title")}
-              </h2>
-              <p className="text-zinc-400 text-base sm:text-lg leading-relaxed font-light">
-                {t("whyus.desc")}
-              </p>
-            </div>
-
             {/* Clean Staggered Editorial Features List */}
             <div className="divide-y divide-white/10 border-y border-white/10 py-1">
               {[
@@ -886,17 +887,6 @@ function Landing() {
                   </span>
                 </motion.div>
               ))}
-            </div>
-
-            <div className="pt-2">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setIsContactModalOpen(true)}
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-semibold px-9 py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(212,184,168,0.35)] shadow-[0_8px_24px_rgba(212,184,168,0.2)] cursor-pointer"
-              >
-                {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
-              </motion.button>
             </div>
           </motion.div>
         </div>
