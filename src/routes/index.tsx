@@ -83,54 +83,12 @@ const FAQS = [
 const MotionLink = motion(Link);
 
 const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) => {
-  const [displayedText1, setDisplayedText1] = useState("");
-  const [displayedText2, setDisplayedText2] = useState("");
-  const [isTyping1, setIsTyping1] = useState(true);
-
-  useEffect(() => {
-    let i = 0;
-    setDisplayedText1("");
-    setIsTyping1(true);
-    const intervalId = setInterval(() => {
-      setDisplayedText1(text1.slice(0, i + 1));
-      i++;
-      if (i >= text1.length) {
-        clearInterval(intervalId);
-        setIsTyping1(false);
-      }
-    }, 110); // Typing speed
-    return () => clearInterval(intervalId);
-  }, [text1]);
-
-  useEffect(() => {
-    if (isTyping1) return;
-    let i = 0;
-    setDisplayedText2("");
-    const intervalId = setInterval(() => {
-      setDisplayedText2(text2.slice(0, i + 1));
-      i++;
-      if (i >= text2.length) {
-        clearInterval(intervalId);
-      }
-    }, 110);
-    return () => clearInterval(intervalId);
-  }, [text2, isTyping1]);
-
   return (
-    <motion.h1
-      variants={heroItemVariants}
-      className="font-serif text-4xl sm:text-5xl lg:text-[3.35rem] font-semibold italic leading-[1.12] tracking-tight text-white max-w-md"
-    >
-      {displayedText1}
-      {isTyping1 && <span className="animate-pulse">|</span>}
+    <h1 className="font-serif text-4xl sm:text-5xl lg:text-[3.35rem] font-semibold italic leading-[1.12] tracking-tight text-white max-w-md">
+      {text1}
       <br />
-      <span className="text-[#D4B8A8] font-normal">
-        {displayedText2}
-        {!isTyping1 && displayedText2.length < text2.length && (
-          <span className="animate-pulse text-white">|</span>
-        )}
-      </span>
-    </motion.h1>
+      <span className="text-[#D4B8A8] font-normal">{text2}</span>
+    </h1>
   );
 };
 
@@ -308,31 +266,17 @@ function Landing() {
           <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-rose-950/25 blur-[130px] rounded-full pointer-events-none" />
         </div>
 
-        <motion.main
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 mx-auto max-w-[1440px] px-6 lg:px-12 w-full"
-        >
+        <main className="relative z-10 mx-auto max-w-[1440px] px-6 lg:px-12 w-full">
           <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8">
             {/* Editorial Typography Column */}
-            <motion.div
-              variants={heroContainerVariants}
-              initial="hidden"
-              animate="visible"
-              className="w-full max-w-md space-y-6 text-left shrink-0"
-            >
+            <div className="w-full max-w-md space-y-6 text-left shrink-0">
               <TypewriterHeadline text1={t("hero.title1")} text2={t("hero.title2")} />
 
-              <motion.p
-                variants={heroItemVariants}
-                className="text-base md:text-lg text-zinc-300/90 max-w-md leading-relaxed font-light"
-              >
+              <p className="text-base md:text-lg text-zinc-300/90 max-w-md leading-relaxed font-light">
                 {t("hero.subtitle")}
-              </motion.p>
+              </p>
 
-              <motion.div variants={heroItemVariants} className="pt-2">
+              <div className="pt-2">
                 <div className="flex flex-wrap items-center gap-4">
                   <a
                     href="#galeri"
@@ -355,16 +299,11 @@ function Landing() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
             {/* Right Side Floating Editorial Glass Showcase */}
-            <motion.div
-              variants={heroImageVariants}
-              initial="hidden"
-              animate="visible"
-              className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0"
-            >
+            <div className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0">
               <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
                 <div className="overflow-hidden rounded-xl">
                   <img
@@ -396,9 +335,9 @@ function Landing() {
                   <Award className="w-3 h-3 text-[#D4B8A8]" />
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
-        </motion.main>
+        </main>
       </div>
 
       {/* SERVICES GRID SECTION - Editorial & Glassmorphism */}
