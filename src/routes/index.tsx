@@ -231,7 +231,7 @@ function Landing() {
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D0A36D]/30 font-sans"
+      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D4B8A8]/30 font-sans"
     >
       {/* HEADER: Sleek Glassmorphism Editorial Navbar */}
       <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/75 border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
@@ -245,25 +245,25 @@ function Landing() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300 font-medium tracking-wide">
-            <a href="#hizmetler" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#hizmetler" className="hover:text-[#D4B8A8] transition-colors duration-300">
               {t("nav.services")}
             </a>
-            <a href="#surec" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#surec" className="hover:text-[#D4B8A8] transition-colors duration-300">
               {t("nav.process")}
             </a>
-            <a href="#cekimciler" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#cekimciler" className="hover:text-[#D4B8A8] transition-colors duration-300">
               Çekimciler
             </a>
-            <a href="#galeri" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#galeri" className="hover:text-[#D4B8A8] transition-colors duration-300">
               {t("nav.gallery")}
             </a>
-            <a href="#sss" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#sss" className="hover:text-[#D4B8A8] transition-colors duration-300">
               SSS
             </a>
-            <a href="#hakkimizda" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#hakkimizda" className="hover:text-[#D4B8A8] transition-colors duration-300">
               {t("nav.about")}
             </a>
-            <a href="#iletisim" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#iletisim" className="hover:text-[#D4B8A8] transition-colors duration-300">
               {t("nav.contact")}
             </a>
           </nav>
@@ -271,9 +271,9 @@ function Landing() {
           <div className="flex items-center gap-3">
             <MotionLink
               to="/admin-login"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium backdrop-blur-md bg-white/5 border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium bg-white/5 backdrop-blur-md border border-white/10 rounded-full transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4B8A8]/50 hover:text-[#D4B8A8] hover:shadow-lg hover:shadow-[#D4B8A8]/10 text-white"
             >
               {t("cta.adminLogin")}
             </MotionLink>
@@ -295,7 +295,7 @@ function Landing() {
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/75 via-zinc-950/35 to-transparent" />
           {/* Subtle Crimson & Gold Editorial Ambient Glow */}
-          <div className="absolute -bottom-24 left-1/4 w-[500px] h-[500px] bg-[#D0A36D]/15 blur-[140px] rounded-full pointer-events-none" />
+          <div className="absolute -bottom-24 left-1/4 w-[500px] h-[500px] bg-[#D4B8A8]/15 blur-[140px] rounded-full pointer-events-none" />
           <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-rose-950/25 blur-[130px] rounded-full pointer-events-none" />
         </div>
 
@@ -327,14 +327,14 @@ function Landing() {
                 <div className="flex flex-wrap items-center gap-4">
                   <a
                     href="#galeri"
-                    className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#D0A36D] to-[#B8864B] hover:from-[#E2B67C] hover:to-[#C8965B] text-zinc-950 px-6 py-3.5 rounded-full text-sm font-bold tracking-wide transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_rgba(208,163,109,0.25)]"
+                    className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-medium px-7 py-3.5 rounded-full text-sm tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#D4B8A8]/30 shadow-[0_8px_24px_rgba(212,184,168,0.2)]"
                   >
                     Portfolyoyu İncele <ArrowRight className="w-4 h-4" />
                   </a>
 
-                  <div className="flex items-center gap-3 px-4 py-2.5 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl shadow-xl">
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
                     <div className="flex flex-col">
-                      <div className="flex gap-1 text-[#D0A36D] text-xs mb-0.5">
+                      <div className="flex gap-1 text-[#D4B8A8] text-xs mb-0.5">
                         <span>★</span>
                         <span>★</span>
                         <span>★</span>
@@ -356,7 +356,7 @@ function Landing() {
               animate="visible"
               className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0"
             >
-              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl">
+              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
                 <div className="overflow-hidden rounded-xl">
                   <img
                     src="/home1.jpg"
@@ -365,14 +365,14 @@ function Landing() {
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-[#E6C79C]">
+                  <span className="text-[10px] uppercase tracking-wider text-[#D4B8A8]">
                     Kaliteli Çekim
                   </span>
-                  <Camera className="w-3 h-3 text-[#D0A36D]" />
+                  <Camera className="w-3 h-3 text-[#D4B8A8]" />
                 </div>
               </div>
 
-              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl lg:translate-y-4">
+              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 lg:translate-y-4 transition-all duration-300 hover:-translate-y-1 lg:hover:translate-y-3 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
                 <div className="overflow-hidden rounded-xl">
                   <img
                     src="/home2.jpg"
@@ -381,10 +381,10 @@ function Landing() {
                   />
                 </div>
                 <div className="mt-2 px-1.5 pb-0.5 flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-[#E6C79C]">
+                  <span className="text-[10px] uppercase tracking-wider text-[#D4B8A8]">
                     Özel Ürünler
                   </span>
-                  <Award className="w-3 h-3 text-[#D0A36D]" />
+                  <Award className="w-3 h-3 text-[#D4B8A8]" />
                 </div>
               </div>
             </motion.div>
@@ -409,16 +409,16 @@ function Landing() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="lg:col-span-5 space-y-5"
             >
-              <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
+              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
                 {t("services.badge")}
               </p>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-[1.2] tracking-tight text-white pt-1">
+              <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium italic leading-[1.2] tracking-tight text-white pt-1">
                 Premium Fotoğraf Deneyimi
               </h2>
               <p className="text-zinc-400 leading-relaxed">{t("services.subtitle")}</p>
 
               {/* Large Left Vertical Feature Image (Replace src="/pic6.jpg" when ready) */}
-              <div className="group relative rounded-3xl mt-6 w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
+              <div className="group relative rounded-3xl mt-6 w-full overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
                 <div className="overflow-hidden rounded-2xl relative aspect-[4/5] max-h-[460px] w-full">
                   <img
                     src="/pic6.jpg"
@@ -426,9 +426,9 @@ function Landing() {
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 backdrop-blur-md bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-xl">
                     <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
-                    <span className="text-[#D0A36D] font-semibold">100% Orijinal</span>
+                    <span className="text-[#D4B8A8] font-semibold">100% Orijinal</span>
                   </div>
                 </div>
               </div>
@@ -465,12 +465,12 @@ function Landing() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-80px" }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                    className="group backdrop-blur-md bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-[#D0A36D]/40 hover:bg-white/[0.08] transition-all duration-500 shadow-xl flex flex-col justify-start overflow-visible"
+                    className="group bg-white/5 backdrop-blur-md p-8 rounded-3xl border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 flex flex-col justify-start overflow-visible"
                   >
-                    <div className="w-12 h-12 shrink-0 bg-[#D0A36D]/15 border border-[#D0A36D]/30 rounded-2xl flex items-center justify-center text-[#D0A36D] mb-6 group-hover:scale-110 transition-transform duration-500">
-                      <ServiceIcon className="w-6 h-6 text-[#D0A36D]" />
+                    <div className="w-12 h-12 shrink-0 bg-[#D4B8A8]/15 border border-[#D4B8A8]/30 rounded-2xl flex items-center justify-center text-[#D4B8A8] mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <ServiceIcon className="w-6 h-6 text-[#D4B8A8]" />
                     </div>
-                    <h3 className="text-xl font-bold leading-snug mb-3 text-white group-hover:text-[#E6C79C] transition-colors">
+                    <h3 className="text-xl font-bold leading-snug mb-3 text-white group-hover:text-[#D4B8A8] transition-colors duration-300">
                       {service.title}
                     </h3>
                     <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
@@ -485,10 +485,12 @@ function Landing() {
       {/* PHOTOGRAPHERS SECTION */}
       <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
         <div className="text-center mb-16">
-          <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">
+          <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
             Ekibimiz
           </p>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Çekimcilerimiz</h2>
+          <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+            Çekimcilerimiz
+          </h2>
           <p className="text-zinc-400 mt-4 max-w-2xl mx-auto">
             Anılarınızı ölümsüzleştiren yetenekli profesyonel fotoğrafçılarımız.
           </p>
@@ -502,9 +504,9 @@ function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="flex flex-col items-center text-center group backdrop-blur-md bg-white/5 border border-white/10 hover:border-[#D0A36D]/40 rounded-3xl p-6 transition-all duration-500"
+              className="flex flex-col items-center text-center group bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
             >
-              <div className="w-44 h-44 rounded-full border-2 border-[#D0A36D]/60 overflow-hidden mb-5 relative shadow-lg shadow-[#D0A36D]/10 group-hover:shadow-[#D0A36D]/30 transition-shadow duration-500 p-1">
+              <div className="w-44 h-44 rounded-full border-2 border-[#D4B8A8]/60 overflow-hidden mb-5 relative shadow-lg shadow-[#D4B8A8]/10 group-hover:shadow-[#D4B8A8]/30 transition-shadow duration-300 p-1">
                 <img
                   src={
                     photographer.img
@@ -521,7 +523,7 @@ function Landing() {
               <h3 className="text-xl font-bold text-white mt-1">
                 {photographer.full_name || photographer.name}
               </h3>
-              <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase mt-2 mb-5">
+              <p className="text-[#D4B8A8] text-xs font-bold tracking-widest uppercase mt-2 mb-5">
                 {photographer.role || photographer.title}
               </p>
 
@@ -529,10 +531,10 @@ function Landing() {
                 href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-auto flex items-center justify-center gap-2 backdrop-blur-md bg-white/5 hover:bg-[#D0A36D] text-white hover:text-zinc-950 py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-all duration-300 w-full"
+                className="mt-auto flex items-center justify-center gap-2 bg-white/5 backdrop-blur-md hover:bg-gradient-to-r hover:from-[#D4B8A8] hover:to-[#b39575] text-white hover:text-zinc-950 py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#D4B8A8]/20 w-full font-medium"
               >
                 <Phone className="w-4 h-4" />
-                <span className="font-semibold text-sm">{photographer.phone}</span>
+                <span className="font-medium text-sm">{photographer.phone}</span>
               </a>
             </motion.div>
           ))}
@@ -543,10 +545,12 @@ function Landing() {
       <section id="galeri" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
           <div>
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">
+            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
               Portfolyo • Gerçek Çekimlerimiz
             </p>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Unutulmaz Anılar</h2>
+            <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+              Unutulmaz Anılar
+            </h2>
           </div>
           <p className="text-zinc-400 max-w-md text-sm md:text-base leading-relaxed">
             Objektifimizden yansıyan doğal anlar. Tüm fotoğraflar kendi çekimlerimiz ve gerçek
@@ -563,7 +567,7 @@ function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.6 }}
-              className="break-inside-avoid relative rounded-3xl overflow-hidden cursor-pointer group backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl hover:border-[#D0A36D]/40 transition-colors duration-500"
+              className="break-inside-avoid relative rounded-3xl overflow-hidden cursor-pointer group bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
             >
               <div className="relative overflow-hidden rounded-2xl">
                 <img
@@ -572,8 +576,8 @@ function Landing() {
                   loading="lazy"
                   className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none flex items-end p-5">
-                  <div className="backdrop-blur-md bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-xs text-white font-medium tracking-wider uppercase">
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end p-5">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2 text-xs text-white font-medium tracking-wider uppercase">
                     {item.title || "Albümevi Koleksiyonu"}
                   </div>
                 </div>
@@ -586,13 +590,15 @@ function Landing() {
       {/* PROCESS SECTION */}
       <section id="surec" className="px-6 py-24 max-w-7xl mx-auto relative">
         <div className="text-center mb-24 relative z-10">
-          <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">Süreç</p>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Nasıl Çalışıyoruz</h2>
+          <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">Süreç</p>
+          <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+            Nasıl Çalışıyoruz
+          </h2>
         </div>
 
         <div className="relative max-w-5xl mx-auto">
           {/* THE SPINE */}
-          <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px md:-translate-x-1/2 bg-gradient-to-b from-transparent via-[#D0A36D]/50 to-transparent shadow-[0_0_15px_rgba(208,163,109,0.5)] z-0" />
+          <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px md:-translate-x-1/2 bg-gradient-to-b from-transparent via-[#D4B8A8]/50 to-transparent shadow-[0_0_15px_rgba(212,184,168,0.4)] z-0" />
 
           <div className="relative z-10">
             {PROCESS_STEPS.map((step, idx) => {
@@ -605,8 +611,8 @@ function Landing() {
                   className={`relative flex flex-col md:flex-row items-center w-full ${isEven ? "md:justify-start" : "md:justify-end"} ${idx > 0 ? "mt-8 md:-mt-24" : ""}`}
                 >
                   {/* The Timeline Dot */}
-                  <div className="absolute left-6 md:left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-zinc-950 border-2 border-[#D0A36D] flex items-center justify-center shadow-[0_0_20px_rgba(208,163,109,0.4)] z-20 top-8 md:top-1/2 md:-translate-y-1/2">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#D0A36D]" />
+                  <div className="absolute left-6 md:left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-zinc-950 border-2 border-[#D4B8A8] flex items-center justify-center shadow-[0_0_20px_rgba(212,184,168,0.4)] z-20 top-8 md:top-1/2 md:-translate-y-1/2">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#D4B8A8]" />
                   </div>
 
                   {/* The Card */}
@@ -615,7 +621,7 @@ function Landing() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, margin: "-100px" }}
                     transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-                    className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 hover:border-[#D0A36D]/40 transition-all duration-500 shadow-xl"
+                    className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
                   >
                     {/* Giant Number */}
                     <div
@@ -626,10 +632,10 @@ function Landing() {
 
                     {/* Content */}
                     <div className="relative z-20 p-8 sm:p-12 pl-12 md:pl-12">
-                      <div className="w-14 h-14 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-500">
+                      <div className="w-14 h-14 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <Icon className="w-7 h-7" />
                       </div>
-                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D0A36D] transition-colors duration-300">
+                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D4B8A8] transition-colors duration-300">
                         {step.title}
                       </h3>
                       <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
@@ -647,11 +653,14 @@ function Landing() {
       {/* FAQ SECTION */}
       <section id="sss" className="px-6 py-20 max-w-3xl mx-auto relative">
         {/* Dynamic Background Blob */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#8B5A2B] rounded-full blur-[150px] opacity-[0.05] animate-[pulse_6s_ease-in-out_infinite] pointer-events-none z-0" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4B8A8] rounded-full blur-[150px] opacity-[0.05] animate-[pulse_6s_ease-in-out_infinite] pointer-events-none z-0" />
 
         <div className="relative z-10">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-serif tracking-widest font-light">
+            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
+              Merak Edilenler
+            </p>
+            <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
               Sıkça Sorulan Sorular
             </h2>
           </div>
@@ -663,19 +672,19 @@ function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: idx * 0.1 }}
-                className={`rounded-2xl backdrop-blur-md border border-white/10 overflow-hidden transition-colors duration-300 ${activeFaq === idx ? "bg-white/[0.07] border-[#D0A36D]/30" : "bg-white/5 hover:bg-white/[0.07]"}`}
+                className={`rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 ${activeFaq === idx ? "bg-white/[0.08] border-[#D4B8A8]/40" : ""}`}
               >
                 <button
                   onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between py-5 px-6 text-left focus:outline-none bg-transparent group"
                 >
                   <span
-                    className={`font-medium transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#D0A36D] ${activeFaq === idx ? "text-[#D0A36D]" : "text-white"}`}
+                    className={`font-medium transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#D4B8A8] ${activeFaq === idx ? "text-[#D4B8A8]" : "text-white"}`}
                   >
                     {faq.q}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 transition-transform duration-300 ease-in-out group-hover:text-[#D0A36D] ${activeFaq === idx ? "rotate-180 text-[#D0A36D]" : "text-zinc-400"}`}
+                    className={`w-5 h-5 transition-transform duration-300 ease-in-out group-hover:text-[#D4B8A8] ${activeFaq === idx ? "rotate-180 text-[#D4B8A8]" : "text-zinc-400"}`}
                   />
                 </button>
                 <AnimatePresence>
@@ -725,7 +734,7 @@ function Landing() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="relative group"
           >
-            <div className="rounded-3xl w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
+            <div className="rounded-3xl w-full overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
               <div className="overflow-hidden rounded-2xl relative">
                 <img
                   src="/pic5.jpg"
@@ -735,12 +744,12 @@ function Landing() {
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
               </div>
             </div>
-            <div className="absolute bottom-6 left-6 right-6 backdrop-blur-md bg-white/5 p-6 rounded-2xl border border-white/10 shadow-2xl">
-              <p className="text-xs uppercase tracking-widest text-[#E6C79C] mb-1.5">
+            <div className="absolute bottom-6 left-6 right-6 bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
+              <p className="text-xs uppercase tracking-widest text-[#D4B8A8] mb-1.5">
                 Okul Müdürü, Batman
               </p>
               <p className="text-white font-medium mb-3">{t("whyus.testimonial.text")}</p>
-              <div className="flex text-[#D0A36D] text-xs">★★★★★</div>
+              <div className="flex text-[#D4B8A8] text-xs">★★★★★</div>
             </div>
           </motion.div>
 
@@ -751,10 +760,10 @@ function Landing() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="space-y-8"
           >
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
+            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
               {t("whyus.badge")}
             </p>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
+            <h2 className="font-serif text-4xl md:text-5xl font-medium italic leading-tight tracking-tight text-white">
               {t("whyus.title")}
             </h2>
             <p className="text-zinc-400 leading-relaxed">{t("whyus.desc")}</p>
@@ -770,19 +779,19 @@ function Landing() {
               ].map((feature, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md bg-white/5 border border-white/10"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
                 >
-                  <CheckCircle2 className="w-5 h-5 text-[#D0A36D] shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-[#D4B8A8] shrink-0" />
                   <span className="text-sm font-medium">{feature}</span>
                 </div>
               ))}
             </div>
 
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setIsContactModalOpen(true)}
-              className="flex items-center gap-2 bg-[#D0A36D] hover:bg-[#B88B56] text-zinc-950 px-7 py-3.5 rounded-full font-bold transition-colors mt-4 cursor-pointer"
+              className="flex items-center gap-2 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#D4B8A8]/30 shadow-[0_8px_24px_rgba(212,184,168,0.2)] mt-4 cursor-pointer"
             >
               {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
             </motion.button>
@@ -793,7 +802,9 @@ function Landing() {
       {/* SEO SECTION */}
       <section className="px-6 py-12 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950">
         <div className="text-sm text-zinc-500 leading-relaxed max-w-5xl mx-auto text-center">
-          <h2 className="text-white/80 font-semibold mb-2">Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri</h2>
+          <h2 className="font-serif text-lg text-[#D4B8A8] font-medium italic mb-3">
+            Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri
+          </h2>
           <p className="mb-4">
             ALBÜMEVİ olarak <strong>Batman, Diyarbakır, Mardin, Siirt</strong> ve <strong>Şırnak</strong> genelinde anaokulu, anasınıfı ve ilkokul öğrencileri için profesyonel <strong>mezuniyet ve hatıra fotoğraf çekimi</strong> hizmetleri sunmaktayız. Stüdyo kalitesindeki ekipmanlarımızla okul ortamında gerçekleştirdiğimiz çekimlerde, çocukların en doğal anlarını ölümsüzleştiriyoruz.
           </p>
@@ -822,15 +833,17 @@ function Landing() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="space-y-8"
           >
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
+            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
               {t("contact.badge")}
             </p>
-            <h2 className="text-4xl font-bold tracking-tight">{t("contact.title")}</h2>
+            <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+              {t("contact.title")}
+            </h2>
             <p className="text-zinc-400">{t("contact.desc")}</p>
 
-            <div className="space-y-6 pt-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
+                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
@@ -838,8 +851,8 @@ function Landing() {
                   <p className="font-bold">05362100021</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
+              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
+                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
@@ -847,13 +860,13 @@ function Landing() {
                   <p className="font-bold">okulcekimleri@gmail.com</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
+              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
+                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
                   <p className="text-xs text-zinc-400">{t("contact.address")}</p>
-                  <p className="font-bold">
+                  <p className="font-bold text-sm">
                     TİLMERÇ MH İBRAHİM HAKKI CD TOKİ KAZIM KARABEKİR ORTAOKUL KARŞISI / BATMAN
                   </p>
                 </div>
@@ -864,7 +877,7 @@ function Landing() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-10 h-10 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center hover:border-[#D0A36D] transition-colors cursor-pointer"
+                className="w-11 h-11 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:text-[#D4B8A8] hover:shadow-2xl hover:shadow-[#D4B8A8]/10 cursor-pointer"
               >
                 <Instagram className="w-4 h-4" />
               </motion.button>
@@ -876,7 +889,7 @@ function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl p-4 relative min-h-[400px] flex items-end overflow-hidden"
+            className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-4 relative min-h-[400px] flex items-end overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
           >
             <iframe
               src="https://maps.google.com/maps?q=Tilmer%C3%A7%20Mh%20%C4%B0brahim%20Hakk%C4%B1%20Cd%20Batman%20Kaz%C4%B1m%20Karabekir%20Ortaokulu&t=&z=15&ie=UTF8&iwloc=&output=embed"
@@ -886,9 +899,9 @@ function Landing() {
               title="Albumevi Batman Studio Location"
             />
 
-            <div className="relative z-10 backdrop-blur-md bg-zinc-950/80 border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between">
+            <div className="relative z-10 bg-zinc-950/85 backdrop-blur-md border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#D0A36D]/15 rounded-full flex items-center justify-center text-[#D0A36D]">
+                <div className="w-10 h-10 bg-[#D4B8A8]/15 rounded-full flex items-center justify-center text-[#D4B8A8]">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
@@ -899,7 +912,7 @@ function Landing() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="text-[#D0A36D] text-sm font-medium flex items-center gap-1 hover:text-[#E2B67C] transition-colors cursor-pointer"
+                className="text-[#D4B8A8] text-sm font-medium flex items-center gap-1 hover:text-white transition-colors duration-300 cursor-pointer"
               >
                 {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
               </motion.button>
@@ -913,13 +926,13 @@ function Landing() {
           </div>
           <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="#" className="hover:text-[#D4B8A8] transition-colors">
               Gizlilik
             </a>
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="#" className="hover:text-[#D4B8A8] transition-colors">
               Şartlar
             </a>
-            <a href="#" className="hover:text-white transition-colors">
+            <a href="#" className="hover:text-[#D4B8A8] transition-colors">
               KVKK
             </a>
           </div>
@@ -931,7 +944,7 @@ function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
             onClick={() => setIsContactModalOpen(false)}
           >
             <motion.div
@@ -939,11 +952,13 @@ function Landing() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#0D0D0D] border border-[#D0A36D]/30 rounded-3xl w-full max-w-2xl overflow-hidden relative shadow-2xl"
+              className="bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden relative shadow-2xl"
             >
               {/* Header */}
-              <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-[#D0A36D]">İletişim Bilgileri</h3>
+              <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+                <h3 className="font-serif text-xl font-medium italic text-[#D4B8A8]">
+                  İletişim Bilgileri
+                </h3>
                 <button
                   onClick={() => setIsContactModalOpen(false)}
                   className="text-gray-400 hover:text-white transition-colors p-1"
@@ -955,10 +970,10 @@ function Landing() {
               {/* Content */}
               <div className="p-6 space-y-8">
                 {/* CEO Section */}
-                <div className="flex flex-col items-center justify-center text-center bg-[#151515] rounded-3xl p-8 border border-[#D0A36D]/30 relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-b from-[#D0A36D]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="flex flex-col items-center justify-center text-center bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
+                  <div className="absolute inset-0 bg-gradient-to-b from-[#D4B8A8]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                  <div className="w-28 h-28 rounded-full p-1 border-2 border-[#D0A36D]/60 mb-5 relative z-10 shadow-lg shadow-[#D0A36D]/10 group-hover:border-[#D0A36D] transition-colors duration-500">
+                  <div className="w-28 h-28 rounded-full p-1 border-2 border-[#D4B8A8]/60 mb-5 relative z-10 shadow-lg shadow-[#D4B8A8]/10 group-hover:border-[#D4B8A8] transition-colors duration-300">
                     <img
                       src="/pic4.jpg"
                       alt="Amine Himmich"
@@ -967,8 +982,10 @@ function Landing() {
                   </div>
 
                   <div className="relative z-10 space-y-2 flex flex-col items-center">
-                    <h4 className="text-2xl font-bold text-white">Amine Himmich</h4>
-                    <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase">
+                    <h4 className="font-serif text-2xl font-medium italic text-white">
+                      Amine Himmich
+                    </h4>
+                    <p className="text-[#D4B8A8] text-xs font-bold tracking-widest uppercase">
                       Kurucu & Baş Fotoğrafçı
                     </p>
 
@@ -977,7 +994,7 @@ function Landing() {
                         href="https://wa.me/905551234567"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 text-gray-300 hover:text-[#0A0A0A] transition-all duration-300 bg-white/5 hover:bg-[#D0A36D] px-6 py-3 rounded-full text-sm font-semibold border border-[#D0A36D]/30 hover:border-transparent w-full sm:w-auto"
+                        className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-medium px-6 py-3 rounded-full text-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#D4B8A8]/25 w-full sm:w-auto"
                       >
                         <Phone className="w-4 h-4" />
                         +90 555 123 4567
@@ -988,14 +1005,14 @@ function Landing() {
 
                 {/* Photographers Section */}
                 <div>
-                  <h4 className="text-sm font-bold tracking-widest uppercase text-gray-400 mb-4 border-b border-white/5 pb-2">
+                  <h4 className="text-sm font-bold tracking-widest uppercase text-zinc-400 mb-4 border-b border-white/10 pb-2">
                     Çekimciler Ekibimiz
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {dynamicPhotographers.map((photographer: any, idx: number) => (
                       <div
                         key={idx}
-                        className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4"
+                        className="bg-white/5 backdrop-blur-md rounded-xl p-4 border border-white/10 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
                       >
                         <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
                           <img
@@ -1010,7 +1027,7 @@ function Landing() {
                             href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D0A36D] transition-colors mt-1"
+                            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4B8A8] transition-colors mt-1"
                           >
                             <Phone className="w-3 h-3" />
                             {photographer.phone || "Telefon Yok"}
