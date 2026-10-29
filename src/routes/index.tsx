@@ -61,7 +61,7 @@ const PROCESS_STEPS: Array<{
     title: "Teslimat",
     desc: "Yüksek kaliteli ürünler özenle hazırlanıyor ve zamanında okula teslim ediliyor.",
     bgImage:
-      "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop",
   },
 ];
 
@@ -703,12 +703,16 @@ function Landing() {
                         <img
                           src={step.bgImage}
                           alt={step.title}
-                          className="absolute inset-0 w-full h-full object-cover object-center rotate-0 scale-100 group-hover:scale-105 transition-transform duration-700 z-0"
+                          className={`absolute inset-0 w-full h-full object-cover rotate-0 scale-100 group-hover:scale-105 transition-transform duration-700 z-0 ${
+                            step.enhancedGlass
+                              ? "object-left-top brightness-150 contrast-125"
+                              : "object-center"
+                          }`}
                         />
                         <div
                           className={`absolute inset-0 transition-all duration-500 z-[1] ${
                             step.enhancedGlass
-                              ? "bg-zinc-950/50 backdrop-blur-md"
+                              ? "bg-gradient-to-br from-[#D4B8A8]/20 via-zinc-950/25 to-zinc-950/65"
                               : "bg-gradient-to-t from-zinc-950/90 via-zinc-950/50 to-zinc-950/30 group-hover:via-zinc-950/40 group-hover:to-zinc-950/20"
                           }`}
                         />
@@ -727,7 +731,7 @@ function Landing() {
                       <div
                         className={
                           step.enhancedGlass
-                            ? "p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-2xl border border-white/20 shadow-2xl"
+                            ? "p-6 rounded-2xl bg-zinc-950/60 backdrop-blur-2xl border border-white/20 shadow-2xl"
                             : "p-2"
                         }
                       >
