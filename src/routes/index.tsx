@@ -945,68 +945,99 @@ function Landing() {
       </section>
 
       {/* FOOTER & CONTACT (Standard Scroll) */}
-      <footer id="iletisim" className="border-t border-white/10 bg-zinc-950 pt-24 pb-8">
+      <footer id="iletisim" className="relative border-t border-white/10 bg-zinc-950 pt-24 pb-8 overflow-hidden">
+        {/* Ambient Champagne Glow */}
+        <div className="absolute top-1/3 left-1/4 w-[480px] h-[480px] bg-[#D4B8A8]/8 blur-[160px] rounded-full pointer-events-none" />
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24"
+          className="relative z-10 max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24 items-stretch"
         >
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-8"
+            className="space-y-7"
           >
-            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
-              {t("contact.badge")}
-            </p>
-            <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
-              {t("contact.title")}
-            </h2>
-            <p className="text-zinc-400">{t("contact.desc")}</p>
+            <div className="space-y-3">
+              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
+                {t("contact.badge")}
+              </p>
+              <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+                {t("contact.title")}
+              </h2>
+              <p className="text-zinc-400 leading-relaxed">{t("contact.desc")}</p>
+            </div>
 
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
-                  <Phone className="w-5 h-5" />
+            <div className="space-y-4 pt-2">
+              <a
+                href="tel:05362100021"
+                className="group flex items-center gap-4 p-4 rounded-2xl bg-zinc-900/40 backdrop-blur-md border border-white/10 hover:scale-105 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 transition-all duration-300"
+              >
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-gradient-to-br from-[#D4B8A8]/25 via-[#D4B8A8]/10 to-transparent border border-[#D4B8A8]/35 flex items-center justify-center text-[#D4B8A8] shadow-[0_0_15px_rgba(212,184,168,0.18)] group-hover:scale-110 transition-transform duration-300">
+                  <Phone className="w-5 h-5 text-[#D4B8A8]" />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-400">{t("contact.phone")}</p>
-                  <p className="font-bold">05362100021</p>
+                  <p className="text-xs text-zinc-400 uppercase tracking-wider">{t("contact.phone")}</p>
+                  <p className="font-bold text-white group-hover:text-[#D4B8A8] transition-colors">05362100021</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-400">{t("contact.email")}</p>
-                  <p className="font-bold">okulcekimleri@gmail.com</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="w-12 h-12 shrink-0 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#D4B8A8]">
-                  <MapPin className="w-5 h-5" />
+              </a>
+
+              <a
+                href="mailto:okulcekimleri@gmail.com"
+                className="group flex items-center gap-4 p-4 rounded-2xl bg-zinc-900/40 backdrop-blur-md border border-white/10 hover:scale-105 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 transition-all duration-300"
+              >
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-gradient-to-br from-[#D4B8A8]/25 via-[#D4B8A8]/10 to-transparent border border-[#D4B8A8]/35 flex items-center justify-center text-[#D4B8A8] shadow-[0_0_15px_rgba(212,184,168,0.18)] group-hover:scale-110 transition-transform duration-300">
+                  <Mail className="w-5 h-5 text-[#D4B8A8]" />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-400">{t("contact.address")}</p>
-                  <p className="font-bold text-sm">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wider">{t("contact.email")}</p>
+                  <p className="font-bold text-white group-hover:text-[#D4B8A8] transition-colors">okulcekimleri@gmail.com</p>
+                </div>
+              </a>
+
+              <div className="group flex items-center gap-4 p-4 rounded-2xl bg-zinc-900/40 backdrop-blur-md border border-white/10 hover:scale-105 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 transition-all duration-300">
+                <div className="w-12 h-12 shrink-0 rounded-xl bg-gradient-to-br from-[#D4B8A8]/25 via-[#D4B8A8]/10 to-transparent border border-[#D4B8A8]/35 flex items-center justify-center text-[#D4B8A8] shadow-[0_0_15px_rgba(212,184,168,0.18)] group-hover:scale-110 transition-transform duration-300">
+                  <MapPin className="w-5 h-5 text-[#D4B8A8]" />
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-400 uppercase tracking-wider">{t("contact.address")}</p>
+                  <p className="font-bold text-sm text-white leading-snug">
                     TİLMERÇ MH İBRAHİM HAKKI CD TOKİ KAZIM KARABEKİR ORTAOKUL KARŞISI / BATMAN
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
+            {/* Prominent WhatsApp CTA + Social Button */}
+            <div className="flex flex-wrap items-center gap-4 pt-3">
+              <a
+                href="https://wa.me/905362100021"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-3 px-7 py-4 rounded-full bg-gradient-to-r from-emerald-950/90 via-emerald-900/75 to-zinc-900/90 hover:from-emerald-800/90 hover:to-emerald-700/80 border border-[#D4B8A8]/50 hover:border-[#D4B8A8] text-white font-semibold text-sm tracking-wide shadow-[0_10px_30px_rgba(16,185,129,0.2)] hover:shadow-[0_12px_35px_rgba(212,184,168,0.28)] hover:scale-105 transition-all duration-300"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5 text-emerald-400 shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M20.52 3.48A11.82 11.82 0 0 0 12.06 0C5.5 0 .16 5.34.16 11.9c0 2.1.55 4.15 1.6 5.95L0 24l6.33-1.66a11.87 11.87 0 0 0 5.73 1.46h.01c6.55 0 11.89-5.34 11.89-11.9 0-3.18-1.24-6.17-3.44-8.42ZM12.07 21.8h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.75.98 1-3.66-.24-.37a9.85 9.85 0 0 1-1.52-5.26c0-5.45 4.44-9.89 9.9-9.89 2.64 0 5.13 1.03 7 2.9a9.83 9.83 0 0 1 2.9 7c0 5.45-4.44 9.89-9.89 9.89Zm5.43-7.41c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.21-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z" />
+                </svg>
+                <span>WhatsApp ile İletişime Geçin</span>
+              </a>
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-11 h-11 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:text-[#D4B8A8] hover:shadow-2xl hover:shadow-[#D4B8A8]/10 cursor-pointer"
+                className="w-12 h-12 rounded-full bg-zinc-900/40 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all duration-300 hover:scale-105 hover:border-[#D4B8A8]/50 hover:text-[#D4B8A8] hover:shadow-2xl hover:shadow-[#D4B8A8]/10 cursor-pointer"
               >
-                <Instagram className="w-4 h-4" />
+                <Instagram className="w-4 h-4 text-[#D4B8A8]" />
               </motion.button>
             </div>
           </motion.div>
@@ -1016,33 +1047,35 @@ function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-4 relative min-h-[400px] flex items-end overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
+            className="bg-zinc-900/40 backdrop-blur-md border border-white/10 rounded-2xl p-3 relative min-h-[420px] flex items-end overflow-hidden transition-all duration-300 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
           >
             <iframe
               src="https://maps.google.com/maps?q=Tilmer%C3%A7%20Mh%20%C4%B0brahim%20Hakk%C4%B1%20Cd%20Batman%20Kaz%C4%B1m%20Karabekir%20Ortaokulu&t=&z=15&ie=UTF8&iwloc=&output=embed"
-              className="absolute inset-0 w-full h-full rounded-3xl border-0 opacity-80 hover:opacity-100 transition-opacity"
+              className="absolute inset-0 w-full h-full rounded-2xl border-0 filter invert hue-rotate-180 brightness-75 contrast-85 opacity-85 hover:opacity-100 transition-opacity duration-300"
+              style={{ filter: "invert(90%) hue-rotate(180deg) brightness(78%) contrast(88%)" }}
               allowFullScreen
               loading="lazy"
               title="Albumevi Batman Studio Location"
             />
 
-            <div className="relative z-10 bg-zinc-950/85 backdrop-blur-md border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between">
+            <div className="relative z-10 bg-zinc-950/90 backdrop-blur-xl border border-white/15 p-4 rounded-xl w-full flex items-center justify-between shadow-2xl">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#D4B8A8]/15 rounded-full flex items-center justify-center text-[#D4B8A8]">
+                <div className="w-10 h-10 bg-[#D4B8A8]/15 border border-[#D4B8A8]/30 rounded-full flex items-center justify-center text-[#D4B8A8]">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm">{t("contact.map.title")}</p>
+                  <p className="font-bold text-sm text-white">{t("contact.map.title")}</p>
                   <p className="text-xs text-zinc-400">{t("contact.map.subtitle")}</p>
                 </div>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <a
+                href="https://maps.google.com/?q=Tilmer%C3%A7%20Mh%20%C4%B0brahim%20Hakk%C4%B1%20Cd%20Batman%20Kaz%C4%B1m%20Karabekir%20Ortaokulu"
+                target="_blank"
+                rel="noreferrer"
                 className="text-[#D4B8A8] text-sm font-medium flex items-center gap-1 hover:text-white transition-colors duration-300 cursor-pointer"
               >
                 {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
-              </motion.button>
+              </a>
             </div>
           </motion.div>
         </motion.div>
