@@ -345,16 +345,25 @@ function Landing() {
             </div>
 
             {/* Right Side Floating Editorial Glass Showcase */}
-            <div className="ml-auto flex items-end justify-end gap-3.5 lg:translate-x-4 shrink-0">
-              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl">
+            <div
+              style={{ transform: "none" }}
+              className="ml-auto flex items-end justify-end gap-3.5 shrink-0"
+            >
+              <div
+                style={{ transform: "none" }}
+                className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-colors duration-300 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
+              >
+                <div
+                  style={{ transform: "none" }}
+                  className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl"
+                >
                   <Image
-                    src="/home1.jpg"
+                    src="/home1.jpg?v=5"
                     alt="Editorial Portrait 1"
                     priority
                     fill
                     sizes="(max-width: 640px) 144px, 176px"
-                    style={{ imageOrientation: "from-image", transform: "none" }}
+                    style={{ transform: "none", imageOrientation: "from-image" }}
                     className="object-cover object-center !transform-none !rotate-0"
                   />
                 </div>
@@ -366,15 +375,21 @@ function Landing() {
                 </div>
               </div>
 
-              <div className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 lg:translate-y-4 transition-all duration-300 hover:-translate-y-1 lg:hover:translate-y-3 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-                <div className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl">
+              <div
+                style={{ transform: "none" }}
+                className="group relative w-36 sm:w-44 overflow-hidden rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-colors duration-300 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
+              >
+                <div
+                  style={{ transform: "none" }}
+                  className="relative w-full h-44 sm:h-52 overflow-hidden rounded-xl"
+                >
                   <Image
-                    src="/home2.jpg"
+                    src="/home2.jpg?v=5"
                     alt="Editorial Portrait 2"
                     priority
                     fill
                     sizes="(max-width: 640px) 144px, 176px"
-                    style={{ imageOrientation: "from-image", transform: "none" }}
+                    style={{ transform: "none", imageOrientation: "from-image" }}
                     className="object-cover object-center !transform-none !rotate-0"
                   />
                 </div>
