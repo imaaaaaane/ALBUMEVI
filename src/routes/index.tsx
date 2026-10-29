@@ -636,14 +636,18 @@ function Landing() {
             {[...GALLERY_IMAGES, ...GALLERY_IMAGES].map((item, idx) => (
               <div
                 key={`${item.id}-${idx}`}
-                className="group relative w-64 sm:w-72 md:w-80 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900/60 border border-white/10 p-2 shadow-2xl hover:border-[#D4B8A8]/50 transition-all duration-500"
+                className="group relative w-64 sm:w-72 md:w-80 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900/60 border border-white/10 p-2 shadow-2xl hover:border-[#D4B8A8]/50 hover:scale-105 transition-all duration-500"
               >
                 <div className="relative w-full h-full overflow-hidden rounded-xl">
                   <img
                     src={item.src}
                     alt={item.title}
                     loading="lazy"
-                    className="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all duration-500 hover:scale-105"
+                    style={{
+                      transform: "none",
+                      imageOrientation: "from-image",
+                    }}
+                    className="w-full h-full object-cover object-center rotate-0 grayscale group-hover:grayscale-0 transition-all duration-500"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                     <span className="bg-zinc-950/75 backdrop-blur-md border border-white/15 rounded-lg px-3.5 py-1.5 text-[11px] text-[#D4B8A8] font-semibold tracking-wider uppercase">
