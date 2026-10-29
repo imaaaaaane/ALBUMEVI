@@ -102,6 +102,15 @@ const PRODUCTS = [
   },
 ];
 
+const GALLERY_IMAGES = [
+  { id: "g1", src: "/galeri1.jpg", title: "Stüdyo Konsepti" },
+  { id: "g2", src: "/galeri2.jpg", title: "Okul Portreleri" },
+  { id: "g3", src: "/galeri3.jpg", title: "Okulumu Çok Seviyorum" },
+  { id: "g4", src: "/galeri4.jpg", title: "Eğlenceli Hatıra Çekimi" },
+  { id: "g5", src: "/galeri5.jpg", title: "Özel Stüdyo Kadrajı" },
+  { id: "g6", src: "/galeri6.jpg", title: "Renkli Okul Anıları" },
+];
+
 const FAQS = [
   {
     q: "Mezuniyet cübbe ve keplerini siz mi temin ediyorsunuz?",
@@ -590,9 +599,9 @@ function Landing() {
         </div>
       </section>
 
-      {/* EDITORIAL MASONRY GALLERY SECTION */}
-      <section id="galeri" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
+      {/* URBAN SMOOTH SCROLL GALLERY MARQUEE SECTION */}
+      <section id="galeri" className="relative py-24 w-full overflow-hidden bg-zinc-950">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
           <div>
             <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
               Portfolyo • Gerçek Çekimlerimiz
@@ -603,36 +612,46 @@ function Landing() {
           </div>
           <p className="text-zinc-400 max-w-md text-sm md:text-base leading-relaxed">
             Objektifimizden yansıyan doğal anlar. Tüm fotoğraflar kendi çekimlerimiz ve gerçek
-            ürünlerimizdir; doğal kadrajlarıyla sergilenmektedir.
+            ürünlerimizdir; üzerine geldiğinizde gerçek renkleriyle canlanır.
           </p>
         </div>
 
-        {/* True Masonry Layout preserving natural vertical & horizontal aspect ratios */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6 w-full max-w-7xl mx-auto">
-          {dynamicPortfolio.map((item: any) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6 }}
-              className="break-inside-avoid relative rounded-3xl overflow-hidden cursor-pointer group bg-white/5 backdrop-blur-md border border-white/10 p-2 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
-            >
-              <div className="relative overflow-hidden rounded-2xl">
-                <img
-                  src={item.image_url ? getR2PublicUrl(item.image_url) : ""}
-                  alt={item.alt || item.title || "Portfolyo Görseli"}
-                  loading="lazy"
-                  className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex items-end p-5">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2 text-xs text-white font-medium tracking-wider uppercase">
-                    {item.title || "Albümevi Koleksiyonu"}
+        {/* Full-Width Seamless Infinite Horizontal Scrolling Marquee */}
+        <div className="relative w-full overflow-hidden py-4">
+          {/* Left & Right Cinematic Edge Fade Masks */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-32 bg-gradient-to-r from-zinc-950 to-transparent z-20" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-32 bg-gradient-to-l from-zinc-950 to-transparent z-20" />
+
+          <motion.div
+            className="flex w-max gap-6 px-3"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{
+              repeat: Infinity,
+              ease: "linear",
+              duration: 36,
+            }}
+          >
+            {[...GALLERY_IMAGES, ...GALLERY_IMAGES].map((item, idx) => (
+              <div
+                key={`${item.id}-${idx}`}
+                className="group relative w-64 sm:w-72 md:w-80 aspect-[3/4] shrink-0 rounded-2xl overflow-hidden bg-zinc-900/60 border border-white/10 p-2 shadow-2xl hover:border-[#D4B8A8]/50 transition-all duration-500"
+              >
+                <div className="relative w-full h-full overflow-hidden rounded-xl">
+                  <img
+                    src={item.src}
+                    alt={item.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all duration-500 hover:scale-105"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                    <span className="bg-zinc-950/75 backdrop-blur-md border border-white/15 rounded-lg px-3.5 py-1.5 text-[11px] text-[#D4B8A8] font-semibold tracking-wider uppercase">
+                      {item.title}
+                    </span>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          ))}
+            ))}
+          </motion.div>
         </div>
       </section>
 
