@@ -60,8 +60,6 @@ const PROCESS_STEPS: Array<{
     icon: Package,
     title: "Teslimat",
     desc: "Yüksek kaliteli ürünler özenle hazırlanıyor ve zamanında okula teslim ediliyor.",
-    bgImage:
-      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop",
   },
 ];
 
@@ -658,7 +656,7 @@ function Landing() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, margin: "-100px" }}
                     transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-                    className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden bg-zinc-900/50 border border-white/15 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/15"
+                    className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden bg-zinc-900/40 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/15"
                   >
                     {/* Background Image + Readable Gradient Overlay */}
                     {step.bgImage && (
