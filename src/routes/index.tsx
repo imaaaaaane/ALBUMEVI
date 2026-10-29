@@ -402,9 +402,10 @@ function Landing() {
       </div>
 
       {/* SERVICES GRID SECTION - Editorial & Glassmorphism */}
-      <section id="hizmetler" className="relative bg-zinc-950 py-24 md:py-32 overflow-visible">
-        {/* Ambient Luxury Glow */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[480px] h-[480px] bg-[#D4B8A8]/10 blur-[150px] rounded-full pointer-events-none" />
+      <section id="hizmetler" className="relative bg-zinc-950 py-24 md:py-32 overflow-hidden">
+        {/* Ambient Colorful Luxury Glows */}
+        <div className="absolute top-1/3 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 blur-[150px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] bg-fuchsia-500/10 blur-[150px] rounded-full pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -422,19 +423,19 @@ function Landing() {
               className="lg:col-span-5 flex flex-col justify-between space-y-6"
             >
               <div className="space-y-4">
-                <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
+                <p className="inline-block bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 bg-clip-text text-transparent text-xs font-bold tracking-[0.25em] uppercase">
                   {t("services.badge")}
                 </p>
-                <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium italic leading-[1.18] tracking-tight text-white">
+                <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium italic leading-[1.18] tracking-tight bg-gradient-to-r from-white via-amber-100 to-orange-200 bg-clip-text text-transparent">
                   Premium Fotoğraf Deneyimi
                 </h2>
-                <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
+                <p className="text-zinc-300/90 leading-relaxed text-sm sm:text-base">
                   {t("services.subtitle")}
                 </p>
               </div>
 
               {/* Large Left Vertical Editorial Image */}
-              <div className="group relative rounded-2xl w-full overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-2.5 shadow-2xl shadow-[#D4B8A8]/20 hover:border-[#D4B8A8]/40 transition-all duration-300">
+              <div className="group relative rounded-2xl w-full overflow-hidden bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-2.5 shadow-2xl shadow-orange-500/15 hover:border-amber-400/50 transition-all duration-300">
                 <div className="overflow-hidden rounded-2xl relative aspect-[4/5] w-full">
                   <img
                     src="/hizmet.jpg"
@@ -442,9 +443,9 @@ function Landing() {
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-950/15 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-zinc-900/60 backdrop-blur-xl border border-white/10 px-4 py-3 rounded-xl shadow-lg">
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 bg-zinc-900/70 backdrop-blur-xl border border-white/15 px-4 py-3 rounded-xl shadow-lg">
                     <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
-                    <span className="text-[#D4B8A8] font-semibold tracking-wider uppercase text-[11px]">
+                    <span className="bg-gradient-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent font-bold tracking-wider uppercase text-[11px]">
                       100% Orijinal
                     </span>
                   </div>
@@ -458,21 +459,49 @@ function Landing() {
                   icon: Camera,
                   title: t("services.card1.title"),
                   desc: t("services.card1.desc"),
+                  iconBg:
+                    "bg-gradient-to-br from-amber-400/25 via-orange-500/20 to-rose-500/25 border-amber-400/40 shadow-amber-500/25",
+                  iconColor: "text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.65)]",
+                  radialGlow:
+                    "bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.22),transparent_65%)]",
+                  hoverBorder: "hover:border-amber-400/50 hover:shadow-amber-500/15",
+                  titleGradient: "from-white via-amber-100 to-orange-300",
                 },
                 {
                   icon: Users,
                   title: t("services.card2.title"),
                   desc: t("services.card2.desc"),
+                  iconBg:
+                    "bg-gradient-to-br from-sky-400/25 via-cyan-500/20 to-indigo-500/25 border-sky-400/40 shadow-sky-500/25",
+                  iconColor: "text-sky-300 drop-shadow-[0_0_8px_rgba(56,189,248,0.65)]",
+                  radialGlow:
+                    "bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.22),transparent_65%)]",
+                  hoverBorder: "hover:border-sky-400/50 hover:shadow-sky-500/15",
+                  titleGradient: "from-white via-sky-100 to-cyan-300",
                 },
                 {
                   icon: Clock,
                   title: t("services.card3.title"),
                   desc: t("services.card3.desc"),
+                  iconBg:
+                    "bg-gradient-to-br from-violet-400/25 via-purple-500/20 to-fuchsia-500/25 border-violet-400/40 shadow-purple-500/25",
+                  iconColor: "text-fuchsia-300 drop-shadow-[0_0_8px_rgba(217,70,239,0.65)]",
+                  radialGlow:
+                    "bg-[radial-gradient(circle_at_top_right,rgba(192,132,252,0.22),transparent_65%)]",
+                  hoverBorder: "hover:border-purple-400/50 hover:shadow-purple-500/15",
+                  titleGradient: "from-white via-purple-100 to-fuchsia-300",
                 },
                 {
                   icon: Award,
                   title: t("services.card4.title"),
                   desc: t("services.card4.desc"),
+                  iconBg:
+                    "bg-gradient-to-br from-rose-400/25 via-pink-500/20 to-amber-500/25 border-rose-400/40 shadow-rose-500/25",
+                  iconColor: "text-rose-300 drop-shadow-[0_0_8px_rgba(251,113,133,0.65)]",
+                  radialGlow:
+                    "bg-[radial-gradient(circle_at_top_right,rgba(251,113,133,0.22),transparent_65%)]",
+                  hoverBorder: "hover:border-rose-400/50 hover:shadow-rose-500/15",
+                  titleGradient: "from-white via-rose-100 to-amber-300",
                 },
               ].map((service, idx) => {
                 const ServiceIcon = service.icon;
@@ -483,17 +512,28 @@ function Landing() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-80px" }}
                     transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                    className="group relative bg-zinc-900/40 backdrop-blur-xl p-8 rounded-2xl border border-white/10 hover:border-[#D4B8A8]/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#D4B8A8]/10 flex flex-col justify-between min-h-[260px] overflow-visible"
+                    className={`group relative bg-zinc-900/50 backdrop-blur-xl p-8 rounded-2xl border border-white/10 ${service.hoverBorder} transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl flex flex-col justify-between min-h-[260px] overflow-hidden`}
                   >
-                    <div>
-                      <div className="w-12 h-12 shrink-0 bg-[#D4B8A8]/10 border border-[#D4B8A8]/30 rounded-xl flex items-center justify-center text-[#D4B8A8] mb-6 group-hover:scale-110 group-hover:bg-[#D4B8A8]/20 transition-all duration-300 shadow-lg shadow-[#D4B8A8]/10">
-                        <ServiceIcon className="w-5 h-5 text-[#D4B8A8]" />
+                    {/* Colorful Radial Mesh Glow in Card Background */}
+                    <div
+                      className={`absolute inset-0 ${service.radialGlow} opacity-55 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+                    />
+
+                    <div className="relative z-10">
+                      <div
+                        className={`w-13 h-13 shrink-0 ${service.iconBg} border rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}
+                      >
+                        <ServiceIcon className={`w-6 h-6 ${service.iconColor}`} />
                       </div>
-                      <h3 className="font-serif text-xl sm:text-2xl font-medium italic leading-snug mb-3 text-white group-hover:text-[#D4B8A8] transition-colors duration-300">
+                      <h3
+                        className={`font-serif text-xl sm:text-2xl font-semibold italic leading-snug mb-3 bg-gradient-to-r ${service.titleGradient} bg-clip-text text-transparent`}
+                      >
                         {service.title}
                       </h3>
                     </div>
-                    <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
+                    <p className="relative z-10 text-zinc-300/90 text-sm leading-relaxed">
+                      {service.desc}
+                    </p>
                   </motion.div>
                 );
               })}
@@ -503,20 +543,23 @@ function Landing() {
       </section>
 
       {/* PHOTOGRAPHERS SECTION */}
-      <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
-        <div className="text-center mb-16">
-          <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase mb-3">
+      <section id="cekimciler" className="relative px-6 py-24 max-w-7xl mx-auto bg-zinc-950 overflow-hidden">
+        {/* Subtle Colorful Ambient Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 blur-[140px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10 text-center mb-16">
+          <p className="inline-block bg-gradient-to-r from-yellow-400 via-orange-400 to-rose-400 bg-clip-text text-transparent text-xs font-bold tracking-[0.25em] uppercase mb-3">
             Ekibimiz
           </p>
-          <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight text-white">
+          <h2 className="font-serif text-4xl md:text-5xl font-medium italic tracking-tight bg-gradient-to-r from-white via-amber-100 to-orange-200 bg-clip-text text-transparent">
             Çekimcilerimiz
           </h2>
-          <p className="text-zinc-400 mt-4 max-w-2xl mx-auto">
+          <p className="text-zinc-300/90 mt-4 max-w-2xl mx-auto">
             Anılarınızı ölümsüzleştiren yetenekli profesyonel fotoğrafçılarımız.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-stretch max-w-7xl mx-auto">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-stretch max-w-7xl mx-auto">
           {dynamicPhotographers.map((photographer: any, idx: number) => (
             <motion.div
               key={idx}
@@ -524,26 +567,32 @@ function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="flex flex-col items-center text-center group bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
+              className="relative overflow-hidden flex flex-col items-center text-center group bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1.5 hover:border-orange-400/50 hover:shadow-2xl hover:shadow-orange-500/15"
             >
-              <div className="w-44 h-44 rounded-full border-2 border-[#D4B8A8]/60 overflow-hidden mb-5 relative shadow-lg shadow-[#D4B8A8]/10 group-hover:shadow-[#D4B8A8]/30 transition-shadow duration-300 p-1">
-                <img
-                  src={
-                    photographer.img
-                      ? getR2PublicUrl(photographer.img)
-                      : photographer.image_url
-                        ? getR2PublicUrl(photographer.image_url)
-                        : ""
-                  }
-                  alt={photographer.name || photographer.full_name}
-                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
-                />
+              {/* Soft Radial Glow inside Team Card */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,146,60,0.18),transparent_65%)] opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+              {/* Colorful Gradient Ring around Profile Picture */}
+              <div className="relative z-10 w-44 h-44 rounded-full p-1 bg-gradient-to-tr from-yellow-400 via-orange-500 to-rose-500 shadow-[0_0_25px_rgba(249,115,22,0.3)] group-hover:shadow-[0_0_35px_rgba(249,115,22,0.55)] transition-all duration-500 mb-5">
+                <div className="w-full h-full rounded-full p-1 bg-zinc-950 overflow-hidden">
+                  <img
+                    src={
+                      photographer.img
+                        ? getR2PublicUrl(photographer.img)
+                        : photographer.image_url
+                          ? getR2PublicUrl(photographer.image_url)
+                          : ""
+                    }
+                    alt={photographer.name || photographer.full_name}
+                    className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
               </div>
 
-              <h3 className="text-xl font-bold text-white mt-1">
+              <h3 className="relative z-10 text-xl font-bold bg-gradient-to-r from-white via-amber-100 to-orange-200 bg-clip-text text-transparent mt-1">
                 {photographer.full_name || photographer.name}
               </h3>
-              <p className="text-[#D4B8A8] text-xs font-bold tracking-widest uppercase mt-2 mb-5">
+              <p className="relative z-10 bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent text-xs font-bold tracking-widest uppercase mt-2 mb-5">
                 {photographer.role || photographer.title}
               </p>
 
@@ -551,9 +600,9 @@ function Landing() {
                 href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-auto flex items-center justify-center gap-2 bg-white/5 backdrop-blur-md hover:bg-gradient-to-r hover:from-[#D4B8A8] hover:to-[#b39575] text-white hover:text-zinc-950 py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#D4B8A8]/20 w-full font-medium"
+                className="relative z-10 mt-auto flex items-center justify-center gap-2 bg-white/5 backdrop-blur-md hover:bg-gradient-to-r hover:from-yellow-400 hover:via-orange-400 hover:to-amber-500 text-white hover:text-zinc-950 py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/25 w-full font-medium"
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-4 h-4 text-amber-400 group-hover:text-current" />
                 <span className="font-medium text-sm">{photographer.phone}</span>
               </a>
             </motion.div>
