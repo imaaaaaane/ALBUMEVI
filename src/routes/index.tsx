@@ -797,58 +797,80 @@ function Landing() {
         </div>
       </section>
 
-      {/* WHY US SECTION (Editorial Frame + Glassmorphism) */}
+      {/* WHY US SECTION (High-End Editorial Redesign) */}
       <motion.section
         id="hakkimizda"
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950"
+        className="relative px-6 py-28 max-w-7xl mx-auto bg-zinc-950 overflow-visible"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        {/* Subtle Champagne Ambient Glow */}
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[520px] h-[520px] bg-[#D4B8A8]/10 blur-[160px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center">
+          {/* Left: Prominent Portrait Image + Overlapping Floating Testimonial */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="relative group"
+            className="lg:col-span-6 relative pb-8 sm:pb-10 lg:pr-6"
           >
-            <div className="rounded-3xl w-full overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-              <div className="overflow-hidden rounded-2xl relative">
+            <div className="group relative aspect-[4/5] w-full rounded-3xl overflow-hidden bg-zinc-900/40 border border-white/15 p-2.5 shadow-2xl shadow-[#D4B8A8]/10 hover:border-[#D4B8A8]/40 transition-all duration-500">
+              <div className="relative w-full h-full overflow-hidden rounded-2xl">
                 <img
-                  src="/pic5.jpg"
-                  alt="Happy student"
-                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                  src="/urun4.jpg"
+                  alt="Albümevi Özel Tasarım Okul Hatıraları"
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/60 via-transparent to-transparent pointer-events-none" />
               </div>
             </div>
-            <div className="absolute bottom-6 left-6 right-6 bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10">
-              <p className="text-xs uppercase tracking-widest text-[#D4B8A8] mb-1.5">
-                Okul Müdürü, Batman
+
+            {/* Overlapping Floating Glassmorphism Testimonial Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: 0.25, ease: "easeOut" }}
+              className="absolute -bottom-2 right-2 sm:right-0 sm:-bottom-4 max-w-sm backdrop-blur-xl bg-zinc-950/75 bg-gradient-to-br from-white/15 to-white/5 border border-white/20 p-5 sm:p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.65)] hover:-translate-y-1 hover:border-[#D4B8A8]/50 transition-all duration-300 z-20"
+            >
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#D4B8A8]">
+                  Okul Müdürü, Batman
+                </p>
+                <div className="flex text-[#D4B8A8] text-xs tracking-wider">★★★★★</div>
+              </div>
+              <p className="font-serif italic text-white/95 text-sm sm:text-base leading-relaxed">
+                “{t("whyus.testimonial.text")}”
               </p>
-              <p className="text-white font-medium mb-3">{t("whyus.testimonial.text")}</p>
-              <div className="flex text-[#D4B8A8] text-xs">★★★★★</div>
-            </div>
+            </motion.div>
           </motion.div>
 
+          {/* Right: Editorial Typography & Staggered Features List */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-8"
+            className="lg:col-span-6 space-y-8"
           >
-            <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
-              {t("whyus.badge")}
-            </p>
-            <h2 className="font-serif text-4xl md:text-5xl font-medium italic leading-tight tracking-tight text-white">
-              {t("whyus.title")}
-            </h2>
-            <p className="text-zinc-400 leading-relaxed">{t("whyus.desc")}</p>
+            <div className="space-y-4">
+              <p className="text-[#D4B8A8] text-xs font-bold tracking-[0.25em] uppercase">
+                {t("whyus.badge")}
+              </p>
+              <h2 className="font-serif text-4xl sm:text-5xl font-medium italic leading-[1.15] tracking-tight text-white">
+                {t("whyus.title")}
+              </h2>
+              <p className="text-zinc-400 text-base sm:text-lg leading-relaxed font-light">
+                {t("whyus.desc")}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Clean Staggered Editorial Features List */}
+            <div className="divide-y divide-white/10 border-y border-white/10 py-1">
               {[
                 t("whyus.feature1"),
                 t("whyus.feature2"),
@@ -857,24 +879,39 @@ function Landing() {
                 t("whyus.feature5"),
                 t("whyus.feature6"),
               ].map((feature, idx) => (
-                <div
+                <motion.div
                   key={idx}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/10"
+                  initial={{ opacity: 0, x: 16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: idx * 0.08, ease: "easeOut" }}
+                  className="group flex items-center justify-between py-4 px-2 hover:px-4 transition-all duration-300"
                 >
-                  <CheckCircle2 className="w-5 h-5 text-[#D4B8A8] shrink-0" />
-                  <span className="text-sm font-medium">{feature}</span>
-                </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[#D4B8A8]/15 border border-[#D4B8A8]/35 flex items-center justify-center shrink-0 group-hover:bg-[#D4B8A8]/25 group-hover:scale-110 transition-all duration-300 shadow-[0_0_15px_rgba(212,184,168,0.15)]">
+                      <CheckCircle2 className="w-4 h-4 text-[#D4B8A8]" />
+                    </div>
+                    <span className="text-base sm:text-lg font-medium text-zinc-200 group-hover:text-white tracking-wide transition-colors duration-300">
+                      {feature}
+                    </span>
+                  </div>
+                  <span className="font-serif italic text-xs text-zinc-600 group-hover:text-[#D4B8A8] transition-colors duration-300">
+                    0{idx + 1}
+                  </span>
+                </motion.div>
               ))}
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setIsContactModalOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#D4B8A8]/30 shadow-[0_8px_24px_rgba(212,184,168,0.2)] mt-4 cursor-pointer"
-            >
-              {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
-            </motion.button>
+            <div className="pt-2">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setIsContactModalOpen(true)}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D4B8A8] to-[#b39575] text-zinc-950 font-semibold px-9 py-4 rounded-full text-sm sm:text-base tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(212,184,168,0.35)] shadow-[0_8px_24px_rgba(212,184,168,0.2)] cursor-pointer"
+              >
+                {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
+              </motion.button>
+            </div>
           </motion.div>
         </div>
       </motion.section>
