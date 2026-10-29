@@ -68,7 +68,7 @@ const PROCESS_STEPS: Array<{
 const PRODUCTS = [
   {
     id: "01",
-    title: "Anıların Bavulu",
+    title: "Okul Çantam",
     subtitle: "Kancalı Geçme Ahşap Bavul Çerçeve",
     image: "/urun1.jpg",
   },
@@ -955,12 +955,12 @@ function Landing() {
               key={product.id}
               className="group rounded-xl overflow-hidden bg-zinc-900 border border-white/10 p-3 hover:scale-105 hover:border-[#D4B8A8]/50 hover:shadow-2xl hover:shadow-[#D4B8A8]/15 transition-all duration-300 flex flex-col"
             >
-              <div className="relative overflow-hidden rounded-lg aspect-[4/3] bg-zinc-950">
+              <div className="relative overflow-hidden rounded-lg aspect-[4/3] bg-zinc-100 p-4 flex items-center justify-center">
                 <img
                   src={product.image}
                   alt={product.title}
                   loading="lazy"
-                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500"
                 />
                 <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider bg-zinc-950/80 backdrop-blur-md text-[#D4B8A8] border border-white/15">
                   {product.id}
