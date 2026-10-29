@@ -4,30 +4,59 @@ import {
   Users,
   Calendar,
   ChevronDown,
-  Clock,
   Award,
   GraduationCap,
   Package,
-  ShieldCheck,
   BookOpen,
   CheckCircle2,
   Phone,
   Mail,
   MapPin,
   Instagram,
-  Facebook,
   ChevronRight,
   ArrowRight,
   X,
-  Star,
 } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/i18n";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getR2PublicUrl } from "@/lib/r2";
+
+const SKILLSET_SERVICES = [
+  {
+    icon: BookOpen,
+    title: "Panoramik Albüm",
+    desc: "Yüksek gramajlı kuşe ve özel dokulu sayfalarla hazırlanan, yıllarca ilk günkü canlılığını koruyan panoramik mezuniyet albümleri.",
+  },
+  {
+    icon: Award,
+    title: "Ahşap Albüm",
+    desc: "El işçiliği doğal ahşap kapak ve lazer kazıma detaylarıyla öğrencilere ömür boyu saklayacakları prestijli bir hatıra.",
+  },
+  {
+    icon: GraduationCap,
+    title: "Kep ve Cübbe Çekimleri",
+    desc: "Tüm mezuniyet kıyafetleri ve konsept aksesuarları ekibimiz tarafından okula getirilerek profesyonel portre çekimleri gerçekleştirilir.",
+  },
+  {
+    icon: Package,
+    title: "Özel Tasarım Kumbara & Çerçeve",
+    desc: "Öğrencinin kendi fotoğrafıyla kişiselleştirilen özel tasarım kumbara, masaüstü ve duvar çerçevesi koleksiyonları.",
+  },
+  {
+    icon: Camera,
+    title: "Stüdyo Kalitesinde Okul Çekimi",
+    desc: "Mobil profesyonel ışık ve fon ekipmanlarımızla, ders düzenini aksatmadan okul ortamında stüdyo standardında çekim.",
+  },
+  {
+    icon: Users,
+    title: "Dijital Öğretmen Portalı",
+    desc: "Fotoğraf seçimi karmaşası olmadan; öğretmenlerin online portal üzerinden saniyeler içinde öğrenci ve paket listesi oluşturduğu pratik sistem.",
+  },
+];
 
 const PROCESS_STEPS = [
   {
@@ -71,132 +100,20 @@ const FAQS = [
   },
 ];
 
-const MotionLink = motion(Link);
-
-const TypewriterHeadline = ({ text1, text2 }: { text1: string; text2: string }) => {
-  const [displayedText1, setDisplayedText1] = useState("");
-  const [displayedText2, setDisplayedText2] = useState("");
-  const [isTyping1, setIsTyping1] = useState(true);
-
-  useEffect(() => {
-    let i = 0;
-    setDisplayedText1("");
-    setIsTyping1(true);
-    const intervalId = setInterval(() => {
-      setDisplayedText1(text1.slice(0, i + 1));
-      i++;
-      if (i >= text1.length) {
-        clearInterval(intervalId);
-        setIsTyping1(false);
-      }
-    }, 110); // Typing speed
-    return () => clearInterval(intervalId);
-  }, [text1]);
-
-  useEffect(() => {
-    if (isTyping1) return;
-    let i = 0;
-    setDisplayedText2("");
-    const intervalId = setInterval(() => {
-      setDisplayedText2(text2.slice(0, i + 1));
-      i++;
-      if (i >= text2.length) {
-        clearInterval(intervalId);
-      }
-    }, 110);
-    return () => clearInterval(intervalId);
-  }, [text2, isTyping1]);
-
-  return (
-    <motion.h1
-      variants={heroItemVariants}
-      className="text-5xl md:text-7xl font-extrabold italic leading-[1.1] tracking-tight"
-    >
-      {displayedText1}
-      {isTyping1 && <span className="animate-pulse">|</span>}
-      <br />
-      <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent">
-        {displayedText2}
-        {!isTyping1 && displayedText2.length < text2.length && (
-          <span className="animate-pulse text-white">|</span>
-        )}
-      </span>
-    </motion.h1>
-  );
-};
+const FALLBACK_GALLERY = [
+  { id: "fallback-1", image_url: "/pic1.jpg", title: "Mezuniyet Portresi" },
+  { id: "fallback-2", image_url: "/pic2.jpg", title: "Panoramik Albüm Çekimi" },
+  { id: "fallback-3", image_url: "/pic3.jpg", title: "Ahşap Albüm Serisi" },
+  { id: "fallback-4", image_url: "/pic5.jpg", title: "Okul Hatırası" },
+  { id: "fallback-5", image_url: "/pic6.jpg", title: "Stüdyo Çekimi" },
+];
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-function useScrollProgress() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-
-    const updateProgress = () => {
-      const rect = element.getBoundingClientRect();
-      const height = window.innerHeight;
-      let progress = 0;
-      if (rect.top >= height) {
-        progress = 0;
-      } else if (rect.top <= 0) {
-        progress = 1;
-      } else {
-        progress = 1 - rect.top / height;
-      }
-      element.style.setProperty("--wipe-progress", progress.toString());
-    };
-
-    window.addEventListener("scroll", updateProgress, { passive: true });
-    updateProgress();
-    return () => window.removeEventListener("scroll", updateProgress);
-  }, []);
-
-  return ref;
-}
-
-const heroContainerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const heroItemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.8,
-      ease: [0.16, 1, 0.3, 1] as const,
-    },
-  },
-};
-
-const heroImageVariants = {
-  hidden: { opacity: 0, scale: 0.95, y: 20 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: {
-      duration: 1,
-      ease: [0.16, 1, 0.3, 1] as const,
-      delay: 0.4,
-    },
-  },
-};
-
 function Landing() {
   const { t, dir } = useI18n();
-  const [activeStep, setActiveStep] = useState(1);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
@@ -224,18 +141,16 @@ function Landing() {
     },
   });
 
-  // Katana scroll refs
-  const servicesContainerRef = useScrollProgress();
-  const processContainerRef = useScrollProgress();
+  const galleryItems = dynamicPortfolio.length > 0 ? dynamicPortfolio : FALLBACK_GALLERY;
 
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D0A36D]/30 font-sans"
+      className="min-h-screen bg-zinc-950 text-white selection:bg-[#D4AF37]/30 font-sans antialiased"
     >
-      {/* HEADER: Sleek Glassmorphism Editorial Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/75 border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 py-3">
+      {/* MINIMALIST HIGH-END NAVBAR */}
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-zinc-950/80 border-b border-white/5">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-10 py-3">
           <Link to="/" className="flex items-center shrink-0">
             <img
               src="/logo-light.png"
@@ -244,689 +159,559 @@ function Landing() {
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-7 text-sm text-zinc-300 font-medium tracking-wide">
-            <a href="#hizmetler" className="hover:text-[#D0A36D] transition-colors">
+          <nav className="hidden md:flex items-center gap-8 text-xs uppercase tracking-[0.2em] text-zinc-400 font-medium">
+            <a href="#hizmetler" className="hover:text-white transition-colors">
               {t("nav.services")}
             </a>
-            <a href="#surec" className="hover:text-[#D0A36D] transition-colors">
-              {t("nav.process")}
-            </a>
-            <a href="#cekimciler" className="hover:text-[#D0A36D] transition-colors">
-              Çekimciler
-            </a>
-            <a href="#galeri" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#galeri" className="hover:text-white transition-colors">
               {t("nav.gallery")}
             </a>
-            <a href="#sss" className="hover:text-[#D0A36D] transition-colors">
-              SSS
+            <a href="#surec" className="hover:text-white transition-colors">
+              {t("nav.process")}
             </a>
-            <a href="#hakkimizda" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#cekimciler" className="hover:text-white transition-colors">
+              Çekimciler
+            </a>
+            <a href="#hakkimizda" className="hover:text-white transition-colors">
               {t("nav.about")}
             </a>
-            <a href="#iletisim" className="hover:text-[#D0A36D] transition-colors">
+            <a href="#sss" className="hover:text-white transition-colors">
+              SSS
+            </a>
+            <a href="#iletisim" className="hover:text-white transition-colors">
               {t("nav.contact")}
             </a>
           </nav>
 
           <div className="flex items-center gap-3">
-            <MotionLink
+            <Link
               to="/admin-login"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium backdrop-blur-md bg-white/5 border border-white/10 rounded-full hover:border-[#D0A36D] hover:text-[#D0A36D] transition-all text-white"
+              className="inline-flex items-center justify-center px-4 py-1.5 text-xs uppercase tracking-[0.15em] font-medium border border-white/15 rounded-full hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors text-white"
             >
               {t("cta.adminLogin")}
-            </MotionLink>
+            </Link>
             <LanguageSwitcher />
           </div>
         </div>
       </header>
 
-      {/* CINEMATIC EDITORIAL HERO SECTION */}
-      <div className="relative min-h-screen flex items-end lg:items-center justify-center overflow-hidden pt-28 pb-16 lg:py-24">
-        {/* Full-Width Real Photo Background with Slow Zoom */}
-        <div className="absolute inset-0 z-0 group overflow-hidden">
+      {/* HERO SECTION: Full-screen dark photography background + Left-aligned Serif/Clean Headline + Muted Gold CTA */}
+      <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+        <div className="absolute inset-0 z-0">
           <img
-            src="/pic1.jpg"
-            alt="Albumevi Editorial Hero"
-            className="w-full h-full object-cover object-center scale-105 group-hover:scale-100 transition-transform duration-1000 ease-out"
+            src="/pic6.jpg"
+            alt="Albumevi Photography Studio"
+            className="w-full h-full object-cover object-center grayscale-[30%]"
           />
-          {/* Heavy Dark Cinematic Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/50 to-zinc-950/30" />
-          {/* Subtle Crimson & Gold Editorial Ambient Glow */}
-          <div className="absolute -bottom-24 left-1/4 w-[500px] h-[500px] bg-[#D0A36D]/15 blur-[140px] rounded-full pointer-events-none" />
-          <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-rose-950/25 blur-[130px] rounded-full pointer-events-none" />
+          <div className="absolute inset-0 bg-zinc-950/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-zinc-950/60" />
         </div>
 
-        <motion.main
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 mx-auto max-w-7xl px-6 w-full"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end">
-            {/* Editorial Typography Column */}
-            <motion.div
-              variants={heroContainerVariants}
-              initial="hidden"
-              animate="visible"
-              className="lg:col-span-7 space-y-8"
-            >
-              <motion.div
-                variants={heroItemVariants}
-                className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-md bg-white/5 border border-white/10"
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-28 md:py-36 w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-3xl space-y-8 text-left"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+              ALBÜMEVİ • OKUL & MEZUNİYET FOTOĞRAFÇILIĞI
+            </p>
+
+            <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-normal tracking-tight leading-[1.06] text-white">
+              {t("hero.title1")} <br />
+              <span className="italic font-light text-[#D4AF37]">{t("hero.title2")}</span>
+            </h1>
+
+            <p className="text-base md:text-lg text-zinc-400 max-w-xl leading-relaxed font-light">
+              {t("hero.subtitle")}
+            </p>
+
+            <div className="pt-4 flex flex-wrap items-center gap-6">
+              <a
+                href="#galeri"
+                className="inline-flex items-center gap-3 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-8 py-4 rounded-none sm:rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-all duration-300"
               >
-                <span className="w-2 h-2 rounded-full bg-[#D0A36D] animate-pulse" />
-                <span className="text-xs uppercase tracking-[0.25em] text-[#E6C79C] font-semibold">
-                  Sinematik Okul & Mezuniyet Fotoğrafçılığı
-                </span>
-              </motion.div>
+                Portfolyoyu İncele <ArrowRight className="w-4 h-4" />
+              </a>
 
-              <TypewriterHeadline text1={t("hero.title1")} text2={t("hero.title2")} />
-
-              <motion.p
-                variants={heroItemVariants}
-                className="text-lg md:text-xl text-zinc-300/90 max-w-2xl leading-relaxed font-light"
+              <button
+                type="button"
+                onClick={() => setIsContactModalOpen(true)}
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white transition-colors py-4 px-2 cursor-pointer"
               >
-                {t("hero.subtitle")}
-              </motion.p>
+                İletişime Geç <ChevronRight className="w-4 h-4 text-[#D4AF37]" />
+              </button>
+            </div>
 
-              <motion.div variants={heroItemVariants} className="pt-2">
-                <div className="flex flex-wrap items-center gap-5">
-                  <a
-                    href="#galeri"
-                    className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D0A36D] to-[#B8864B] hover:from-[#E2B67C] hover:to-[#C8965B] text-zinc-950 px-8 py-4 rounded-full font-bold tracking-wide transition-all duration-300 hover:scale-105 shadow-[0_10px_30px_rgba(208,163,109,0.25)]"
+            <div className="pt-12 border-t border-white/10 grid grid-cols-3 gap-8 max-w-lg">
+              <div>
+                <p className="font-serif text-3xl md:text-4xl text-white">500+</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">Mutlu Okul</p>
+              </div>
+              <div>
+                <p className="font-serif text-3xl md:text-4xl text-white">100%</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">
+                  Stüdyo Kalitesi
+                </p>
+              </div>
+              <div>
+                <p className="font-serif text-3xl md:text-4xl text-white">5 İl</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400 mt-1">
+                  Bölge Genelinde
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* SKILLSET / SERVICES GRID: 3-column minimal grid on pure bg-zinc-950 */}
+      <section id="hizmetler" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+            <div className="lg:col-span-4 space-y-6">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+                {t("services.badge")}
+              </p>
+              <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight leading-tight text-white">
+                {t("services.title")}
+              </h2>
+              <p className="text-zinc-400 text-sm md:text-base leading-relaxed font-light">
+                {t("services.subtitle")}
+              </p>
+              <div className="w-12 h-px bg-[#D4AF37]/60 pt-2" />
+            </div>
+
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12">
+              {SKILLSET_SERVICES.map((service, idx) => {
+                const Icon = service.icon;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.5, delay: idx * 0.08 }}
+                    className="group space-y-4 border-t border-white/10 pt-6 hover:border-[#D4AF37]/60 transition-colors duration-500"
                   >
-                    Portfolyoyu İncele <ArrowRight className="w-5 h-5" />
-                  </a>
-
-                  <div className="flex items-center gap-4 px-6 py-3.5 backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl shadow-xl">
-                    <div className="flex flex-col">
-                      <div className="flex gap-1 text-[#D0A36D] text-sm mb-0.5">
-                        <span>★</span>
-                        <span>★</span>
-                        <span>★</span>
-                        <span>★</span>
-                        <span>★</span>
-                      </div>
-                      <p className="text-white text-sm font-bold tracking-wide">500+ Mutlu Okul</p>
-                      <p className="text-zinc-400 text-[11px]">Sistemi aktif kullanıyor</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Right Side Floating Editorial Glass Showcase */}
-            <motion.div
-              variants={heroImageVariants}
-              initial="hidden"
-              animate="visible"
-              className="lg:col-span-5 grid grid-cols-2 gap-4"
-            >
-              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl">
-                <div className="overflow-hidden rounded-xl">
-                  <img
-                    src="/pic2.jpg"
-                    alt="Editorial Portrait 1"
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                </div>
-                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
-                    Stüdyo Kalitesi
-                  </span>
-                  <Camera className="w-3.5 h-3.5 text-[#D0A36D]" />
-                </div>
-              </div>
-
-              <div className="group relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl lg:translate-y-6">
-                <div className="overflow-hidden rounded-xl">
-                  <img
-                    src="/pic3.jpg"
-                    alt="Editorial Portrait 2"
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                </div>
-                <div className="mt-2.5 px-2 pb-1 flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-widest text-[#E6C79C]">
-                    Özel Tasarım Albüm
-                  </span>
-                  <Award className="w-3.5 h-3.5 text-[#D0A36D]" />
-                </div>
-              </div>
-            </motion.div>
+                    <Icon
+                      strokeWidth={1.25}
+                      className="w-7 h-7 text-[#D4AF37] transition-transform duration-500 group-hover:translate-x-1"
+                    />
+                    <h3 className="text-lg font-medium tracking-wide text-white">
+                      {service.title}
+                    </h3>
+                    <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-light">
+                      {service.desc}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </motion.main>
-      </div>
+        </div>
+      </section>
 
-      {/* SERVICES GRID SECTION - Editorial & Glassmorphism */}
-      <div
-        id="hizmetler"
-        ref={servicesContainerRef}
-        className="katana-container katana-container-services"
-      >
-        <div className="katana-sticky">
-          <div className="katana-mask flex items-center justify-center bg-zinc-950">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mx-auto max-w-7xl px-6 py-24 w-full"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      {/* GALLERY SECTION: Vertical Portrait Cards (rounded-2xl) with Grayscale-to-Color & Subtle Zoom */}
+      <section id="galeri" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+                PORTFOLYO • SEÇKİN ÇALIŞMALAR
+              </p>
+              <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
+                Galeri & Öne Çıkanlar
+              </h2>
+            </div>
+            <p className="text-zinc-400 text-sm max-w-md leading-relaxed font-light">
+              Objektifimizden yansıyan gerçek okul ve stüdyo çekimlerimiz. Doğal gülümsemeler ve
+              birinci sınıf baskı kalitemiz.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {galleryItems.map((item: any, idx: number) => {
+              const src = item.image_url
+                ? item.image_url.startsWith("/")
+                  ? item.image_url
+                  : getR2PublicUrl(item.image_url)
+                : "";
+              return (
                 <motion.div
-                  initial={{ opacity: 0, x: -30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="lg:col-span-5 space-y-6"
+                  key={item.id || idx}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.6, delay: (idx % 3) * 0.1 }}
+                  className="group relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-900 border border-white/5 cursor-pointer"
                 >
-                  <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
-                    {t("services.badge")}
-                  </p>
-                  <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-                    {t("services.title")}
-                  </h2>
-                  <p className="text-zinc-400 leading-relaxed">{t("services.subtitle")}</p>
-
-                  {/* Editorial Natural-Ratio Frame */}
-                  <div className="group relative rounded-3xl mt-8 w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
-                    <div className="overflow-hidden rounded-2xl relative">
-                      <img
-                        src="/pic6.jpg"
-                        alt="Photographer"
-                        className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-zinc-200 backdrop-blur-md bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl">
-                        <span className="font-medium tracking-wide">Gerçek Stüdyo & Okul Çekimlerimiz</span>
-                        <span className="text-[#D0A36D] font-semibold">100% Orijinal</span>
-                      </div>
+                  <img
+                    src={src}
+                    alt={item.alt || item.title || "Portfolyo Görseli"}
+                    loading="lazy"
+                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37]">
+                        ALBÜMEVİ
+                      </p>
+                      <p className="font-serif text-lg text-white mt-0.5">
+                        {item.title || "Mezuniyet Koleksiyonu"}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
-
-                <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-5 lg:pt-8">
-                  {[
-                    {
-                      icon: <Camera />,
-                      title: t("services.card1.title"),
-                      desc: t("services.card1.desc"),
-                    },
-                    {
-                      icon: <Users />,
-                      title: t("services.card2.title"),
-                      desc: t("services.card2.desc"),
-                    },
-                    {
-                      icon: <Clock />,
-                      title: t("services.card3.title"),
-                      desc: t("services.card3.desc"),
-                    },
-                    {
-                      icon: <Award />,
-                      title: t("services.card4.title"),
-                      desc: t("services.card4.desc"),
-                    },
-                  ].map((service, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                      viewport={{ once: true, margin: "-100px" }}
-                      transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
-                      className="group backdrop-blur-md bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-[#D0A36D]/40 hover:bg-white/[0.08] transition-all duration-500 shadow-xl"
-                    >
-                      <div className="w-12 h-12 bg-[#D0A36D]/15 border border-[#D0A36D]/30 rounded-2xl flex items-center justify-center text-[#D0A36D] mb-6 group-hover:scale-110 transition-transform duration-500">
-                        {service.icon}
-                      </div>
-                      <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#E6C79C] transition-colors">
-                        {service.title}
-                      </h3>
-                      <p className="text-zinc-400 text-sm leading-relaxed">{service.desc}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      {/* PHOTOGRAPHERS SECTION */}
-      <section id="cekimciler" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
-        <div className="text-center mb-16">
-          <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">
-            Ekibimiz
-          </p>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Çekimcilerimiz</h2>
-          <p className="text-zinc-400 mt-4 max-w-2xl mx-auto">
-            Anılarınızı ölümsüzleştiren yetenekli profesyonel fotoğrafçılarımız.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 justify-center items-stretch max-w-7xl mx-auto">
-          {dynamicPhotographers.map((photographer: any, idx: number) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="flex flex-col items-center text-center group backdrop-blur-md bg-white/5 border border-white/10 hover:border-[#D0A36D]/40 rounded-3xl p-6 transition-all duration-500"
-            >
-              <div className="w-44 h-44 rounded-full border-2 border-[#D0A36D]/60 overflow-hidden mb-5 relative shadow-lg shadow-[#D0A36D]/10 group-hover:shadow-[#D0A36D]/30 transition-shadow duration-500 p-1">
-                <img
-                  src={
-                    photographer.img
-                      ? getR2PublicUrl(photographer.img)
-                      : photographer.image_url
-                        ? getR2PublicUrl(photographer.image_url)
-                        : ""
-                  }
-                  alt={photographer.name || photographer.full_name}
-                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
-
-              <h3 className="text-xl font-bold text-white mt-1">
-                {photographer.full_name || photographer.name}
-              </h3>
-              <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase mt-2 mb-5">
-                {photographer.role || photographer.title}
-              </p>
-
-              <a
-                href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-auto flex items-center justify-center gap-2 backdrop-blur-md bg-white/5 hover:bg-[#D0A36D] text-white hover:text-zinc-950 py-2.5 px-6 rounded-full border border-white/10 hover:border-transparent transition-all duration-300 w-full"
-              >
-                <Phone className="w-4 h-4" />
-                <span className="font-semibold text-sm">{photographer.phone}</span>
-              </a>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* EDITORIAL MASONRY GALLERY SECTION */}
-      <section id="galeri" className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
-          <div>
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">
-              Portfolyo • Gerçek Çekimlerimiz
-            </p>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Unutulmaz Anılar</h2>
-          </div>
-          <p className="text-zinc-400 max-w-md text-sm md:text-base leading-relaxed">
-            Objektifimizden yansıyan doğal anlar. Tüm fotoğraflar kendi çekimlerimiz ve gerçek
-            ürünlerimizdir; doğal kadrajlarıyla sergilenmektedir.
-          </p>
-        </div>
-
-        {/* True Masonry Layout preserving natural vertical & horizontal aspect ratios */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6 w-full max-w-7xl mx-auto">
-          {dynamicPortfolio.map((item: any) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6 }}
-              className="break-inside-avoid relative rounded-3xl overflow-hidden cursor-pointer group backdrop-blur-md bg-white/5 border border-white/10 p-2 shadow-2xl hover:border-[#D0A36D]/40 transition-colors duration-500"
-            >
-              <div className="relative overflow-hidden rounded-2xl">
-                <img
-                  src={item.image_url ? getR2PublicUrl(item.image_url) : ""}
-                  alt={item.alt || item.title || "Portfolyo Görseli"}
-                  loading="lazy"
-                  className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none flex items-end p-5">
-                  <div className="backdrop-blur-md bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-xs text-white font-medium tracking-wider uppercase">
-                    {item.title || "Albümevi Koleksiyonu"}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* PROCESS SECTION */}
-      <section id="surec" className="px-6 py-24 max-w-7xl mx-auto relative">
-        <div className="text-center mb-24 relative z-10">
-          <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase mb-3">Süreç</p>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Nasıl Çalışıyoruz</h2>
-        </div>
-
-        <div className="relative max-w-5xl mx-auto">
-          {/* THE SPINE */}
-          <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px md:-translate-x-1/2 bg-gradient-to-b from-transparent via-[#D0A36D]/50 to-transparent shadow-[0_0_15px_rgba(208,163,109,0.5)] z-0" />
-
-          <div className="relative z-10">
-            {PROCESS_STEPS.map((step, idx) => {
-              const Icon = step.icon;
-              const isEven = idx % 2 === 0;
-
-              return (
-                <div
-                  key={idx}
-                  className={`relative flex flex-col md:flex-row items-center w-full ${isEven ? "md:justify-start" : "md:justify-end"} ${idx > 0 ? "mt-8 md:-mt-24" : ""}`}
-                >
-                  {/* The Timeline Dot */}
-                  <div className="absolute left-6 md:left-1/2 -translate-x-1/2 w-6 h-6 md:w-8 md:h-8 rounded-full bg-zinc-950 border-2 border-[#D0A36D] flex items-center justify-center shadow-[0_0_20px_rgba(208,163,109,0.4)] z-20 top-8 md:top-1/2 md:-translate-y-1/2">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#D0A36D]" />
-                  </div>
-
-                  {/* The Card */}
-                  <motion.div
-                    initial={{ opacity: 0, x: isEven ? -30 : 30 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-                    className="w-full ml-16 md:ml-0 md:w-[45%] relative group rounded-3xl overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 hover:border-[#D0A36D]/40 transition-all duration-500 shadow-xl"
-                  >
-                    {/* Giant Number */}
-                    <div
-                      className={`absolute -top-4 ${isEven ? "-right-4" : "-left-4"} text-9xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10 select-none`}
-                    >
-                      {idx + 1}
-                    </div>
-
-                    {/* Content */}
-                    <div className="relative z-20 p-8 sm:p-12 pl-12 md:pl-12">
-                      <div className="w-14 h-14 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D] mb-6 shadow-lg group-hover:scale-110 transition-transform duration-500">
-                        <Icon className="w-7 h-7" />
-                      </div>
-                      <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-[#D0A36D] transition-colors duration-300">
-                        {step.title}
-                      </h3>
-                      <p className="text-zinc-400 leading-relaxed text-sm sm:text-base">
-                        {step.desc}
-                      </p>
-                    </div>
-                  </motion.div>
-                </div>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* FAQ SECTION */}
-      <section id="sss" className="px-6 py-20 max-w-3xl mx-auto relative">
-        {/* Dynamic Background Blob */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#8B5A2B] rounded-full blur-[150px] opacity-[0.05] animate-[pulse_6s_ease-in-out_infinite] pointer-events-none z-0" />
+      {/* PROCESS SECTION: Minimal 4-Column Editorial Steps */}
+      <section id="surec" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="max-w-2xl mb-20 space-y-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">SÜREÇ</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
+              Nasıl Çalışıyoruz
+            </h2>
+          </div>
 
-        <div className="relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-serif tracking-widest font-light">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+            {PROCESS_STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="space-y-5 border-t border-white/10 pt-8 group hover:border-[#D4AF37]/60 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif text-xs tracking-[0.2em] text-[#D4AF37]">
+                      0{idx + 1}
+                    </span>
+                    <Icon strokeWidth={1.25} className="w-6 h-6 text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  </div>
+                  <h3 className="text-xl font-medium text-white">{step.title}</h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed font-light">{step.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* PHOTOGRAPHERS SECTION */}
+      {dynamicPhotographers.length > 0 && (
+        <section id="cekimciler" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+          <div className="mx-auto max-w-7xl px-6 lg:px-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+                  EKİBİMİZ
+                </p>
+                <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
+                  Çekimcilerimiz
+                </h2>
+              </div>
+              <p className="text-zinc-400 text-sm max-w-md font-light">
+                Anılarınızı ölümsüzleştiren profesyonel fotoğrafçı kadromuz.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {dynamicPhotographers.map((photographer: any, idx: number) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ delay: idx * 0.1, duration: 0.5 }}
+                  className="group space-y-4"
+                >
+                  <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-900 border border-white/5">
+                    <img
+                      src={
+                        photographer.img
+                          ? getR2PublicUrl(photographer.img)
+                          : photographer.image_url
+                            ? getR2PublicUrl(photographer.image_url)
+                            : ""
+                      }
+                      alt={photographer.name || photographer.full_name}
+                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out"
+                    />
+                  </div>
+
+                  <div className="pt-1 flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-medium text-white">
+                        {photographer.full_name || photographer.name}
+                      </h3>
+                      <p className="text-xs uppercase tracking-[0.2em] text-[#D4AF37] mt-1">
+                        {photographer.role || photographer.title || "Fotoğrafçı"}
+                      </p>
+                    </div>
+                    {photographer.phone && (
+                      <a
+                        href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4AF37] transition-colors pt-1"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>{photographer.phone}</span>
+                      </a>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* WHY US / ABOUT SECTION */}
+      <section id="hakkimizda" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+            <div className="lg:col-span-5 group">
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-white/5">
+                <img
+                  src="/pic5.jpg"
+                  alt="Albumevi Kalitesi"
+                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6 p-6 bg-zinc-950/85 backdrop-blur-md border border-white/10 rounded-xl">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] mb-2">
+                    Okul Müdürü, Batman
+                  </p>
+                  <p className="text-white text-sm font-light leading-relaxed mb-3">
+                    {t("whyus.testimonial.text")}
+                  </p>
+                  <div className="text-[#D4AF37] text-xs tracking-widest">★★★★★</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-8">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">
+                {t("whyus.badge")}
+              </p>
+              <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight leading-tight text-white">
+                {t("whyus.title")}
+              </h2>
+              <p className="text-zinc-400 text-base leading-relaxed font-light">
+                {t("whyus.desc")}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {[
+                  t("whyus.feature1"),
+                  t("whyus.feature2"),
+                  t("whyus.feature3"),
+                  t("whyus.feature4"),
+                  t("whyus.feature5"),
+                  t("whyus.feature6"),
+                ].map((feature, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 py-3 border-b border-white/5 text-sm text-zinc-300 font-light"
+                  >
+                    <CheckCircle2 strokeWidth={1.5} className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsContactModalOpen(true)}
+                  className="inline-flex items-center gap-3 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-8 py-4 rounded-none sm:rounded-md text-xs uppercase tracking-[0.2em] font-semibold transition-colors cursor-pointer"
+                >
+                  {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section id="sss" className="bg-zinc-950 py-28 md:py-36 border-t border-white/5">
+        <div className="mx-auto max-w-4xl px-6 lg:px-10">
+          <div className="mb-16 space-y-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37] font-medium">SSS</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
               Sıkça Sorulan Sorular
             </h2>
           </div>
-          <div className="space-y-4">
+
+          <div className="divide-y divide-white/10 border-t border-b border-white/10">
             {FAQS.map((faq, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.1 }}
-                className={`rounded-2xl backdrop-blur-md border border-white/10 overflow-hidden transition-colors duration-300 ${activeFaq === idx ? "bg-white/[0.07] border-[#D0A36D]/30" : "bg-white/5 hover:bg-white/[0.07]"}`}
-              >
+              <div key={idx} className="py-6">
                 <button
+                  type="button"
                   onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                  className="w-full flex items-center justify-between py-5 px-6 text-left focus:outline-none bg-transparent group"
+                  className="w-full flex items-center justify-between text-left focus:outline-none group cursor-pointer"
                 >
                   <span
-                    className={`font-medium transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#D0A36D] ${activeFaq === idx ? "text-[#D0A36D]" : "text-white"}`}
+                    className={`text-base md:text-lg font-normal transition-colors ${
+                      activeFaq === idx ? "text-[#D4AF37]" : "text-white group-hover:text-[#D4AF37]"
+                    }`}
                   >
                     {faq.q}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 transition-transform duration-300 ease-in-out group-hover:text-[#D0A36D] ${activeFaq === idx ? "rotate-180 text-[#D0A36D]" : "text-zinc-400"}`}
+                    strokeWidth={1.25}
+                    className={`w-5 h-5 shrink-0 transition-transform duration-300 ${
+                      activeFaq === idx ? "rotate-180 text-[#D4AF37]" : "text-zinc-400"
+                    }`}
                   />
                 </button>
                 <AnimatePresence>
                   {activeFaq === idx && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
-                      animate={{
-                        height: "auto",
-                        opacity: 1,
-                        transition: {
-                          height: { duration: 0.3 },
-                          opacity: { duration: 0.3, delay: 0.1 },
-                        },
-                      }}
-                      exit={{
-                        height: 0,
-                        opacity: 0,
-                        transition: { height: { duration: 0.3 }, opacity: { duration: 0.2 } },
-                      }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
                     >
-                      <div className="px-6 pb-6 text-zinc-400 text-sm leading-relaxed">
+                      <p className="pt-4 text-zinc-400 text-sm leading-relaxed font-light">
                         {faq.a}
-                      </div>
+                      </p>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* WHY US SECTION (Editorial Frame + Glassmorphism) */}
-      <motion.section
-        id="hakkimizda"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="px-6 py-24 max-w-7xl mx-auto bg-zinc-950"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="relative group"
-          >
-            <div className="rounded-3xl w-full overflow-hidden backdrop-blur-md bg-white/5 border border-white/10 p-2.5 shadow-2xl">
-              <div className="overflow-hidden rounded-2xl relative">
-                <img
-                  src="/pic5.jpg"
-                  alt="Happy student"
-                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
-              </div>
-            </div>
-            <div className="absolute bottom-6 left-6 right-6 backdrop-blur-md bg-white/5 p-6 rounded-2xl border border-white/10 shadow-2xl">
-              <p className="text-xs uppercase tracking-widest text-[#E6C79C] mb-1.5">
-                Okul Müdürü, Batman
-              </p>
-              <p className="text-white font-medium mb-3">{t("whyus.testimonial.text")}</p>
-              <div className="flex text-[#D0A36D] text-xs">★★★★★</div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-8"
-          >
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
-              {t("whyus.badge")}
-            </p>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              {t("whyus.title")}
-            </h2>
-            <p className="text-zinc-400 leading-relaxed">{t("whyus.desc")}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                t("whyus.feature1"),
-                t("whyus.feature2"),
-                t("whyus.feature3"),
-                t("whyus.feature4"),
-                t("whyus.feature5"),
-                t("whyus.feature6"),
-              ].map((feature, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md bg-white/5 border border-white/10"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-[#D0A36D] shrink-0" />
-                  <span className="text-sm font-medium">{feature}</span>
-                </div>
-              ))}
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsContactModalOpen(true)}
-              className="flex items-center gap-2 bg-[#D0A36D] hover:bg-[#B88B56] text-zinc-950 px-7 py-3.5 rounded-full font-bold transition-colors mt-4 cursor-pointer"
-            >
-              {t("whyus.cta")} <ChevronRight className="w-4 h-4" />
-            </motion.button>
-          </motion.div>
-        </div>
-      </motion.section>
-
       {/* SEO SECTION */}
-      <section className="px-6 py-12 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950">
-        <div className="text-sm text-zinc-500 leading-relaxed max-w-5xl mx-auto text-center">
-          <h2 className="text-white/80 font-semibold mb-2">Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri</h2>
-          <p className="mb-4">
-            ALBÜMEVİ olarak <strong>Batman, Diyarbakır, Mardin, Siirt</strong> ve <strong>Şırnak</strong> genelinde anaokulu, anasınıfı ve ilkokul öğrencileri için profesyonel <strong>mezuniyet ve hatıra fotoğraf çekimi</strong> hizmetleri sunmaktayız. Stüdyo kalitesindeki ekipmanlarımızla okul ortamında gerçekleştirdiğimiz çekimlerde, çocukların en doğal anlarını ölümsüzleştiriyoruz.
-          </p>
-          <p className="mb-4">
-            Geniş ürün yelpazemiz; yüksek kaliteli <strong>Panoramik Albüm</strong>, el işçiliği <strong>Ahşap Albüm</strong>, özel tasarım <strong>Kumbara</strong> ve <strong>Çerçeve</strong> ile <strong>Kep ve Cübbe çekimleri</strong> gibi kalıcı hatıra seçeneklerini içermektedir. Velilere teslim edilecek tüm ürünler, laboratuvarımızda en ince detayına kadar düzenlenip basılır.
+      <section className="px-6 lg:px-10 py-16 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950">
+        <div className="text-xs text-zinc-400/80 leading-relaxed max-w-4xl space-y-3 font-light">
+          <h2 className="text-white font-medium uppercase tracking-[0.2em] text-xs">
+            Profesyonel Okul Fotoğrafçılığı ve Mezuniyet Albümleri
+          </h2>
+          <p>
+            ALBÜMEVİ olarak <strong>Batman, Diyarbakır, Mardin, Siirt</strong> ve{" "}
+            <strong>Şırnak</strong> genelinde anaokulu, anasınıfı ve ilkokul öğrencileri için
+            profesyonel <strong>mezuniyet ve hatıra fotoğraf çekimi</strong> hizmetleri
+            sunmaktayız. Stüdyo kalitesindeki ekipmanlarımızla okul ortamında gerçekleştirdiğimiz
+            çekimlerde, çocukların en doğal anlarını ölümsüzleştiriyoruz.
           </p>
           <p>
-            <strong>Öğretmenlere Özel Online Portal:</strong> Geliştirdiğimiz yenilikçi Öğretmen Portalı sayesinde fotoğraf seçim süreci tamamen dijitalleşmiştir. Öğretmenler; öğrencilerin çekilen fotoğraflarını online sistem üzerinden kolayca seçebilir, her bir öğrenci veya sınıf için özel notlar ekleyebilir ve toplam sipariş adetlerini anlık olarak kolayca takip edebilirler. Bu sistem, okul idaresinin ve öğretmenlerin iş yükünü tamamen ortadan kaldırır.
+            Geniş ürün yelpazemiz; yüksek kaliteli <strong>Panoramik Albüm</strong>, el işçiliği{" "}
+            <strong>Ahşap Albüm</strong>, özel tasarım <strong>Kumbara</strong> ve{" "}
+            <strong>Çerçeve</strong> ile <strong>Kep ve Cübbe çekimleri</strong> gibi kalıcı hatıra
+            seçeneklerini içermektedir.
+          </p>
+          <p>
+            <strong>Öğretmenlere Özel Online Portal:</strong> Geliştirdiğimiz yenilikçi Öğretmen
+            Portalı sayesinde fotoğraf seçim süreci tamamen dijitalleşmiştir.
           </p>
         </div>
       </section>
 
-      {/* FOOTER & CONTACT (Standard Scroll) */}
-      <footer id="iletisim" className="border-t border-white/10 bg-zinc-950 pt-24 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-8"
-          >
-            <p className="text-[#D0A36D] text-xs font-bold tracking-[0.25em] uppercase">
+      {/* FOOTER & CONTACT */}
+      <footer id="iletisim" className="border-t border-white/10 bg-zinc-950 pt-28 pb-12">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
+          <div className="lg:col-span-5 space-y-8">
+            <p className="text-[#D4AF37] text-xs font-medium tracking-[0.3em] uppercase">
               {t("contact.badge")}
             </p>
-            <h2 className="text-4xl font-bold tracking-tight">{t("contact.title")}</h2>
-            <p className="text-zinc-400">{t("contact.desc")}</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-white">
+              {t("contact.title")}
+            </h2>
+            <p className="text-zinc-400 text-sm leading-relaxed font-light">{t("contact.desc")}</p>
 
             <div className="space-y-6 pt-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
-                  <Phone className="w-5 h-5" />
-                </div>
+              <div className="flex items-start gap-4">
+                <Phone strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-zinc-400">{t("contact.phone")}</p>
-                  <p className="font-bold">05362100021</p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
+                    {t("contact.phone")}
+                  </p>
+                  <p className="text-white font-medium mt-1">05362100021</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
-                  <Mail className="w-5 h-5" />
-                </div>
+              <div className="flex items-start gap-4">
+                <Mail strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-zinc-400">{t("contact.email")}</p>
-                  <p className="font-bold">okulcekimleri@gmail.com</p>
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
+                    {t("contact.email")}
+                  </p>
+                  <p className="text-white font-medium mt-1">okulcekimleri@gmail.com</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center text-[#D0A36D]">
-                  <MapPin className="w-5 h-5" />
-                </div>
+              <div className="flex items-start gap-4">
+                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-zinc-400">{t("contact.address")}</p>
-                  <p className="font-bold">
+                  <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
+                    {t("contact.address")}
+                  </p>
+                  <p className="text-white font-light text-sm mt-1 leading-relaxed">
                     TİLMERÇ MH İBRAHİM HAKKI CD TOKİ KAZIM KARABEKİR ORTAOKUL KARŞISI / BATMAN
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-10 h-10 rounded-full backdrop-blur-md bg-white/5 border border-white/10 flex items-center justify-center hover:border-[#D0A36D] transition-colors cursor-pointer"
+            <div className="flex gap-4 pt-2">
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noreferrer"
+                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-zinc-400 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-colors"
               >
-                <Instagram className="w-4 h-4" />
-              </motion.button>
+                <Instagram strokeWidth={1.25} className="w-4 h-4" />
+              </a>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl p-4 relative min-h-[400px] flex items-end overflow-hidden"
-          >
+          <div className="lg:col-span-7 rounded-2xl border border-white/10 overflow-hidden relative min-h-[380px] flex items-end bg-zinc-900">
             <iframe
               src="https://maps.google.com/maps?q=Tilmer%C3%A7%20Mh%20%C4%B0brahim%20Hakk%C4%B1%20Cd%20Batman%20Kaz%C4%B1m%20Karabekir%20Ortaokulu&t=&z=15&ie=UTF8&iwloc=&output=embed"
-              className="absolute inset-0 w-full h-full rounded-3xl border-0 opacity-80 hover:opacity-100 transition-opacity"
+              className="absolute inset-0 w-full h-full border-0 grayscale contrast-125 opacity-75 hover:opacity-100 transition-opacity"
               allowFullScreen
               loading="lazy"
               title="Albumevi Batman Studio Location"
             />
-
-            <div className="relative z-10 backdrop-blur-md bg-zinc-950/80 border border-white/10 p-4 rounded-2xl w-full flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#D0A36D]/15 rounded-full flex items-center justify-center text-[#D0A36D]">
-                  <MapPin className="w-5 h-5" />
-                </div>
+            <div className="relative z-10 m-4 p-4 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-white/10 w-full flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MapPin strokeWidth={1.25} className="w-5 h-5 text-[#D4AF37]" />
                 <div>
-                  <p className="font-bold text-sm">{t("contact.map.title")}</p>
+                  <p className="text-white text-sm font-medium">{t("contact.map.title")}</p>
                   <p className="text-xs text-zinc-400">{t("contact.map.subtitle")}</p>
                 </div>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="text-[#D0A36D] text-sm font-medium flex items-center gap-1 hover:text-[#E2B67C] transition-colors cursor-pointer"
-              >
+              <span className="text-[#D4AF37] text-xs uppercase tracking-[0.15em] flex items-center gap-1">
                 {t("contact.map.cta")} <ChevronRight className="w-4 h-4" />
-              </motion.button>
+              </span>
             </div>
-          </motion.div>
-        </motion.div>
-
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-sm text-gray-500">
-          <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <img src="/logo-light.png" alt="Albumevi Logo" className="h-12 md:h-16 w-auto object-contain" />
           </div>
-          <p>© 2024 Albumevi Fotoğrafçılık A.Ş. Tüm hakları saklıdır.</p>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 flex flex-col md:flex-row items-center justify-between border-t border-white/5 pt-8 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 mb-4 md:mb-0">
+            <img
+              src="/logo-light.png"
+              alt="Albumevi Logo"
+              className="w-32 h-9 object-cover object-center"
+            />
+          </div>
+          <p>© 2026 Albumevi Fotoğrafçılık. Tüm hakları saklıdır.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <a href="#" className="hover:text-white transition-colors">
               Gizlilik
@@ -940,101 +725,104 @@ function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* CONTACT MODAL */}
       <AnimatePresence>
         {isContactModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-sm overflow-y-auto"
             onClick={() => setIsContactModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.96, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              exit={{ scale: 0.96, opacity: 0, y: 16 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#0D0D0D] border border-[#D0A36D]/30 rounded-3xl w-full max-w-2xl overflow-hidden relative shadow-2xl"
+              className="bg-zinc-950 border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden relative shadow-2xl"
             >
-              {/* Header */}
-              <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-[#D0A36D]">İletişim Bilgileri</h3>
+              <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+                <h3 className="font-serif text-xl text-white">İletişim Bilgileri</h3>
                 <button
+                  type="button"
                   onClick={() => setIsContactModalOpen(false)}
-                  className="text-gray-400 hover:text-white transition-colors p-1"
+                  className="text-zinc-400 hover:text-white transition-colors p-1 cursor-pointer"
                 >
-                  <X className="w-6 h-6" />
+                  <X strokeWidth={1.25} className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Content */}
               <div className="p-6 space-y-8">
-                {/* CEO Section */}
-                <div className="flex flex-col items-center justify-center text-center bg-[#151515] rounded-3xl p-8 border border-[#D0A36D]/30 relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-b from-[#D0A36D]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                  <div className="w-28 h-28 rounded-full p-1 border-2 border-[#D0A36D]/60 mb-5 relative z-10 shadow-lg shadow-[#D0A36D]/10 group-hover:border-[#D0A36D] transition-colors duration-500">
+                <div className="flex flex-col items-center justify-center text-center bg-zinc-900/60 rounded-2xl p-8 border border-white/10">
+                  <div className="w-24 h-24 rounded-full p-1 border border-[#D4AF37]/60 mb-4 overflow-hidden">
                     <img
                       src="/pic4.jpg"
                       alt="Amine Himmich"
                       className="w-full h-full object-cover rounded-full"
                     />
                   </div>
+                  <h4 className="font-serif text-2xl text-white">Amine Himmich</h4>
+                  <p className="text-[#D4AF37] text-xs tracking-[0.2em] uppercase mt-1">
+                    Kurucu & Baş Fotoğrafçı
+                  </p>
+                  <div className="pt-5">
+                    <a
+                      href="https://wa.me/905362100021"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#C5A028] text-zinc-950 px-6 py-2.5 rounded-md text-xs uppercase tracking-[0.15em] font-semibold transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      0536 210 00 21
+                    </a>
+                  </div>
+                </div>
 
-                  <div className="relative z-10 space-y-2 flex flex-col items-center">
-                    <h4 className="text-2xl font-bold text-white">Amine Himmich</h4>
-                    <p className="text-[#D0A36D] text-xs font-bold tracking-widest uppercase">
-                      Kurucu & Baş Fotoğrafçı
-                    </p>
-
-                    <div className="pt-3 w-full">
-                      <a
-                        href="https://wa.me/905551234567"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 text-gray-300 hover:text-[#0A0A0A] transition-all duration-300 bg-white/5 hover:bg-[#D0A36D] px-6 py-3 rounded-full text-sm font-semibold border border-[#D0A36D]/30 hover:border-transparent w-full sm:w-auto"
-                      >
-                        <Phone className="w-4 h-4" />
-                        +90 555 123 4567
-                      </a>
+                {dynamicPhotographers.length > 0 && (
+                  <div>
+                    <h4 className="text-xs tracking-[0.2em] uppercase text-zinc-400 mb-4 border-b border-white/10 pb-2">
+                      Çekimciler Ekibimiz
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {dynamicPhotographers.map((photographer: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="bg-zinc-900/50 rounded-xl p-4 border border-white/5 flex items-center gap-4"
+                        >
+                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
+                            <img
+                              src={
+                                photographer.img
+                                  ? getR2PublicUrl(photographer.img)
+                                  : photographer.image_url
+                                    ? getR2PublicUrl(photographer.image_url)
+                                    : ""
+                              }
+                              alt={photographer.full_name || photographer.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-white">
+                              {photographer.full_name || photographer.name}
+                            </p>
+                            <a
+                              href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#D4AF37] transition-colors mt-1"
+                            >
+                              <Phone className="w-3 h-3" />
+                              {photographer.phone || "Telefon Yok"}
+                            </a>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-
-                {/* Photographers Section */}
-                <div>
-                  <h4 className="text-sm font-bold tracking-widest uppercase text-gray-400 mb-4 border-b border-white/5 pb-2">
-                    Çekimciler Ekibimiz
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {dynamicPhotographers.map((photographer: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="bg-[#111111] rounded-xl p-4 border border-white/5 flex items-center gap-4"
-                      >
-                        <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
-                          <img
-                            src={photographer.img ? getR2PublicUrl(photographer.img) : photographer.image_url ? getR2PublicUrl(photographer.image_url) : ""}
-                            alt={photographer.full_name || photographer.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-white">{photographer.full_name || photographer.name}</p>
-                          <a
-                            href={`https://wa.me/${(photographer.phone || "").replace(/[^0-9]/g, "")}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#D0A36D] transition-colors mt-1"
-                          >
-                            <Phone className="w-3 h-3" />
-                            {photographer.phone || "Telefon Yok"}
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
