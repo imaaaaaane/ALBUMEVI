@@ -698,33 +698,29 @@ function ManageSchools() {
   const qc = useQueryClient();
 
   const [selectedClassModal, setSelectedClassModal] = useState<ClassOrdersModalState | null>(null);
-  const [copiedMode, setCopiedMode] = useState<"all" | "finder" | null>(null);
+  const [copiedAllCodes, setCopiedAllCodes] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
   const openClassOrdersModal = (modalState: ClassOrdersModalState) => {
-    setCopiedMode(null);
+    setCopiedAllCodes(false);
     setCopiedOrderId(null);
     setSelectedClassModal(modalState);
   };
 
-  const handleCopyAllCodes = async (mode: "all" | "finder" = "all") => {
+  const handleCopyAllCodes = async () => {
     if (!selectedClassModal || selectedClassModal.orders.length === 0) return;
 
     const uniqueCodes = Array.from(
       new Set(selectedClassModal.orders.map((o) => o.image_code).filter(Boolean)),
     );
-    const clipboardText = mode === "finder" ? uniqueCodes.join(" OR ") : uniqueCodes.join("\n");
+    const clipboardText = uniqueCodes.join(" OR ");
 
     try {
       await navigator.clipboard.writeText(clipboardText);
-      setCopiedMode(mode);
-      toast.success(
-        mode === "finder"
-          ? `${uniqueCodes.length} kod Finder araması (OR) formatında kopyalandı`
-          : `${uniqueCodes.length} dosya kodu panoya kopyalandı`,
-      );
+      setCopiedAllCodes(true);
+      toast.success(`${uniqueCodes.length} dosya kodu Finder araması (OR) formatında kopyalandı`);
       window.setTimeout(() => {
-        setCopiedMode((prev) => (prev === mode ? null : prev));
+        setCopiedAllCodes(false);
       }, 2000);
     } catch {
       toast.error("Kodlar kopyalanamadı.");
@@ -1794,7 +1790,7 @@ function ManageSchools() {
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setSelectedClassModal(null);
-            setCopiedMode(null);
+            setCopiedAllCodes(false);
             setCopiedOrderId(null);
           }
         }}
@@ -1821,37 +1817,21 @@ function ManageSchools() {
                   <Button
                     type="button"
                     disabled={selectedClassModal.orders.length === 0}
-                    onClick={() => handleCopyAllCodes("all")}
+                    onClick={handleCopyAllCodes}
                     className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
                   >
-                    {copiedMode === "all" ? (
+                    {copiedAllCodes ? (
                       <Check className="w-4 h-4 mr-2" />
                     ) : (
                       <Copy className="w-4 h-4 mr-2" />
                     )}
-                    {copiedMode === "all"
+                    {copiedAllCodes
                       ? lang === "TR"
                         ? "Tüm Kodlar Kopyalandı!"
                         : "Copied All Codes!"
                       : lang === "TR"
                         ? "Tüm Kodları Kopyala"
                         : "Copy All Codes"}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={selectedClassModal.orders.length === 0}
-                    onClick={() => handleCopyAllCodes("finder")}
-                    title="macOS Finder arama çubuğuna yapıştırıp tüm dosyaları tek seferde bulmak için OR formatında kopyalar"
-                    className="bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white rounded-xl px-3.5 h-10 text-xs font-medium cursor-pointer"
-                  >
-                    {copiedMode === "finder" ? (
-                      <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 mr-1.5 text-[#A67C52]" />
-                    )}
-                    Finder Arama (OR)
                   </Button>
                 </div>
               </div>
