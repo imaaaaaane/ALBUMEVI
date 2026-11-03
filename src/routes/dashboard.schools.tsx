@@ -5,6 +5,7 @@ import {
   Plus,
   Link2,
   Copy,
+  Check,
   Loader2,
   School as SchoolIcon,
   Package,
@@ -13,13 +14,11 @@ import {
   X,
   UploadCloud,
   Trash2,
-  FolderDown,
-  Folder,
-  Download,
+  FileText,
+  ChevronRight,
+  StickyNote,
   Pencil,
 } from "lucide-react";
-import JSZip from "jszip";
-import { saveAs } from "file-saver";
 import { uploadFileToR2, getR2FileUrl, getR2PublicUrl, deleteFileFromR2 } from "../lib/r2";
 import {
   Accordion,
@@ -71,13 +70,95 @@ export const Route = createFileRoute("/dashboard/schools")({
   component: ManageSchools,
 });
 
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 40) || "school";
+interface ClassOrderItem {
+  id: string;
+  name: string;
+  image_code: string;
+  image_url: string;
+  class_name: string;
+  note: string | null;
+}
+
+interface ClassBreakdownItem {
+  class_name: string;
+  count: number;
+  notes_count: number;
+  orders: ClassOrderItem[];
+}
+
+interface ClassOrdersModalState {
+  schoolName: string;
+  packageName: string;
+  className: string;
+  orders: ClassOrderItem[];
+}
+
+function formatStudentImageCode(student: {
+  image_code?: string | null;
+  name?: string | null;
+  image_url?: string | null;
+}): string {
+  if (student.image_code && String(student.image_code).trim()) {
+    return String(student.image_code).trim();
+  }
+
+  const rawName = (student.name || "").trim();
+  const urlWithoutQuery = (student.image_url || "").split("?")[0];
+  const urlFileName = urlWithoutQuery.split("/").pop() || "";
+  const dotIdx = urlFileName.lastIndexOf(".");
+  const rawExt = dotIdx !== -1 ? urlFileName.substring(dotIdx + 1).trim() : "";
+  const ext = rawExt && /^[a-zA-Z0-9]{2,5}$/.test(rawExt) ? rawExt : "JPG";
+
+  if (!rawName) {
+    return urlFileName || `IMG.${ext}`;
+  }
+
+  const hasExtension = /\.[a-zA-Z0-9]{2,5}$/.test(rawName);
+  const baseName = hasExtension ? rawName.replace(/\.[a-zA-Z0-9]{2,5}$/, "") : rawName;
+  const finalExt = hasExtension ? rawName.substring(rawName.lastIndexOf(".") + 1) : ext;
+
+  // Restore camera filename underscore if parseStudentName replaced "_" with " " (e.g. "SER 7010" -> "SER_7010")
+  const normalizedBase = /^_*[A-Za-z]{1,6}\s+\d+/.test(baseName)
+    ? baseName.replace(/\s+/g, "_")
+    : baseName;
+
+  return `${normalizedBase}.${finalExt}`;
+}
+
+function buildClassBreakdown(students: ClassOrderItem[] = []): ClassBreakdownItem[] {
+  const classGroups = new Map<string, ClassOrderItem[]>();
+
+  students.forEach((student) => {
+    const cName = student.class_name || "Bilinmeyen Şube";
+    if (!classGroups.has(cName)) {
+      classGroups.set(cName, []);
+    }
+    classGroups.get(cName)!.push(student);
+  });
+
+  return Array.from(classGroups.entries())
+    .map(([className, classOrders]) => {
+      const sortedOrders = [...classOrders].sort((a, b) =>
+        a.image_code.localeCompare(b.image_code, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+      const notesCount = sortedOrders.filter((o) => o.note && o.note.trim() !== "").length;
+      return {
+        class_name: className,
+        count: sortedOrders.length,
+        notes_count: notesCount,
+        orders: sortedOrders,
+      };
+    })
+    .sort((a, b) =>
+      a.class_name.localeCompare(b.class_name, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+}
 
 interface Student {
   id: string;
@@ -616,73 +697,50 @@ function ManageSchools() {
   const { teamId } = useAuth();
   const qc = useQueryClient();
 
-  const [downloadingPackageKey, setDownloadingPackageKey] = useState<string | null>(null);
+  const [selectedClassModal, setSelectedClassModal] = useState<ClassOrdersModalState | null>(null);
+  const [copiedMode, setCopiedMode] = useState<"all" | "finder" | null>(null);
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
-  const handleDownloadZip = async (
-    schoolName: string,
-    packageName: string,
-    students: any[],
-    packageKey: string,
-  ) => {
-    setDownloadingPackageKey(packageKey);
+  const openClassOrdersModal = (modalState: ClassOrdersModalState) => {
+    setCopiedMode(null);
+    setCopiedOrderId(null);
+    setSelectedClassModal(modalState);
+  };
+
+  const handleCopyAllCodes = async (mode: "all" | "finder" = "all") => {
+    if (!selectedClassModal || selectedClassModal.orders.length === 0) return;
+
+    const uniqueCodes = Array.from(
+      new Set(selectedClassModal.orders.map((o) => o.image_code).filter(Boolean)),
+    );
+    const clipboardText = mode === "finder" ? uniqueCodes.join(" OR ") : uniqueCodes.join("\n");
+
     try {
-      const zip = new JSZip();
+      await navigator.clipboard.writeText(clipboardText);
+      setCopiedMode(mode);
+      toast.success(
+        mode === "finder"
+          ? `${uniqueCodes.length} kod Finder araması (OR) formatında kopyalandı`
+          : `${uniqueCodes.length} dosya kodu panoya kopyalandı`,
+      );
+      window.setTimeout(() => {
+        setCopiedMode((prev) => (prev === mode ? null : prev));
+      }, 2000);
+    } catch {
+      toast.error("Kodlar kopyalanamadı.");
+    }
+  };
 
-      const promises = students.map(async (student) => {
-        if (!student.image_url) return;
-        try {
-          let urlToFetch = student.image_url;
-          if (!urlToFetch.startsWith("http")) {
-            urlToFetch = await getR2FileUrl(student.image_url);
-          }
-          const response = await fetch(urlToFetch);
-          const blob = await response.blob();
-
-          const ext = student.image_url.split(".").pop() || "jpg";
-          // Make sure safeExt is used correctly, fallback to jpg just in case
-          const safeExt = ext.split("?")[0] || "jpg";
-          
-          const safePackageName = packageName.replace(/[/\\]/g, "-").trim();
-          const safeClassName = (student.class_name || "Bilinmeyen Şube").replace(/[/\\]/g, "-").trim();
-          const safeStudentName = student.name.replace(/[/\\]/g, "-").trim();
-          
-          const fileName = `${safePackageName}/${safeClassName}/${safeStudentName}.${safeExt}`;
-          zip.file(fileName, blob);
-        } catch (err) {
-          console.error("Error fetching image for", student.name, err);
-        }
-      });
-
-      await Promise.all(promises);
-
-      const classNotesMap = new Map<string, string[]>();
-      students.forEach((student) => {
-        if (student.note && student.note.trim() !== "") {
-          const safeClassName = (student.class_name || "Bilinmeyen Şube").replace(/[/\\]/g, "-").trim();
-          if (!classNotesMap.has(safeClassName)) {
-            classNotesMap.set(safeClassName, []);
-          }
-          classNotesMap.get(safeClassName)?.push(`${student.name} (${packageName}): ${student.note.trim()}`);
-        }
-      });
-      
-      const safePackageName = packageName.replace(/[/\\]/g, "-").trim();
-      classNotesMap.forEach((notesList, safeClassName) => {
-        if (notesList.length > 0) {
-          const fileName = `${safePackageName}/${safeClassName}/notlar.txt`;
-          const contentStr = notesList.join("\n\n");
-          zip.file(fileName, contentStr);
-        }
-      });
-
-      const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, `${slugify(schoolName)}_${slugify(packageName)}.zip`);
-      toast.success("Baskı dosyaları başarıyla indirildi.");
-    } catch (error) {
-      console.error("ZIP Error", error);
-      toast.error("İndirme sırasında bir hata oluştu.");
-    } finally {
-      setDownloadingPackageKey(null);
+  const handleCopySingleCode = async (orderId: string, code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedOrderId(orderId);
+      toast.success(`${code} kopyalandı`);
+      window.setTimeout(() => {
+        setCopiedOrderId((prev) => (prev === orderId ? null : prev));
+      }, 1500);
+    } catch {
+      toast.error("Kod kopyalanamadı.");
     }
   };
 
@@ -698,7 +756,7 @@ function ManageSchools() {
     },
   });
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+  const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
       // 1. Fetch required data independently
@@ -711,7 +769,7 @@ function ManageSchools() {
       ] = await Promise.all([
         (supabase as any)
           .from("students")
-          .select("id, name, image_url, class_id, selection, note, created_at")
+          .select("*")
           .not("selection", "is", null),
         (supabase as any).from("classes").select("id, school_id, name"),
         (supabase as any).from("schools").select("id, name, package_statuses"),
@@ -801,15 +859,14 @@ function ManageSchools() {
 
           acc[groupingKey].quantity += 1;
           acc[groupingKey].total_price += selectedProduct.price || 0;
-          if (s.image_url) {
-            acc[groupingKey].students.push({
-              id: s.id,
-              name: s.name || `Öğrenci`,
-              image_url: s.image_url,
-              class_name: classInfo.name || "Bilinmeyen Şube",
-              note: s.note,
-            });
-          }
+          acc[groupingKey].students.push({
+            id: s.id,
+            name: s.name || "Öğrenci",
+            image_code: formatStudentImageCode(s),
+            image_url: s.image_url || "",
+            class_name: classInfo.name || "Bilinmeyen Şube",
+            note: s.note ?? null,
+          });
         });
 
         return acc;
@@ -1067,7 +1124,10 @@ function ManageSchools() {
       if (!acc[order.school_id]) {
         acc[order.school_id] = { school_name: order.school_name, packages: [] };
       }
-      acc[order.school_id].packages.push(order);
+      acc[order.school_id].packages.push({
+        ...order,
+        class_breakdown: buildClassBreakdown(order.students || []),
+      });
       return acc;
     }, {});
   }, [orders]);
@@ -1089,18 +1149,9 @@ function ManageSchools() {
         school.latest_date = order.created_at;
       }
 
-      const classCounts = new Map();
-      (order.students || []).forEach((student: any) => {
-        const cName = student.class_name || "Bilinmeyen Şube";
-        classCounts.set(cName, (classCounts.get(cName) || 0) + 1);
-      });
-
       school.packages.push({
         ...order,
-        class_breakdown: Array.from(classCounts.entries()).map(([cName, count]) => ({
-          class_name: cName,
-          count,
-        })).sort((a, b) => a.class_name.localeCompare(b.class_name)),
+        class_breakdown: buildClassBreakdown(order.students || []),
       });
     });
 
@@ -1429,17 +1480,49 @@ function ManageSchools() {
                             </div>
                             
                             <div className="space-y-2">
-                              <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Şube Dağılımı</h5>
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                                  Şube Dağılımı
+                                </h5>
+                                <span className="text-[11px] text-white/40">
+                                  Kod ve notları görmek için şubeye tıklayın
+                                </span>
+                              </div>
                               {pkg.class_breakdown.length === 0 ? (
                                 <div className="text-sm text-white/40 italic">Veri bulunamadı</div>
                               ) : (
-                                pkg.class_breakdown.map((cb: any, i: number) => (
-                                  <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                                    <span className="text-sm font-medium text-white">{cb.class_name}</span>
-                                    <span className="text-sm text-[#A67C52] bg-[#A67C52]/10 px-2 py-0.5 rounded">
-                                      {cb.count} sipariş
-                                    </span>
-                                  </div>
+                                pkg.class_breakdown.map((cb: ClassBreakdownItem, i: number) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() =>
+                                      openClassOrdersModal({
+                                        schoolName: school.school_name,
+                                        packageName: pkg.package_name,
+                                        className: cb.class_name,
+                                        orders: cb.orders,
+                                      })
+                                    }
+                                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-black/30 hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="text-sm font-semibold text-white group-hover:text-[#A67C52] transition-colors">
+                                        {cb.class_name}
+                                      </span>
+                                      {cb.notes_count > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 bg-amber-500/15 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                                          <StickyNote className="w-3 h-3" />
+                                          {cb.notes_count} not
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-1 rounded-md">
+                                        {cb.count} sipariş
+                                      </span>
+                                      <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-[#A67C52] group-hover:translate-x-0.5 transition-all" />
+                                    </div>
+                                  </button>
                                 ))
                               )}
                             </div>
@@ -1455,7 +1538,7 @@ function ManageSchools() {
         </div>
       </motion.div>
 
-      {/* Baskı Dosyaları */}
+      {/* Baskı Dosyaları (Kod ve Not Referansı) */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1464,20 +1547,20 @@ function ManageSchools() {
       >
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-white/5">
           <div>
-            <h2 className="font-semibold text-lg text-white">Baskı Dosyaları</h2>
+            <h2 className="font-semibold text-lg text-white">Baskı Dosya Kodları</h2>
             <p className="text-xs text-white/50">
-              Okulların paket seçimlerine göre gruplandırılmış öğrenci fotoğrafları.
+              Şube satırlarına tıklayarak ham dosya kodlarını (RAW/JPG) ve sipariş notlarını görüntüleyin.
             </p>
           </div>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A67C52]/20 text-[#A67C52]">
-            <FolderDown className="h-5 w-5" />
+            <FileText className="h-5 w-5" />
           </div>
         </div>
 
         <div className="p-4">
           {Object.keys(groupedBySchool).length === 0 ? (
             <div className="text-center text-white/40 py-8">
-              Henüz indirilebilir baskı dosyası bulunmuyor.
+              Henüz sipariş kodu bulunmuyor.
             </div>
           ) : (
             <Accordion type="multiple" className="space-y-4">
@@ -1499,46 +1582,86 @@ function ManageSchools() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6 pt-2">
-                    <div className="grid gap-3 mt-4">
-                      {school.packages.map((pkg: any) => {
-                        const isZipping = downloadingPackageKey === pkg.id;
-                        return (
-                          <div
-                            key={pkg.id}
-                            className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-black/20"
-                          >
+                    <div className="grid gap-4 mt-3">
+                      {school.packages.map((pkg: any) => (
+                        <div
+                          key={pkg.id}
+                          className="p-4 rounded-xl border border-white/5 bg-black/25 space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-[#A67C52]/10 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-lg bg-[#A67C52]/10 flex items-center justify-center shrink-0">
                                 <Package className="w-5 h-5 text-[#A67C52]" />
                               </div>
                               <div>
                                 <div className="font-medium text-white">{pkg.package_name}</div>
-                                <div className="text-xs text-white/50">{pkg.quantity} Öğrenci</div>
+                                <div className="text-xs text-white/50">{pkg.quantity} sipariş</div>
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              disabled={isZipping || pkg.students.length === 0}
-                              onClick={() =>
-                                handleDownloadZip(
-                                  school.school_name,
-                                  pkg.package_name,
-                                  pkg.students,
-                                  pkg.id,
-                                )
-                              }
-                              className="bg-white/10 hover:bg-white/20 text-white border-none"
-                            >
-                              {isZipping ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <Download className="w-4 h-4 mr-2" />
-                              )}
-                              Toplu İndir
-                            </Button>
+                            {pkg.students.length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  openClassOrdersModal({
+                                    schoolName: school.school_name,
+                                    packageName: pkg.package_name,
+                                    className: "Tüm Şubeler",
+                                    orders: [...pkg.students].sort((a: ClassOrderItem, b: ClassOrderItem) =>
+                                      a.image_code.localeCompare(b.image_code, undefined, {
+                                        numeric: true,
+                                        sensitivity: "base",
+                                      }),
+                                    ),
+                                  })
+                                }
+                                className="h-8 bg-white/5 hover:bg-white/10 border-white/10 text-white text-xs cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5 mr-1.5 text-[#A67C52]" />
+                                Tüm Paket Kodları
+                              </Button>
+                            )}
                           </div>
-                        );
-                      })}
+
+                          {pkg.class_breakdown && pkg.class_breakdown.length > 0 && (
+                            <div className="grid gap-1.5 pt-1">
+                              {pkg.class_breakdown.map((cb: ClassBreakdownItem, idx: number) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() =>
+                                    openClassOrdersModal({
+                                      schoolName: school.school_name,
+                                      packageName: pkg.package_name,
+                                      className: cb.class_name,
+                                      orders: cb.orders,
+                                    })
+                                  }
+                                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-sm font-medium text-white group-hover:text-[#A67C52] transition-colors">
+                                      {cb.class_name}
+                                    </span>
+                                    {cb.notes_count > 0 && (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 bg-amber-500/15 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                                        <StickyNote className="w-3 h-3" />
+                                        {cb.notes_count} not
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-0.5 rounded">
+                                      {cb.count} sipariş
+                                    </span>
+                                    <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-[#A67C52] group-hover:translate-x-0.5 transition-all" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -1664,6 +1787,138 @@ function ManageSchools() {
           </TableBody>
         </Table>
       </motion.div>
+
+      {/* Class Orders Codes & Notes Modal */}
+      <Dialog
+        open={!!selectedClassModal}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setSelectedClassModal(null);
+            setCopiedMode(null);
+            setCopiedOrderId(null);
+          }
+        }}
+      >
+        <DialogContent className="bg-[#131316] border border-white/10 text-white max-w-2xl shadow-2xl p-0 overflow-hidden">
+          {selectedClassModal && (
+            <>
+              <div className="px-6 pt-6 pb-4 border-b border-white/10 bg-white/[0.03] space-y-4">
+                <DialogHeader className="space-y-1 text-left">
+                  <div className="text-xs font-medium text-[#A67C52] uppercase tracking-wider">
+                    {selectedClassModal.schoolName} • {selectedClassModal.packageName}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 pr-6">
+                    <DialogTitle className="text-xl font-bold text-white">
+                      {selectedClassModal.className} — Sipariş Kodları
+                    </DialogTitle>
+                    <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
+                      {selectedClassModal.orders.length} sipariş
+                    </Badge>
+                  </div>
+                </DialogHeader>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Button
+                    type="button"
+                    disabled={selectedClassModal.orders.length === 0}
+                    onClick={() => handleCopyAllCodes("all")}
+                    className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
+                  >
+                    {copiedMode === "all" ? (
+                      <Check className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Copy className="w-4 h-4 mr-2" />
+                    )}
+                    {copiedMode === "all"
+                      ? lang === "TR"
+                        ? "Tüm Kodlar Kopyalandı!"
+                        : "Copied All Codes!"
+                      : lang === "TR"
+                        ? "Tüm Kodları Kopyala"
+                        : "Copy All Codes"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={selectedClassModal.orders.length === 0}
+                    onClick={() => handleCopyAllCodes("finder")}
+                    title="macOS Finder arama çubuğuna yapıştırıp tüm dosyaları tek seferde bulmak için OR formatında kopyalar"
+                    className="bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white rounded-xl px-3.5 h-10 text-xs font-medium cursor-pointer"
+                  >
+                    {copiedMode === "finder" ? (
+                      <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 mr-1.5 text-[#A67C52]" />
+                    )}
+                    Finder Arama (OR)
+                  </Button>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 max-h-[58vh] overflow-y-auto space-y-2">
+                {selectedClassModal.orders.length === 0 ? (
+                  <div className="text-center text-white/40 py-10 text-sm">
+                    Bu şube için sipariş kaydı bulunamadı.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-12 gap-3 px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40 border-b border-white/5">
+                      <div className="col-span-5 sm:col-span-5">Dosya Kodu</div>
+                      <div className="col-span-7 sm:col-span-7">Sipariş Notu</div>
+                    </div>
+
+                    <div className="divide-y divide-white/5">
+                      {selectedClassModal.orders.map((orderItem, idx) => {
+                        const hasNote = Boolean(orderItem.note && orderItem.note.trim() !== "");
+                        const rowKey = `${orderItem.id}-${idx}`;
+                        return (
+                          <div
+                            key={rowKey}
+                            className="grid grid-cols-12 gap-3 items-center py-2.5 px-3 rounded-lg hover:bg-white/[0.04] transition-colors"
+                          >
+                            <div className="col-span-5 sm:col-span-5 flex items-center gap-2 min-w-0">
+                              <span className="text-[11px] font-mono text-white/30 w-5 shrink-0">
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
+                              <span className="font-mono text-sm font-semibold text-white truncate select-all">
+                                {orderItem.image_code}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopySingleCode(rowKey, orderItem.image_code)}
+                                title="Kodu Kopyala"
+                                className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                              >
+                                {copiedOrderId === rowKey ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="col-span-7 sm:col-span-7 min-w-0">
+                              {hasNote ? (
+                                <div className="inline-flex items-start gap-1.5 text-xs sm:text-sm text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1.5 break-words max-w-full">
+                                  <StickyNote className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                                  <span>{orderItem.note!.trim()}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-white/25">—</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Info / how-it-works footer card 
       <motion.div 
