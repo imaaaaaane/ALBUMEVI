@@ -766,8 +766,10 @@ function ManageSchools() {
         (supabase as any)
           .from("students")
           .select("*")
-          .not("selection", "is", null),
-        (supabase as any).from("classes").select("id, school_id, name"),
+          .not("selection", "is", null)
+          .neq("selection", "")
+          .limit(10000),
+        (supabase as any).from("classes").select("id, school_id, name").limit(5000),
         (supabase as any).from("schools").select("id, name, package_statuses"),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price"),
         (supabase as any).from("products").select("id, name"),
@@ -853,6 +855,13 @@ function ManageSchools() {
             };
           }
 
+          const rawNote =
+            typeof s.note === "string" && s.note.trim() !== ""
+              ? s.note.trim()
+              : typeof s.notes === "string" && s.notes.trim() !== ""
+                ? s.notes.trim()
+                : null;
+
           acc[groupingKey].quantity += 1;
           acc[groupingKey].total_price += selectedProduct.price || 0;
           acc[groupingKey].students.push({
@@ -861,7 +870,7 @@ function ManageSchools() {
             image_code: formatStudentImageCode(s),
             image_url: s.image_url || "",
             class_name: classInfo.name || "Bilinmeyen Şube",
-            note: s.note ?? null,
+            note: rawNote,
           });
         });
 
@@ -1796,107 +1805,145 @@ function ManageSchools() {
         }}
       >
         <DialogContent className="bg-[#131316] border border-white/10 text-white max-w-2xl shadow-2xl p-0 overflow-hidden">
-          {selectedClassModal && (
-            <>
-              <div className="px-6 pt-6 pb-4 border-b border-white/10 bg-white/[0.03] space-y-4">
-                <DialogHeader className="space-y-1 text-left">
-                  <div className="text-xs font-medium text-[#A67C52] uppercase tracking-wider">
-                    {selectedClassModal.schoolName} • {selectedClassModal.packageName}
-                  </div>
-                  <div className="flex items-center justify-between gap-3 pr-6">
-                    <DialogTitle className="text-xl font-bold text-white">
-                      {selectedClassModal.className} — Sipariş Kodları
-                    </DialogTitle>
-                    <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
-                      {selectedClassModal.orders.length} sipariş
-                    </Badge>
-                  </div>
-                </DialogHeader>
+          {selectedClassModal && (() => {
+            const notesCount = selectedClassModal.orders.filter(
+              (o) => Boolean(o.note && o.note.trim() !== ""),
+            ).length;
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <Button
-                    type="button"
-                    disabled={selectedClassModal.orders.length === 0}
-                    onClick={handleCopyAllCodes}
-                    className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
-                  >
-                    {copiedAllCodes ? (
-                      <Check className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Copy className="w-4 h-4 mr-2" />
+            return (
+              <>
+                <div className="px-6 pt-6 pb-4 border-b border-white/10 bg-white/[0.03] space-y-4">
+                  <DialogHeader className="space-y-1 text-left">
+                    <div className="text-xs font-medium text-[#A67C52] uppercase tracking-wider">
+                      {selectedClassModal.schoolName} • {selectedClassModal.packageName}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 pr-6">
+                      <DialogTitle className="text-xl font-bold text-white">
+                        {selectedClassModal.className} — Sipariş Kodları ve Notlar
+                      </DialogTitle>
+                      <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
+                        {selectedClassModal.orders.length} sipariş
+                      </Badge>
+                    </div>
+                  </DialogHeader>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Button
+                      type="button"
+                      disabled={selectedClassModal.orders.length === 0}
+                      onClick={handleCopyAllCodes}
+                      className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
+                    >
+                      {copiedAllCodes ? (
+                        <Check className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Copy className="w-4 h-4 mr-2" />
+                      )}
+                      {copiedAllCodes
+                        ? lang === "TR"
+                          ? "Tüm Kodlar Kopyalandı!"
+                          : "Copied All Codes!"
+                        : lang === "TR"
+                          ? "Tüm Kodları Kopyala"
+                          : "Copy All Codes"}
+                    </Button>
+
+                    {notesCount > 0 && (
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-lg">
+                        <StickyNote className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{notesCount} notlu fotoğraf</span>
+                      </div>
                     )}
-                    {copiedAllCodes
-                      ? lang === "TR"
-                        ? "Tüm Kodlar Kopyalandı!"
-                        : "Copied All Codes!"
-                      : lang === "TR"
-                        ? "Tüm Kodları Kopyala"
-                        : "Copy All Codes"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 max-h-[58vh] overflow-y-auto space-y-2">
-                {selectedClassModal.orders.length === 0 ? (
-                  <div className="text-center text-white/40 py-10 text-sm">
-                    Bu şube için sipariş kaydı bulunamadı.
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-12 gap-3 px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40 border-b border-white/5">
-                      <div className="col-span-5 sm:col-span-5">Dosya Kodu</div>
-                      <div className="col-span-7 sm:col-span-7">Sipariş Notu</div>
-                    </div>
+                </div>
 
-                    <div className="divide-y divide-white/5">
-                      {selectedClassModal.orders.map((orderItem, idx) => {
-                        const hasNote = Boolean(orderItem.note && orderItem.note.trim() !== "");
-                        const rowKey = `${orderItem.id}-${idx}`;
-                        return (
-                          <div
-                            key={rowKey}
-                            className="grid grid-cols-12 gap-3 items-center py-2.5 px-3 rounded-lg hover:bg-white/[0.04] transition-colors"
-                          >
-                            <div className="col-span-5 sm:col-span-5 flex items-center gap-2 min-w-0">
-                              <span className="text-[11px] font-mono text-white/30 w-5 shrink-0">
-                                {String(idx + 1).padStart(2, "0")}
-                              </span>
-                              <span className="font-mono text-sm font-semibold text-white truncate select-all">
-                                {orderItem.image_code}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleCopySingleCode(rowKey, orderItem.image_code)}
-                                title="Kodu Kopyala"
-                                className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                  {selectedClassModal.orders.length === 0 ? (
+                    <div className="text-center text-white/40 py-10 text-sm">
+                      Bu şube için sipariş kaydı bulunamadı.
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-black/35 overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-white/[0.05]">
+                          <TableRow className="border-white/10 hover:bg-transparent">
+                            <TableHead className="w-12 text-white/50 text-xs font-semibold uppercase tracking-wider">
+                              #
+                            </TableHead>
+                            <TableHead className="w-[220px] text-white/50 text-xs font-semibold uppercase tracking-wider">
+                              Fotoğraf Kodu
+                            </TableHead>
+                            <TableHead className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                              Sipariş Notu
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedClassModal.orders.map((orderItem, idx) => {
+                            const hasNote = Boolean(orderItem.note && orderItem.note.trim() !== "");
+                            const rowKey = `${orderItem.id}-${idx}`;
+                            return (
+                              <TableRow
+                                key={rowKey}
+                                className={
+                                  hasNote
+                                    ? "border-amber-500/20 bg-amber-500/[0.10] hover:bg-amber-500/[0.16] shadow-[inset_3px_0_0_0_#EAB308] transition-colors"
+                                    : "border-white/5 hover:bg-white/[0.04] transition-colors"
+                                }
                               >
-                                {copiedOrderId === rowKey ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            </div>
+                                <TableCell className="py-3 font-mono text-xs text-white/35 align-top">
+                                  {String(idx + 1).padStart(2, "0")}
+                                </TableCell>
 
-                            <div className="col-span-7 sm:col-span-7 min-w-0">
-                              {hasNote ? (
-                                <div className="inline-flex items-start gap-1.5 text-xs sm:text-sm text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1.5 break-words max-w-full">
-                                  <StickyNote className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                                  <span>{orderItem.note!.trim()}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-white/25">—</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                                <TableCell className="py-3 align-top">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`font-mono text-sm select-all ${
+                                        hasNote
+                                          ? "font-bold text-amber-100"
+                                          : "font-semibold text-white/90"
+                                      }`}
+                                    >
+                                      {orderItem.image_code}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleCopySingleCode(rowKey, orderItem.image_code)
+                                      }
+                                      title="Kodu Kopyala"
+                                      className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                                    >
+                                      {copiedOrderId === rowKey ? (
+                                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="py-3 whitespace-normal align-top">
+                                  {hasNote ? (
+                                    <div className="flex items-start gap-2 text-sm font-medium text-amber-300 leading-relaxed break-words">
+                                      <StickyNote className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                      <span>{orderItem.note!.trim()}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-white/25 italic">Not yok</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
-                  </>
-                )}
-              </div>
-            </>
-          )}
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
