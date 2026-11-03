@@ -959,15 +959,50 @@ function ManageSchools() {
 
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", "schools"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("products")
-        .select("id, name, base_price");
+        .select("*")
+        .order("sira", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
+
+  const schoolCategoryProducts = useMemo(() => {
+    return products.filter((p: any) => {
+      const rawCategory = String(p?.category ?? "").trim();
+      const normalizedCategory = rawCategory.toLocaleLowerCase("tr-TR");
+      const normalizedName = String(p?.name ?? "").trim().toLocaleLowerCase("tr-TR");
+
+      if (!normalizedName || normalizedName.includes("kargo")) {
+        return false;
+      }
+
+      if (rawCategory) {
+        return (
+          normalizedCategory === "okul işleri" ||
+          normalizedCategory === "okul isleri" ||
+          normalizedCategory === "okullar" ||
+          normalizedCategory === "okul"
+        );
+      }
+
+      if (
+        normalizedName.includes("panoramik") ||
+        normalizedName.includes("baskı") ||
+        normalizedName.includes("baski") ||
+        normalizedName.includes("canvas") ||
+        normalizedName.includes("kanvas")
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [products]);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -1283,11 +1318,14 @@ function ManageSchools() {
                   <Select
                     value={form.package1_id}
                     onValueChange={(v) => {
-                      const product = products.find((p: any) => p.id === v);
+                      const product = schoolCategoryProducts.find((p: any) => p.id === v);
                       setForm({
                         ...form,
                         package1_id: v,
-                        package1_price: product ? String(product.base_price) : form.package1_price,
+                        package1_price:
+                          product && product.base_price != null
+                            ? String(product.base_price)
+                            : form.package1_price,
                       });
                     }}
                   >
@@ -1295,7 +1333,7 @@ function ManageSchools() {
                       <SelectValue placeholder="Paket Seçin" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#131316] border-white/10 text-white">
-                      {products.map((p: any) => (
+                      {schoolCategoryProducts.map((p: any) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
                         </SelectItem>
@@ -1320,11 +1358,14 @@ function ManageSchools() {
                   <Select
                     value={form.package2_id}
                     onValueChange={(v) => {
-                      const product = products.find((p: any) => p.id === v);
+                      const product = schoolCategoryProducts.find((p: any) => p.id === v);
                       setForm({
                         ...form,
                         package2_id: v,
-                        package2_price: product ? String(product.base_price) : form.package2_price,
+                        package2_price:
+                          product && product.base_price != null
+                            ? String(product.base_price)
+                            : form.package2_price,
                       });
                     }}
                   >
@@ -1332,7 +1373,7 @@ function ManageSchools() {
                       <SelectValue placeholder="Paket Seçin" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#131316] border-white/10 text-white">
-                      {products.map((p: any) => (
+                      {schoolCategoryProducts.map((p: any) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
                         </SelectItem>
