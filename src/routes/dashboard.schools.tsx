@@ -77,6 +77,7 @@ interface ClassOrderItem {
   image_url: string;
   class_name: string;
   note: string | null;
+  is_selected?: boolean;
 }
 
 interface ClassBreakdownItem {
@@ -144,10 +145,11 @@ function buildClassBreakdown(students: ClassOrderItem[] = []): ClassBreakdownIte
           sensitivity: "base",
         }),
       );
+      const selectedCount = sortedOrders.filter((o) => o.is_selected !== false).length;
       const notesCount = sortedOrders.filter((o) => o.note && o.note.trim() !== "").length;
       return {
         class_name: className,
-        count: sortedOrders.length,
+        count: selectedCount,
         notes_count: notesCount,
         orders: sortedOrders,
       };
@@ -766,9 +768,8 @@ function ManageSchools() {
         (supabase as any)
           .from("students")
           .select("*")
-          .not("selection", "is", null)
-          .neq("selection", "")
-          .limit(10000),
+          .or("selection.not.is.null,note.not.is.null")
+          .limit(20000),
         (supabase as any).from("classes").select("id, school_id, name").limit(5000),
         (supabase as any).from("schools").select("id, name, package_statuses"),
         (supabase as any).from("school_products").select("school_id, product_id, custom_price"),
@@ -806,78 +807,153 @@ function ManageSchools() {
         });
       });
 
-      // 2. Aggregate data in JavaScript
-      const grouped = (students || []).reduce((acc: any, s: any) => {
+      // 2. Aggregate data in JavaScript (include students with a selected product OR any note text)
+      const grouped: Record<string, any> = {};
+      const notedStudentsBySchool = new Map<
+        string,
+        Array<{ item: ClassOrderItem; created_at: string }>
+      >();
+
+      const ensureGroup = (
+        schoolId: string,
+        product: { id: string; name: string; price?: number },
+        createdAt: string,
+      ) => {
+        const groupingKey = `${schoolId}_${product.id}`;
+        if (!grouped[groupingKey]) {
+          grouped[groupingKey] = {
+            id: groupingKey,
+            school_name: schoolMap.get(schoolId) || "Bilinmeyen Okul",
+            package_name: product.name,
+            quantity: 0,
+            total_price: 0,
+            order_status:
+              (schoolStatusMap.get(schoolId) || {})[product.name] || "Hazırlanıyor",
+            created_at: createdAt,
+            school_id: schoolId,
+            selection_key: product.id,
+            studentMap: new Map<string, ClassOrderItem>(),
+          };
+        }
+        return grouped[groupingKey];
+      };
+
+      (students || []).forEach((s: any) => {
         const classInfo = classMap.get(s.class_id);
-        if (!classInfo) return acc;
+        if (!classInfo) return;
         const schoolId = classInfo.school_id;
 
-        const spMapping = schoolProductsMap.get(schoolId);
-        if (!spMapping) return acc;
+        const rawNote =
+          typeof s.note === "string" && s.note.trim() !== ""
+            ? s.note.trim()
+            : typeof s.notes === "string" && s.notes.trim() !== ""
+              ? s.notes.trim()
+              : null;
 
         let parsedSelection: string[] = [];
-        try {
-          parsedSelection = s.selection ? JSON.parse(s.selection) : [];
-        } catch {
-          parsedSelection = s.selection ? s.selection.split(",").filter(Boolean) : [];
+        if (typeof s.selection === "string" && s.selection.trim() !== "") {
+          try {
+            const parsed = JSON.parse(s.selection);
+            parsedSelection = Array.isArray(parsed)
+              ? parsed.map((v) => String(v).trim()).filter(Boolean)
+              : s.selection
+                  .split(",")
+                  .map((v: string) => v.trim())
+                  .filter(Boolean);
+          } catch {
+            parsedSelection = s.selection
+              .split(",")
+              .map((v: string) => v.trim())
+              .filter(Boolean);
+          }
         }
 
-        parsedSelection.forEach((selectedProductId: string) => {
-          let selectedProduct = spMapping.get(selectedProductId);
+        const spMapping = schoolProductsMap.get(schoolId);
+        const matchedProducts: Array<{ id: string; name: string; price: number }> = [];
 
-          // Backwards compatibility for old records that have "paket1" or "paket2"
-          if (
-            !selectedProduct &&
-            (selectedProductId === "paket1" || selectedProductId === "paket2")
-          ) {
-            const oldMapList = Array.from(spMapping.values()) as any[];
-            if (selectedProductId === "paket1" && oldMapList[0]) selectedProduct = oldMapList[0];
-            if (selectedProductId === "paket2" && oldMapList[1]) selectedProduct = oldMapList[1];
-          }
+        if (spMapping && parsedSelection.length > 0) {
+          parsedSelection.forEach((selectedProductId: string) => {
+            let selectedProduct = spMapping.get(selectedProductId);
 
-          if (!selectedProduct) return;
+            // Backwards compatibility for old records that have "paket1" or "paket2"
+            if (
+              !selectedProduct &&
+              (selectedProductId === "paket1" || selectedProductId === "paket2")
+            ) {
+              const oldMapList = Array.from(spMapping.values()) as any[];
+              if (selectedProductId === "paket1" && oldMapList[0]) selectedProduct = oldMapList[0];
+              if (selectedProductId === "paket2" && oldMapList[1]) selectedProduct = oldMapList[1];
+            }
 
-          const groupingKey = `${schoolId}_${selectedProduct.id}`;
-
-          if (!acc[groupingKey]) {
-            acc[groupingKey] = {
-              id: groupingKey,
-              school_name: schoolMap.get(schoolId) || "Bilinmeyen Okul",
-              package_name: selectedProduct.name,
-              quantity: 0,
-              total_price: 0,
-              order_status:
-                (schoolStatusMap.get(schoolId) || {})[selectedProduct.name] || "Hazırlanıyor",
-              created_at: s.created_at,
-              school_id: schoolId,
-              selection_key: selectedProduct.id,
-              students: [],
-            };
-          }
-
-          const rawNote =
-            typeof s.note === "string" && s.note.trim() !== ""
-              ? s.note.trim()
-              : typeof s.notes === "string" && s.notes.trim() !== ""
-                ? s.notes.trim()
-                : null;
-
-          acc[groupingKey].quantity += 1;
-          acc[groupingKey].total_price += selectedProduct.price || 0;
-          acc[groupingKey].students.push({
-            id: s.id,
-            name: s.name || "Öğrenci",
-            image_code: formatStudentImageCode(s),
-            image_url: s.image_url || "",
-            class_name: classInfo.name || "Bilinmeyen Şube",
-            note: rawNote,
+            if (selectedProduct) {
+              matchedProducts.push(selectedProduct);
+            }
           });
+        }
+
+        // Skip students who have neither a selected product nor a note
+        if (matchedProducts.length === 0 && !rawNote) {
+          return;
+        }
+
+        const baseItem: ClassOrderItem = {
+          id: s.id,
+          name: s.name || "Öğrenci",
+          image_code: formatStudentImageCode(s),
+          image_url: s.image_url || "",
+          class_name: classInfo.name || "Bilinmeyen Şube",
+          note: rawNote,
+          is_selected: true,
+        };
+
+        matchedProducts.forEach((selectedProduct) => {
+          const grp = ensureGroup(schoolId, selectedProduct, s.created_at);
+          if (!grp.studentMap.has(s.id)) {
+            grp.quantity += 1;
+            grp.total_price += selectedProduct.price || 0;
+            grp.studentMap.set(s.id, { ...baseItem, is_selected: true });
+          }
         });
 
-        return acc;
-      }, {});
+        if (rawNote) {
+          if (!notedStudentsBySchool.has(schoolId)) {
+            notedStudentsBySchool.set(schoolId, []);
+          }
+          notedStudentsBySchool.get(schoolId)!.push({
+            item: { ...baseItem, is_selected: false },
+            created_at: s.created_at,
+          });
+        }
+      });
 
-      return Object.values(grouped) as any[];
+      // Attach any student with a note (including students with NO selected product) to the school's modal lists
+      notedStudentsBySchool.forEach((notedEntries, schoolId) => {
+        let schoolGroups = Object.values(grouped).filter((g: any) => g.school_id === schoolId);
+
+        if (schoolGroups.length === 0) {
+          const spMapping = schoolProductsMap.get(schoolId);
+          const firstProduct = spMapping ? (Array.from(spMapping.values())[0] as any) : null;
+          const fallbackProduct = firstProduct || { id: "notes_only", name: "Öğrenci Notları", price: 0 };
+          const grp = ensureGroup(schoolId, fallbackProduct, notedEntries[0].created_at);
+          schoolGroups = [grp];
+        }
+
+        schoolGroups.forEach((grp: any) => {
+          notedEntries.forEach(({ item }) => {
+            if (!grp.studentMap.has(item.id)) {
+              grp.studentMap.set(item.id, item);
+            }
+          });
+        });
+      });
+
+      return Object.values(grouped).map((grp: any) => {
+        const { studentMap, ...rest } = grp;
+        return {
+          ...rest,
+          students: Array.from(studentMap.values()),
+        };
+      });
     },
   });
 
@@ -1809,6 +1885,9 @@ function ManageSchools() {
             const notesCount = selectedClassModal.orders.filter(
               (o) => Boolean(o.note && o.note.trim() !== ""),
             ).length;
+            const selectedOrdersCount = selectedClassModal.orders.filter(
+              (o) => o.is_selected !== false,
+            ).length;
 
             return (
               <>
@@ -1822,7 +1901,7 @@ function ManageSchools() {
                         {selectedClassModal.className} — Sipariş Kodları ve Notlar
                       </DialogTitle>
                       <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
-                        {selectedClassModal.orders.length} sipariş
+                        {selectedOrdersCount} sipariş
                       </Badge>
                     </div>
                   </DialogHeader>
@@ -1896,30 +1975,37 @@ function ManageSchools() {
                                 </TableCell>
 
                                 <TableCell className="py-3 align-top">
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`font-mono text-sm select-all ${
-                                        hasNote
-                                          ? "font-bold text-amber-100"
-                                          : "font-semibold text-white/90"
-                                      }`}
-                                    >
-                                      {orderItem.image_code}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleCopySingleCode(rowKey, orderItem.image_code)
-                                      }
-                                      title="Kodu Kopyala"
-                                      className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                                    >
-                                      {copiedOrderId === rowKey ? (
-                                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                      ) : (
-                                        <Copy className="w-3.5 h-3.5" />
-                                      )}
-                                    </button>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`font-mono text-sm select-all ${
+                                          hasNote
+                                            ? "font-bold text-amber-100"
+                                            : "font-semibold text-white/90"
+                                        }`}
+                                      >
+                                        {orderItem.image_code}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleCopySingleCode(rowKey, orderItem.image_code)
+                                        }
+                                        title="Kodu Kopyala"
+                                        className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                                      >
+                                        {copiedOrderId === rowKey ? (
+                                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                        ) : (
+                                          <Copy className="w-3.5 h-3.5" />
+                                        )}
+                                      </button>
+                                    </div>
+                                    {orderItem.is_selected === false && (
+                                      <span className="inline-block w-fit text-[10px] font-medium text-amber-200/80 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded">
+                                        Ürün seçilmedi • Not var
+                                      </span>
+                                    )}
                                   </div>
                                 </TableCell>
 
