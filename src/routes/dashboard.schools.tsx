@@ -13,13 +13,17 @@ import {
   Info,
   X,
   UploadCloud,
-  Trash2,
   FileText,
   ChevronRight,
   StickyNote,
   Pencil,
 } from "lucide-react";
-import { uploadFileToR2, getR2FileUrl, getR2PublicUrl, deleteFileFromR2 } from "../lib/r2";
+import { uploadFileToR2, getR2FileUrl, getR2PublicUrl } from "../lib/r2";
+import {
+  fetchAllRows,
+  fetchAllRowsSafe,
+  parseSelectionTokens,
+} from "@/lib/supabase-fetch-all";
 import {
   Accordion,
   AccordionContent,
@@ -322,30 +326,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
         .eq("id", editingClassId);
       if (classError) throw classError;
 
-      // 2. Delete removed photos from storage and DB
-      if (removedStudents.length > 0) {
-        for (const student of removedStudents) {
-          if (student.image_url) {
-            try {
-              let objectKey = student.image_url;
-              if (objectKey.startsWith("http")) {
-                const urlObj = new URL(objectKey);
-                objectKey = urlObj.pathname.replace(/^\/+/, "");
-              }
-              await deleteFileFromR2(objectKey);
-            } catch (storageErr) {
-              console.error("Storage delete error:", storageErr);
-            }
-          }
-        }
-
-        const removedIds = removedStudents.map((s) => s.id);
-        const { error: deleteStudentsErr } = await (supabase as any)
-          .from("students")
-          .delete()
-          .in("id", removedIds);
-        if (deleteStudentsErr) throw deleteStudentsErr;
-      }
+      // 2. Hard-deletion of existing student records is disabled to protect order selections and notes
 
       // 3. Upload newly added photos and insert student records
       if (selectedFiles.length > 0) {
@@ -445,20 +426,9 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
     }
   };
 
-  const handleDeleteClass = async (id: string) => {
-    if (!confirm("Bu sınıfı silmek istediğinize emin misiniz?")) return;
-    try {
-      const { error } = await (supabase as any).from("classes").delete().eq("id", id);
-      if (error) throw error;
-      if (editingClassId === id) {
-        resetForm();
-      }
-      refetch();
-      qc.invalidateQueries({ queryKey: ["orders"] });
-      toast.success("Sınıf silindi.");
-    } catch (err: any) {
-      toast.error("Sınıf silinemedi.");
-    }
+  const handleDeleteClass = async (_id: string) => {
+    // Hard-deleting classes is disabled to protect all class and student order data
+    toast.info("Veri koruma aktif: Şube silme işlemi devre dışı bırakıldı.");
   };
 
   const isBusy = isProcessing || updateClassMutation.isPending;
@@ -558,14 +528,6 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
                           >
                             {student.name}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExistingPhoto(student)}
-                            title="Fotoğrafı Kaldır"
-                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
                         </div>
                       ))}
 
@@ -671,15 +633,6 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Sil"
-                            className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
-                            onClick={() => handleDeleteClass(c.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -745,93 +698,111 @@ function ManageSchools() {
   const { data: schools = [], isLoading } = useQuery({
     queryKey: ["schools"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("schools")
-        .select("*, status")
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      return await fetchAllRows<any>(supabase, "schools", "*", "created_at", false);
     },
   });
 
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
-      // 1. Fetch required data independently
-      const [
-        { data: students, error: stdErr },
-        { data: classes, error: clsErr },
-        { data: schools, error: schErr },
-        { data: schoolProducts, error: spErr },
-        { data: products, error: pErr },
-      ] = await Promise.all([
-        (supabase as any)
-          .from("students")
-          .select("*")
-          .or("selection.not.is.null,note.not.is.null")
-          .limit(20000),
-        (supabase as any).from("classes").select("id, school_id, name").limit(5000),
-        (supabase as any).from("schools").select("id, name, package_statuses"),
-        (supabase as any).from("school_products").select("school_id, product_id, custom_price"),
-        (supabase as any).from("products").select("id, name"),
-      ]);
+      // 1. Fetch 100% of records across all related tables without any filters or row caps
+      const [students, classes, schools, schoolProducts, products, directOrders] =
+        await Promise.all([
+          fetchAllRowsSafe<any>(supabase, "students", "*"),
+          fetchAllRowsSafe<any>(supabase, "classes", "*"),
+          fetchAllRowsSafe<any>(supabase, "schools", "*"),
+          fetchAllRowsSafe<any>(supabase, "school_products", "*"),
+          fetchAllRowsSafe<any>(supabase, "products", "*"),
+          fetchAllRowsSafe<any>(supabase, "orders", "*", "created_at", false),
+        ]);
 
-      if (stdErr) throw new Error(stdErr.message);
-      if (clsErr) throw new Error(clsErr.message);
-      if (schErr) throw new Error(schErr.message);
-      if (spErr) throw new Error(spErr.message);
-
-      // Map classes and schools for quick lookup
-      const classMap = new Map();
-      (classes || []).forEach((c: any) => classMap.set(c.id, { school_id: c.school_id, name: c.name }));
-
-      const schoolMap = new Map();
-      const schoolStatusMap = new Map();
-      (schools || []).forEach((s: any) => {
-        schoolMap.set(s.id, s.name);
-        schoolStatusMap.set(s.id, s.package_statuses || {});
+      // Map classes and schools for quick lookup (preserving fallbacks if related records are missing)
+      const classMap = new Map<string, { school_id: string | null; name: string }>();
+      (classes || []).forEach((c: any) => {
+        if (c?.id != null) {
+          classMap.set(String(c.id), {
+            school_id: c.school_id ? String(c.school_id) : null,
+            name: c.name || "Bilinmeyen Şube",
+          });
+        }
       });
 
-      const productMap = new Map();
-      (products || []).forEach((p: any) => productMap.set(p.id, p.name));
-
-      const schoolProductsMap = new Map();
-      (schoolProducts || []).forEach((sp: any) => {
-        if (!schoolProductsMap.has(sp.school_id)) {
-          schoolProductsMap.set(sp.school_id, new Map());
+      const schoolMap = new Map<string, string>();
+      const schoolStatusMap = new Map<string, Record<string, any>>();
+      (schools || []).forEach((s: any) => {
+        if (s?.id != null) {
+          schoolMap.set(String(s.id), s.name || "İsimsiz Okul");
+          schoolStatusMap.set(String(s.id), s.package_statuses || {});
         }
-        schoolProductsMap.get(sp.school_id).set(sp.product_id, {
-          id: sp.product_id,
-          price: sp.custom_price,
-          name: productMap.get(sp.product_id) || "Bilinmeyen Paket",
+      });
+
+      const productMap = new Map<string, { name: string; base_price: number }>();
+      (products || []).forEach((p: any) => {
+        if (p?.id != null) {
+          productMap.set(String(p.id), {
+            name: p.name || "Bilinmeyen Paket",
+            base_price: Number(p.base_price) || 0,
+          });
+        }
+      });
+
+      const schoolProductsMap = new Map<
+        string,
+        Map<string, { id: string; price: number; name: string }>
+      >();
+      (schoolProducts || []).forEach((sp: any) => {
+        const sid = sp?.school_id ? String(sp.school_id) : "";
+        const pid = sp?.product_id ? String(sp.product_id) : "";
+        if (!sid || !pid) return;
+        if (!schoolProductsMap.has(sid)) {
+          schoolProductsMap.set(sid, new Map());
+        }
+        const catalogProd = productMap.get(pid);
+        schoolProductsMap.get(sid)!.set(pid, {
+          id: pid,
+          price: Number(sp.custom_price ?? catalogProd?.base_price ?? 0),
+          name: catalogProd?.name || "Bilinmeyen Paket",
         });
       });
 
-      // 2. Aggregate data in JavaScript (include students with a selected product OR any note text)
+      // 2. Aggregate data in JavaScript without dropping orphaned classes, schools, or products
       const grouped: Record<string, any> = {};
       const notedStudentsBySchool = new Map<
         string,
         Array<{ item: ClassOrderItem; created_at: string }>
       >();
 
+      const resolveSchoolDisplayName = (schoolId: string) => {
+        if (schoolMap.has(schoolId)) return schoolMap.get(schoolId)!;
+        if (schoolId === "__orphan_school__") return "Eşleşmeyen / Silinmiş Okul";
+        return `Eşleşmeyen Okul (${schoolId.slice(0, 8)})`;
+      };
+
       const ensureGroup = (
         schoolId: string,
         product: { id: string; name: string; price?: number },
         createdAt: string,
+        extra?: { directOrderId?: string; statusOverride?: string },
       ) => {
-        const groupingKey = `${schoolId}_${product.id}`;
+        const groupingKey = extra?.directOrderId
+          ? `direct_order_${extra.directOrderId}`
+          : `${schoolId}_${product.id}`;
         if (!grouped[groupingKey]) {
           grouped[groupingKey] = {
             id: groupingKey,
-            school_name: schoolMap.get(schoolId) || "Bilinmeyen Okul",
+            school_name: resolveSchoolDisplayName(schoolId),
             package_name: product.name,
             quantity: 0,
             total_price: 0,
             order_status:
-              (schoolStatusMap.get(schoolId) || {})[product.name] || "Hazırlanıyor",
-            created_at: createdAt,
+              extra?.statusOverride ||
+              (schoolStatusMap.get(schoolId) || {})[product.name] ||
+              (schoolStatusMap.get(schoolId) || {}).global_status ||
+              "Hazırlanıyor",
+            created_at: createdAt || new Date().toISOString(),
             school_id: schoolId,
             selection_key: product.id,
+            direct_order_id: extra?.directOrderId,
             studentMap: new Map<string, ClassOrderItem>(),
           };
         }
@@ -839,9 +810,12 @@ function ManageSchools() {
       };
 
       (students || []).forEach((s: any) => {
-        const classInfo = classMap.get(s.class_id);
-        if (!classInfo) return;
-        const schoolId = classInfo.school_id;
+        // Never drop a student order if its class record is missing
+        const classInfo = (s?.class_id ? classMap.get(String(s.class_id)) : null) || {
+          school_id: s?.school_id ? String(s.school_id) : "__orphan_school__",
+          name: "Bilinmeyen Şube",
+        };
+        const schoolId = classInfo.school_id || (s?.school_id ? String(s.school_id) : "__orphan_school__");
 
         const rawNote =
           typeof s.note === "string" && s.note.trim() !== ""
@@ -850,44 +824,42 @@ function ManageSchools() {
               ? s.notes.trim()
               : null;
 
-        let parsedSelection: string[] = [];
-        if (typeof s.selection === "string" && s.selection.trim() !== "") {
-          try {
-            const parsed = JSON.parse(s.selection);
-            parsedSelection = Array.isArray(parsed)
-              ? parsed.map((v) => String(v).trim()).filter(Boolean)
-              : s.selection
-                  .split(",")
-                  .map((v: string) => v.trim())
-                  .filter(Boolean);
-          } catch {
-            parsedSelection = s.selection
-              .split(",")
-              .map((v: string) => v.trim())
-              .filter(Boolean);
-          }
-        }
-
+        const parsedSelection = parseSelectionTokens(s?.selection);
         const spMapping = schoolProductsMap.get(schoolId);
         const matchedProducts: Array<{ id: string; name: string; price: number }> = [];
 
-        if (spMapping && parsedSelection.length > 0) {
+        if (parsedSelection.length > 0) {
           parsedSelection.forEach((selectedProductId: string) => {
-            let selectedProduct = spMapping.get(selectedProductId);
+            let selectedProduct = spMapping?.get(selectedProductId);
 
             // Backwards compatibility for old records that have "paket1" or "paket2"
             if (
               !selectedProduct &&
+              spMapping &&
               (selectedProductId === "paket1" || selectedProductId === "paket2")
             ) {
-              const oldMapList = Array.from(spMapping.values()) as any[];
+              const oldMapList = Array.from(spMapping.values());
               if (selectedProductId === "paket1" && oldMapList[0]) selectedProduct = oldMapList[0];
               if (selectedProductId === "paket2" && oldMapList[1]) selectedProduct = oldMapList[1];
             }
 
-            if (selectedProduct) {
-              matchedProducts.push(selectedProduct);
+            // Fallback to catalog product or synthetic package so no selection is ever dropped
+            if (!selectedProduct) {
+              const catalogProd = productMap.get(selectedProductId);
+              selectedProduct = {
+                id: selectedProductId,
+                name:
+                  catalogProd?.name ||
+                  (selectedProductId === "paket1"
+                    ? "Paket 1"
+                    : selectedProductId === "paket2"
+                      ? "Paket 2"
+                      : `Paket (${selectedProductId.slice(0, 8)})`),
+                price: catalogProd?.base_price ?? 0,
+              };
             }
+
+            matchedProducts.push(selectedProduct);
           });
         }
 
@@ -897,7 +869,7 @@ function ManageSchools() {
         }
 
         const baseItem: ClassOrderItem = {
-          id: s.id,
+          id: String(s.id),
           name: s.name || "Öğrenci",
           image_code: formatStudentImageCode(s),
           image_url: s.image_url || "",
@@ -908,10 +880,10 @@ function ManageSchools() {
 
         matchedProducts.forEach((selectedProduct) => {
           const grp = ensureGroup(schoolId, selectedProduct, s.created_at);
-          if (!grp.studentMap.has(s.id)) {
+          if (!grp.studentMap.has(String(s.id))) {
             grp.quantity += 1;
             grp.total_price += selectedProduct.price || 0;
-            grp.studentMap.set(s.id, { ...baseItem, is_selected: true });
+            grp.studentMap.set(String(s.id), { ...baseItem, is_selected: true });
           }
         });
 
@@ -932,8 +904,12 @@ function ManageSchools() {
 
         if (schoolGroups.length === 0) {
           const spMapping = schoolProductsMap.get(schoolId);
-          const firstProduct = spMapping ? (Array.from(spMapping.values())[0] as any) : null;
-          const fallbackProduct = firstProduct || { id: "notes_only", name: "Öğrenci Notları", price: 0 };
+          const firstProduct = spMapping ? Array.from(spMapping.values())[0] : null;
+          const fallbackProduct = firstProduct || {
+            id: "notes_only",
+            name: "Öğrenci Notları",
+            price: 0,
+          };
           const grp = ensureGroup(schoolId, fallbackProduct, notedEntries[0].created_at);
           schoolGroups = [grp];
         }
@@ -945,6 +921,37 @@ function ManageSchools() {
             }
           });
         });
+      });
+
+      // 3. Also include 100% of direct rows from public.orders (even if school_id is missing/null)
+      (directOrders || []).forEach((ord: any) => {
+        const schoolId = ord?.school_id ? String(ord.school_id) : "__orphan_school__";
+        const pkgName = ord?.package_name || "Sipariş Paketi";
+        const grp = ensureGroup(
+          schoolId,
+          { id: String(ord.id), name: pkgName, price: Number(ord.total_price) || 0 },
+          ord?.created_at || new Date().toISOString(),
+          {
+            directOrderId: String(ord.id),
+            statusOverride: ord?.order_status || "Bekliyor",
+          },
+        );
+        grp.quantity = Number(ord?.quantity) || 0;
+        grp.total_price = Number(ord?.total_price) || 0;
+        if (ord?.school_name && !schoolMap.has(schoolId)) {
+          grp.school_name = ord.school_name;
+        }
+        if (typeof ord?.note === "string" && ord.note.trim() !== "") {
+          grp.studentMap.set(`order_note_${ord.id}`, {
+            id: `order_note_${ord.id}`,
+            name: pkgName,
+            image_code: `SIPARIS_${String(ord.id).slice(0, 8).toUpperCase()}`,
+            image_url: "",
+            class_name: "Genel Sipariş",
+            note: ord.note.trim(),
+            is_selected: true,
+          });
+        }
       });
 
       return Object.values(grouped).map((grp: any) => {
@@ -1131,76 +1138,70 @@ function ManageSchools() {
       schoolId,
       packageName,
       newStatus,
+      directOrderId,
     }: {
       schoolId: string;
       packageName: string;
       newStatus: string;
+      directOrderId?: string;
     }) => {
-      const { data: school, error: fetchErr } = await (supabase as any)
-        .from("schools")
-        .select("package_statuses")
-        .eq("id", schoolId)
-        .single();
-      if (fetchErr) throw new Error(fetchErr.message);
+      if (directOrderId) {
+        const { error: directErr } = await (supabase as any)
+          .from("orders")
+          .update({ order_status: newStatus })
+          .eq("id", directOrderId);
+        if (directErr) throw new Error(directErr.message);
+      }
 
-      const currentStatuses = school.package_statuses || {};
-      const updatedStatuses = { 
-        ...currentStatuses, 
-        [packageName]: newStatus,
-        global_status: newStatus 
-      };
+      if (schoolId && schoolId !== "__orphan_school__") {
+        const { data: school, error: fetchErr } = await (supabase as any)
+          .from("schools")
+          .select("package_statuses")
+          .eq("id", schoolId)
+          .maybeSingle();
+        if (fetchErr) throw new Error(fetchErr.message);
 
-      const { error } = await (supabase as any)
-        .from("schools")
-        .update({ package_statuses: updatedStatuses })
-        .eq("id", schoolId);
-      if (error) throw new Error(error.message);
+        if (school) {
+          const currentStatuses = school.package_statuses || {};
+          const updatedStatuses = {
+            ...currentStatuses,
+            [packageName]: newStatus,
+            global_status: newStatus,
+          };
+
+          const { error } = await (supabase as any)
+            .from("schools")
+            .update({ package_statuses: updatedStatuses })
+            .eq("id", schoolId);
+          if (error) throw new Error(error.message);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["aggregated_orders"] });
       toast.success("Paket durumu güncellendi");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Hard deletes and destructive order wipes are disabled to protect all historical data
   const deleteSchool = useMutation({
-    mutationFn: async (schoolId: string) => {
-      const { error } = await supabase.from("schools").delete().eq("id", schoolId);
-      if (error) throw new Error(error.message);
+    mutationFn: async (_schoolId: string) => {
+      return { disabled: true };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schools"] });
-      qc.invalidateQueries({ queryKey: ["orders"] });
-      qc.invalidateQueries({ queryKey: ["finance"] });
-      toast.success("Okul başarıyla silindi!");
+      toast.info("Veri koruma aktif: Okul silme işlemi devre dışı bırakıldı.");
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const clearOrder = useMutation({
-    mutationFn: async ({ schoolId, selectionKey }: { schoolId: string; selectionKey: string }) => {
-      const { data: classes, error: classesErr } = await (supabase as any)
-        .from("classes")
-        .select("id")
-        .eq("school_id", schoolId);
-      if (classesErr) throw new Error(classesErr.message);
-
-      const classIds = classes.map((c: any) => c.id);
-      if (classIds.length === 0) return;
-
-      const { error } = await (supabase as any)
-        .from("students")
-        .update({ selection: null })
-        .in("class_id", classIds)
-        .eq("selection", selectionKey);
-      if (error) throw new Error(error.message);
+    mutationFn: async (_vars: { schoolId: string; selectionKey: string }) => {
+      return { disabled: true };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orders"] });
-      qc.invalidateQueries({ queryKey: ["finance"] });
-      toast.success("Sipariş temizlendi!");
+      toast.info("Veri koruma aktif: Sipariş sıfırlama işlemi devre dışı bırakıldı.");
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const origin =
@@ -1261,7 +1262,9 @@ function ManageSchools() {
       }
 
       const school = schoolGroups.get(order.school_id);
-      if (new Date(order.created_at) > new Date(school.latest_date)) {
+      const orderTs = new Date(order.created_at || 0).getTime() || 0;
+      const latestTs = new Date(school.latest_date || 0).getTime() || 0;
+      if (orderTs > latestTs) {
         school.latest_date = order.created_at;
       }
 
@@ -1272,7 +1275,9 @@ function ManageSchools() {
     });
 
     return Array.from(schoolGroups.values()).sort(
-      (a, b) => new Date(b.latest_date).getTime() - new Date(a.latest_date).getTime()
+      (a, b) =>
+        (new Date(b.latest_date || 0).getTime() || 0) -
+        (new Date(a.latest_date || 0).getTime() || 0),
     );
   }, [orders]);
 
@@ -1563,6 +1568,7 @@ function ManageSchools() {
                                           schoolId: pkg.school_id,
                                           packageName: pkg.package_name,
                                           newStatus: status,
+                                          directOrderId: pkg.direct_order_id,
                                         });
                                       }}
                                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
@@ -1576,29 +1582,6 @@ function ManageSchools() {
                                   ),
                                 )}
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={clearOrder.isPending}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (
-                                    window.confirm(
-                                      "Bu pakete ait tüm öğrenci seçimlerini iptal etmek (sıfırlamak) istediğinize emin misiniz?",
-                                    )
-                                  ) {
-                                    clearOrder.mutate({
-                                      schoolId: pkg.school_id,
-                                      selectionKey: pkg.selection_key,
-                                    });
-                                  }
-                                }}
-                                className="h-8 rounded-md transition-colors text-red-400 hover:bg-red-500/15 hover:text-red-300"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Sıfırla
-                              </Button>
                             </div>
                             
                             <div className="space-y-2">
@@ -1884,23 +1867,6 @@ function ManageSchools() {
                     </TableCell>
                     <TableCell className="text-right flex items-center justify-end gap-2">
                       <ManageClassesModal schoolSlug={s.id} />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={deleteSchool.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Bu okulu ve tüm verilerini silmek istediğinize emin misiniz?",
-                            )
-                          ) {
-                            deleteSchool.mutate(s.id);
-                          }
-                        }}
-                        className="h-9 w-9 rounded-md transition-colors text-red-400 hover:bg-red-500/15 hover:text-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </TableCell>
                   </TableRow>
                 );

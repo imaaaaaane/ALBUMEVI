@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows, fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
 import { toast } from "sonner";
 import { getR2PublicUrl } from "@/lib/r2";
 import { motion } from "framer-motion";
@@ -253,32 +254,44 @@ function Inventory() {
     queryFn: async () => {
       // 1. Fetch all data independently
       const [
-        { data: pData, error: pError },
-        { data: spData, error: spError },
-        { data: stData, error: stError },
-        { data: cData, error: cError },
-        { data: albumeviSales, error: aError },
-        { data: ordersData, error: oError },
+        pData,
+        spData,
+        stData,
+        cData,
+        albumeviSales,
+        ordersData,
       ] = await Promise.all([
-        (supabase as any)
-          .from("products")
-          .select("*")
-          .order("sira", { ascending: true })
-          .order("created_at", { ascending: true }),
-        (supabase as any)
-          .from("school_products")
-          .select("school_id, product_id, custom_price")
-          .order("id", { ascending: true }),
-        (supabase as any)
-          .from("students")
-          .select("id, class_id, selection")
-          .not("selection", "is", null),
-        (supabase as any).from("classes").select("id, school_id"),
-        (supabase as any).from("albumevi_sales").select("product_id, quantity"),
-        (supabase as any).from("orders").select("package_name, quantity"),
+        fetchAllRows<any>((from, to) =>
+          (supabase as any)
+            .from("products")
+            .select("*")
+            .order("sira", { ascending: true })
+            .order("created_at", { ascending: true })
+            .range(from, to),
+        ),
+        fetchAllRowsSafe<any>((from, to) =>
+          (supabase as any)
+            .from("school_products")
+            .select("school_id, product_id, custom_price")
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
+        fetchAllRowsSafe<any>((from, to) =>
+          (supabase as any)
+            .from("students")
+            .select("id, class_id, selection")
+            .range(from, to),
+        ),
+        fetchAllRowsSafe<any>((from, to) =>
+          (supabase as any).from("classes").select("id, school_id").range(from, to),
+        ),
+        fetchAllRowsSafe<any>((from, to) =>
+          (supabase as any).from("albumevi_sales").select("product_id, quantity").range(from, to),
+        ),
+        fetchAllRowsSafe<any>((from, to) =>
+          (supabase as any).from("orders").select("package_name, quantity").range(from, to),
+        ),
       ]);
-
-      if (pError) throw new Error(pError.message);
 
       const productsWithStats = (pData ?? []).map((p: any) => ({
         ...p,
@@ -306,22 +319,28 @@ function Inventory() {
       });
 
       (stData ?? []).forEach((st: any) => {
+        const tokens = parseSelectionTokens(st.selection);
+        if (tokens.length === 0) return;
+
         const schoolId = classMap.get(st.class_id);
-        if (!schoolId) return;
+        const mapping = schoolId ? schoolMappings.get(schoolId) : null;
 
-        const mapping = schoolMappings.get(schoolId);
-        if (!mapping) return;
+        tokens.forEach((token) => {
+          let productId: string | null = null;
+          if (token === "paket1") productId = mapping?.paket1?.id ?? null;
+          else if (token === "paket2") productId = mapping?.paket2?.id ?? null;
+          else productId = token;
 
-        let selectedProduct = null;
-        if (st.selection === "paket1") selectedProduct = mapping.paket1;
-        if (st.selection === "paket2") selectedProduct = mapping.paket2;
-
-        if (selectedProduct) {
-          const pStat = productsWithStats.find((p: any) => p.id === selectedProduct.id);
+          if (!productId) return;
+          const pStat = productsWithStats.find(
+            (p: any) =>
+              p.id === productId ||
+              (p.name || "").toLowerCase() === String(productId).toLowerCase(),
+          );
           if (pStat) {
             pStat.sold_count += 1;
           }
-        }
+        });
       });
 
       // Aggregate from albumevi_sales

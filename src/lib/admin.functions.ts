@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchAllRows } from "@/lib/supabase-fetch-all";
 
 const slugify = (s: string) =>
   s
@@ -12,12 +13,13 @@ const slugify = (s: string) =>
 
 // ───────── Schools ─────────
 export const listSchools = createServerFn({ method: "GET" }).handler(async () => {
-  const { data, error } = await supabaseAdmin
-    .from("schools")
-    .select("id, name, city, login_username, unique_link_slug, created_at")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  return await fetchAllRows(
+    supabaseAdmin,
+    "schools",
+    "id, name, city, login_username, unique_link_slug, created_at",
+    "created_at",
+    false,
+  );
 });
 
 export const addSchool = createServerFn({ method: "POST" })
@@ -62,16 +64,20 @@ export const addSchool = createServerFn({ method: "POST" })
 
 // ───────── Orders ─────────
 export const listOrders = createServerFn({ method: "GET" }).handler(async () => {
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id, school_id, package_name, quantity, total_price, order_status, created_at, schools(name)",
-    )
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((o: any) => ({
+  const [orders, schools] = await Promise.all([
+    fetchAllRows<any>(supabaseAdmin, "orders", "*", "created_at", false),
+    fetchAllRows<any>(supabaseAdmin, "schools", "id, name"),
+  ]);
+  const schoolMap = new Map<string, string>();
+  (schools ?? []).forEach((s: any) => {
+    if (s?.id != null) schoolMap.set(String(s.id), s.name);
+  });
+  return (orders ?? []).map((o: any) => ({
     ...o,
-    school_name: o.schools?.name ?? "—",
+    school_name:
+      (o.school_id && schoolMap.get(String(o.school_id))) ||
+      o.school_name ||
+      "Bilinmeyen Okul",
   }));
 });
 
@@ -95,10 +101,9 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
 
 export const deleteOrder = createServerFn({ method: "POST" })
   .validator((input) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
-    const { error } = await supabaseAdmin.from("orders").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+  .handler(async () => {
+    // Hard deletion of orders is disabled to protect data integrity
+    return { ok: false, disabled: true };
   });
 
 // ───────── Inventory ─────────
@@ -137,12 +142,14 @@ export const addInventory = createServerFn({ method: "POST" })
 
 // ───────── Finance ─────────
 export const getFinanceSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const [{ data: orders, error: oErr }, { data: txs, error: fErr }] = await Promise.all([
-    supabaseAdmin.from("orders").select("total_price, order_status"),
-    (supabaseAdmin as any).from("school_transactions").select("amount, type"),
+  const [orders, txs] = await Promise.all([
+    fetchAllRows<any>((from, to) =>
+      supabaseAdmin.from("orders").select("total_price, order_status").range(from, to),
+    ),
+    fetchAllRows<any>((from, to) =>
+      (supabaseAdmin as any).from("school_transactions").select("amount, type").range(from, to),
+    ),
   ]);
-  if (oErr) throw new Error(oErr.message);
-  if (fErr) throw new Error(fErr.message);
 
   const totalRevenue = (orders ?? []).reduce(
     (s: number, o: any) => s + Number(o.total_price ?? 0),

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useAuth } from "@/lib/auth-context";
@@ -458,42 +459,56 @@ function AccountingDashboard() {
   const { data: schoolsData = [] } = useQuery<School[]>({
     queryKey: ["schools_ledger"],
     queryFn: async () => {
-      const { data: schools, error: sErr } = await supabaseClient
-        .from("schools")
-        .select(
+      const [schools, transactions, ordersData, classesData, studentsData] = await Promise.all([
+        fetchAllRowsSafe<any>(
+          supabaseClient,
+          "schools",
           "id, name, currency, created_at, paid_amount, remaining_amount, contribution_per_student",
-        )
-        .neq("show_in_finance", false)
-        .order("created_at", { ascending: false });
-      if (sErr) return [];
+          "created_at",
+          false,
+        ),
+        fetchAllRowsSafe<any>(
+          supabaseClient,
+          "school_transactions",
+          "id, school_id, transaction_type, amount, description, created_at, currency",
+          "created_at",
+          true,
+        ),
+        fetchAllRowsSafe<any>(supabaseClient, "orders", "*"),
+        fetchAllRowsSafe<any>(supabaseClient, "classes", "id, school_id"),
+        fetchAllRowsSafe<any>(supabaseClient, "students", "id, class_id, school_id, selection"),
+      ]);
 
-      const { data: transactions, error: tErr } = await supabaseClient
-        .from("school_transactions")
-        .select("id, school_id, transaction_type, amount, description, created_at, currency")
-        .order("created_at", { ascending: true });
+      const classToSchoolMap = new Map<string, string>();
+      (classesData || []).forEach((c: any) => {
+        if (c?.id != null && c?.school_id != null) {
+          classToSchoolMap.set(String(c.id), String(c.school_id));
+        }
+      });
 
-      const { data: ordersData, error: oErr } = await supabaseClient
-        .from("orders")
-        .select("id");
+      const studentSelectionsPerSchool = new Map<string, number>();
+      (studentsData || []).forEach((st: any) => {
+        const tokens = parseSelectionTokens(st?.selection);
+        if (tokens.length === 0) return;
+        const sid =
+          (st?.class_id ? classToSchoolMap.get(String(st.class_id)) : undefined) ||
+          (st?.school_id ? String(st.school_id) : undefined);
+        if (sid) {
+          studentSelectionsPerSchool.set(
+            sid,
+            (studentSelectionsPerSchool.get(sid) || 0) + tokens.length,
+          );
+        }
+      });
 
-      if (tErr)
-        return schools.map((s) => ({
-          id: s.id,
-          name: s.name,
-          currency: s.currency as any,
-          paid_amount: Number(s.paid_amount) || 0,
-          remaining_amount: Number(s.remaining_amount) || 0,
-          contribution_per_student: 0,
-          total_contribution: 0,
-          total_orders: 0,
-          transactions: [],
-        }));
-
-      return schools.map((s) => {
-        const schoolOrders = (ordersData || []).filter(
-          (o: any) => o.school_id === s.id && o.order_status !== "Cancelled",
-        );
-        const contribution = (Number(s.contribution_per_student) || 0) * schoolOrders.length;
+      return (schools || []).map((s: any) => {
+        const sid = String(s.id);
+        const directSchoolOrdersCount = (ordersData || [])
+          .filter((o: any) => String(o.school_id) === sid)
+          .reduce((sum: number, o: any) => sum + (Number(o.quantity) || 1), 0);
+        const studentOrdersCount = studentSelectionsPerSchool.get(sid) || 0;
+        const totalOrdersCount = studentOrdersCount + directSchoolOrdersCount;
+        const contribution = (Number(s.contribution_per_student) || 0) * totalOrdersCount;
 
         return {
           id: s.id,
@@ -503,10 +518,10 @@ function AccountingDashboard() {
           remaining_amount: Number(s.remaining_amount) || 0,
           contribution_per_student: Number(s.contribution_per_student) || 0,
           total_contribution: contribution,
-          total_orders: schoolOrders.length,
-          transactions: transactions
-            .filter((t) => String(t.school_id) === String(s.id))
-            .map((t) => ({
+          total_orders: totalOrdersCount,
+          transactions: (transactions || [])
+            .filter((t: any) => String(t.school_id) === sid)
+            .map((t: any) => ({
               id: t.id,
               date: new Date(t.created_at).toISOString().split("T")[0],
               type: t.transaction_type as "debt" | "payment",
@@ -5379,12 +5394,12 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   });
 
   const deleteSchoolMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await supabaseClient.from("schools").update({ show_in_finance: false }).eq("id", id);
+    mutationFn: async (_id: string) => {
+      // Deleting/hiding schools is disabled to protect school and order data
+      return { disabled: true };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["schools_ledger"] });
-      toast.success("Okul silindi");
+      toast.info("Veri koruma aktif: Okul silme işlemi devre dışı bırakıldı.");
     },
   });
 
@@ -5640,16 +5655,6 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                         className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-4"
                       >
                         <Edit2 className="w-4.5 h-4.5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm("Bu okulu silmek istediğinizden emin misiniz?"))
-                            deleteSchoolMutation.mutate(f.id);
-                        }}
-                        className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#A67C52] transition-colors cursor-pointer ml-1"
-                      >
-                        <Trash2 className="w-4.5 h-4.5" />
                       </button>
                     </div>
                   </div>

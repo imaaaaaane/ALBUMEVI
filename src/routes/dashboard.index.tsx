@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
 
 export const Route = createFileRoute("/dashboard/")({
   component: OverviewDashboard,
@@ -103,27 +104,32 @@ function OverviewDashboard() {
       try {
         if (showLoading) setIsLoadingAlerts(true);
 
-        const { data: shoots, error: shootsError } = await supabaseClient
-          .from("photo_shoots")
-          .select("*")
-          .order("shoot_date", { ascending: true });
-
-        const { data: ordersData, error: ordersError } = await supabaseClient
-          .from("schools")
-          .select(`id, name, package_statuses, classes ( students ( selection ) )`);
-
-        const { data: notesData, error: notesError } = await supabaseClient
-          .from("notes")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        console.log("Assistant Data:", {
-          shoots,
-          orders: ordersData,
-          notes: notesData,
-          errors: [shootsError, ordersError, notesError],
-        });
+        const [
+          { data: shoots, error: shootsError },
+          schoolsData,
+          classesData,
+          studentsData,
+          spData,
+          pData,
+          directOrdersData,
+          { data: notesData, error: notesError },
+        ] = await Promise.all([
+          supabaseClient
+            .from("photo_shoots")
+            .select("*")
+            .order("shoot_date", { ascending: true }),
+          fetchAllRowsSafe<any>(supabaseClient, "schools", "*"),
+          fetchAllRowsSafe<any>(supabaseClient, "classes", "*"),
+          fetchAllRowsSafe<any>(supabaseClient, "students", "*"),
+          fetchAllRowsSafe<any>(supabaseClient, "school_products", "*"),
+          fetchAllRowsSafe<any>(supabaseClient, "products", "*"),
+          fetchAllRowsSafe<any>(supabaseClient, "orders", "*"),
+          supabaseClient
+            .from("notes")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(5),
+        ]);
 
         if (shootsError && shootsError.code !== "42P01") throw shootsError;
 
@@ -152,18 +158,97 @@ function OverviewDashboard() {
         });
         setUpcomingShoots(upcoming);
 
-        // Rule 2: Order Confirmed
-        const confirmed: { id: string; name: string }[] = [];
-        (ordersData || []).forEach((school: any) => {
-          let hasSelection = false;
-          (school.classes || []).forEach((cls: any) => {
-            (cls.students || []).forEach((student: any) => {
-              if (student.selection && student.selection.length > 0) hasSelection = true;
-            });
-          });
-          if (hasSelection) confirmed.push({ id: `order-${school.id}`, name: school.name });
+        // Build maps preserving orphaned classes, students, and orders
+        const pMap = new Map<string, string>();
+        (pData || []).forEach((p: any) => {
+          if (p?.id != null) pMap.set(String(p.id), p.name || "Paket");
         });
-        setRecentOrders(confirmed.slice(0, 3)); // show max 3 to keep it clean
+
+        const spListMap = new Map<string, string[]>();
+        (spData || []).forEach((sp: any) => {
+          const sid = sp?.school_id ? String(sp.school_id) : "";
+          const pid = sp?.product_id ? String(sp.product_id) : "";
+          if (!sid || !pid) return;
+          if (!spListMap.has(sid)) spListMap.set(sid, []);
+          spListMap.get(sid)!.push(pid);
+        });
+
+        const schoolMap = new Map<string, any>();
+        (schoolsData || []).forEach((s: any) => {
+          if (s?.id != null) schoolMap.set(String(s.id), s);
+        });
+
+        const classToSchoolMap = new Map<string, string>();
+        (classesData || []).forEach((c: any) => {
+          if (c?.id != null) {
+            classToSchoolMap.set(
+              String(c.id),
+              c.school_id ? String(c.school_id) : "__orphan_school__",
+            );
+          }
+        });
+
+        const packageCounts: Record<string, number> = {};
+        let totalPackages = 0;
+        const selectionsPerSchool = new Map<string, number>();
+
+        (studentsData || []).forEach((student: any) => {
+          const tokens = parseSelectionTokens(student?.selection);
+          if (tokens.length === 0) return;
+
+          const cid = student?.class_id ? String(student.class_id) : "";
+          const sid =
+            (cid && classToSchoolMap.get(cid)) ||
+            (student?.school_id ? String(student.school_id) : "__orphan_school__");
+
+          const schoolSpList = spListMap.get(sid) || [];
+
+          tokens.forEach((token) => {
+            let resolvedPid = token;
+            if (token === "paket1" && schoolSpList[0]) resolvedPid = schoolSpList[0];
+            else if (token === "paket2" && schoolSpList[1]) resolvedPid = schoolSpList[1];
+
+            const pkgName =
+              pMap.get(resolvedPid) ||
+              (token === "paket1"
+                ? "Paket 1"
+                : token === "paket2"
+                  ? "Paket 2"
+                  : `Paket (${resolvedPid.slice(0, 8)})`);
+
+            packageCounts[pkgName] = (packageCounts[pkgName] || 0) + 1;
+            totalPackages += 1;
+            selectionsPerSchool.set(sid, (selectionsPerSchool.get(sid) || 0) + 1);
+          });
+        });
+
+        // Also include direct rows from public.orders
+        (directOrdersData || []).forEach((ord: any) => {
+          const qty = Number(ord?.quantity) || 1;
+          const pkgName = ord?.package_name || "Sipariş Paketi";
+          packageCounts[pkgName] = (packageCounts[pkgName] || 0) + qty;
+          totalPackages += qty;
+          const sid = ord?.school_id ? String(ord.school_id) : `direct_${ord?.id}`;
+          selectionsPerSchool.set(sid, (selectionsPerSchool.get(sid) || 0) + qty);
+        });
+
+        // Rule 2: Order Confirmed (unfiltered — include every school/order with selections)
+        const confirmed: { id: string; name: string }[] = [];
+        const seenConfirmedSchools = new Set<string>();
+        selectionsPerSchool.forEach((count, sid) => {
+          if (count <= 0 || seenConfirmedSchools.has(sid)) return;
+          seenConfirmedSchools.add(sid);
+          const schoolObj = schoolMap.get(sid);
+          const displayName =
+            schoolObj?.name ||
+            (sid.startsWith("direct_")
+              ? "Doğrudan Sipariş"
+              : sid === "__orphan_school__"
+                ? "Eşleşmeyen Okul"
+                : `Okul (${sid.slice(0, 8)})`);
+          confirmed.push({ id: `order-${sid}`, name: displayName });
+        });
+        setRecentOrders(confirmed);
 
         // Rule 3: New Note in last 24h
         const yesterday = new Date();
@@ -177,66 +262,51 @@ function OverviewDashboard() {
         let kar = 0;
         let tes = 0;
 
-        const { data: spData } = await supabaseClient
-          .from("school_products")
-          .select("school_id, product_id");
-        const { data: pData } = await supabaseClient.from("products").select("id, name");
+        const tallyFunnelStatus = (status: string | undefined | null) => {
+          if (!status || status === "Sipariş Yok") return;
+          if (status === "Bekliyor" || status === "Pending") bek++;
+          else if (status === "Üretimde" || status === "Hazırlanıyor" || status === "Processing")
+            uret++;
+          else if (
+            status === "Kargoya Hazır" ||
+            status === "Kargoya Verildi" ||
+            status === "Shipped"
+          )
+            kar++;
+          else if (
+            status === "Teslim Edildi" ||
+            status === "Tamamlandı" ||
+            status === "Hazırlandı" ||
+            status === "Completed"
+          )
+            tes++;
+          else bek++;
+        };
 
-        const pMap = new Map();
-        (pData || []).forEach((p: any) => pMap.set(p.id, p.name));
-
-        const spMap = new Map();
-        (spData || []).forEach((sp: any) => {
-          if (!spMap.has(sp.school_id)) spMap.set(sp.school_id, { paket1: null, paket2: null });
-          const m = spMap.get(sp.school_id);
-          if (!m.paket1) m.paket1 = sp.product_id;
-          else m.paket2 = sp.product_id;
-        });
-
-        const packageCounts: Record<string, number> = {};
-        let totalPackages = 0;
-
-        (ordersData || []).forEach((school: any) => {
-          let p1Count = 0;
-          let p2Count = 0;
-
-          const sProds = spMap.get(school.id) || { paket1: null, paket2: null };
-          const p1Name = sProds.paket1 ? pMap.get(sProds.paket1) : "Paket 1";
-          const p2Name = sProds.paket2 ? pMap.get(sProds.paket2) : "Paket 2";
-
-          (school.classes || []).forEach((cls: any) => {
-            (cls.students || []).forEach((student: any) => {
-              if (student.selection) {
-                let parsed: string[] = [];
-                try {
-                  parsed = JSON.parse(student.selection);
-                } catch {
-                  parsed = student.selection.split(",").filter(Boolean);
-                }
-                if (parsed.includes("paket1")) {
-                  p1Count++;
-                  packageCounts[p1Name] = (packageCounts[p1Name] || 0) + 1;
-                  totalPackages++;
-                }
-                if (parsed.includes("paket2")) {
-                  p2Count++;
-                  packageCounts[p2Name] = (packageCounts[p2Name] || 0) + 1;
-                  totalPackages++;
-                }
-              }
-            });
-          });
-
+        const countedSchoolIds = new Set<string>();
+        (schoolsData || []).forEach((school: any) => {
+          const sid = String(school.id);
+          countedSchoolIds.add(sid);
+          const selCount = selectionsPerSchool.get(sid) || 0;
           const globalStatus = school.package_statuses?.global_status;
           let computedStatus = globalStatus;
-          if (!computedStatus) {
-            computedStatus = p1Count > 0 || p2Count > 0 ? "Bekliyor" : "Sipariş Yok";
+          if (!computedStatus || computedStatus === "Sipariş Yok") {
+            computedStatus = selCount > 0 ? "Bekliyor" : "Sipariş Yok";
           }
+          tallyFunnelStatus(computedStatus);
+        });
 
-          if (computedStatus === "Bekliyor") bek++;
-          else if (computedStatus === "Üretimde") uret++;
-          else if (computedStatus === "Kargoya Hazır") kar++;
-          else if (computedStatus === "Teslim Edildi") tes++;
+        // Count orphaned school orders and standalone direct orders in funnel too
+        selectionsPerSchool.forEach((count, sid) => {
+          if (!countedSchoolIds.has(sid) && !sid.startsWith("direct_") && count > 0) {
+            tallyFunnelStatus("Bekliyor");
+          }
+        });
+        (directOrdersData || []).forEach((ord: any) => {
+          const sid = ord?.school_id ? String(ord.school_id) : "";
+          if (!sid || !countedSchoolIds.has(sid)) {
+            tallyFunnelStatus(ord?.order_status || "Bekliyor");
+          }
         });
 
         setFunnelCounts({ bekliyor: bek, uretimde: uret, kargoyaHazir: kar, teslimEdildi: tes });
@@ -250,7 +320,7 @@ function OverviewDashboard() {
           };
         });
         popArr.sort((a, b) => b.count - a.count);
-        setPopularPackages(popArr.slice(0, 4));
+        setPopularPackages(popArr);
       } catch (err) {
         console.error("Akıllı asistan veri çekme hatası:", err);
       } finally {
@@ -266,6 +336,12 @@ function OverviewDashboard() {
         fetchAlertData(false),
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "schools" }, () =>
+        fetchAlertData(false),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        fetchAlertData(false),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "students" }, () =>
         fetchAlertData(false),
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "notes" }, () =>
