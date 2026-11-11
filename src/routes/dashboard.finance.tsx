@@ -6207,21 +6207,128 @@ interface BaskiListViewProps {
   onBack: () => void;
 }
 
-function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
+interface BaskiModalLineItem {
+  id: string;
+  productId: string;
+  quantity: number | string;
+  legacyLabel?: string;
+  legacyUnitPrice?: number;
+}
+
+interface BaskiSizeSummaryItem {
+  sizeKey: string;
+  productId: string;
+  sizeLabel: string;
+  quantity: number;
+  amount: number;
+  legacyUnitPrice?: number;
+}
+
+interface GroupedBaskiSchoolRow {
+  schoolKey: string;
+  schoolName: string;
+  note: string;
+  date: string;
+  rawDate: number;
+  latestIsoDate: string;
+  items: BaskiSizeSummaryItem[];
+  totalQuantity: number;
+  amount: number;
+  paidAmount: number;
+  recordIds: string[];
+}
+
+function formatBaskiSchoolDisplayName(raw: string): string {
+  const cleaned = (raw || "").trim().replace(/\s+/g, " ");
+  if (!cleaned || cleaned === "-") return "Belirtilmedi";
+
+  const isStrictlyLower =
+    cleaned === cleaned.toLocaleLowerCase("tr-TR") &&
+    cleaned !== cleaned.toLocaleUpperCase("tr-TR");
+
+  if (!isStrictlyLower) return cleaned;
+
+  return cleaned
+    .split(" ")
+    .map((word) => (word ? word.charAt(0).toLocaleUpperCase("tr-TR") + word.slice(1) : ""))
+    .join(" ");
+}
+
+function splitBaskiSchoolAndNote(rawRest: string): { school: string; note: string } {
+  const trimmed = (rawRest || "").trim();
+  if (!trimmed || trimmed === "-") {
+    return { school: "Belirtilmedi", note: "" };
+  }
+  const parts = trimmed.split(/\s*\|\s*Not:\s*/i);
+  if (parts.length > 1) {
+    return {
+      school: parts[0].trim() || "Belirtilmedi",
+      note: parts.slice(1).join(" | Not: ").trim(),
+    };
+  }
+  return { school: trimmed, note: "" };
+}
+
+function formatBaskiRecordDesc(
+  sizeLabel: string,
+  qty: number,
+  schoolName: string,
+  note: string,
+): string {
+  const cleanSize = sizeLabel.trim() || "Baskı";
+  const cleanSchool = schoolName.trim() || "Belirtilmedi";
+  const cleanNote = note.trim();
+  return cleanNote
+    ? `${cleanSize} (${qty} Adet) - ${cleanSchool} | Not: ${cleanNote}`
+    : `${cleanSize} (${qty} Adet) - ${cleanSchool}`;
+}
+
+function resolveBaskiPrintProduct(
+  urunId: string | null | undefined,
+  sizeLabel: string,
+  printProducts: any[],
+  allProducts: any[],
+): any | null {
+  if (urunId) {
+    const byId = allProducts.find((p: any) => String(p.id) === String(urunId));
+    if (byId) return byId;
+  }
+
+  const normLabel = (sizeLabel || "").trim().toLocaleLowerCase("tr-TR");
+  if (!normLabel) return null;
+
+  const exactMatch =
+    printProducts.find(
+      (p: any) => (p.name || "").trim().toLocaleLowerCase("tr-TR") === normLabel,
+    ) ||
+    allProducts.find((p: any) => (p.name || "").trim().toLocaleLowerCase("tr-TR") === normLabel);
+  if (exactMatch) return exactMatch;
+
+  const dimMatch = normLabel.match(/(\d+\s*x\s*\d+)/i);
+  if (dimMatch) {
+    const compactDim = dimMatch[1].replace(/\s+/g, "").toLowerCase();
+    const byDim = printProducts.find((p: any) =>
+      (p.name || "").replace(/\s+/g, "").toLowerCase().includes(compactDim),
+    );
+    if (byDim) return byDim;
+  }
+
+  return null;
+}
+
+function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewProps) {
   const { teamId } = useAuth();
   const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
-  const [baskiLineItems, setBaskiLineItems] = useState<
-    { id: string; productId: string; quantity: number | string }[]
-  >([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
+  const [baskiModalMode, setBaskiModalMode] = useState<"add" | "edit">("add");
+  const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
+  const [editingCreatedAt, setEditingCreatedAt] = useState("");
+  const [baskiSchoolName, setBaskiSchoolName] = useState("");
+  const [baskiLineItems, setBaskiLineItems] = useState<BaskiModalLineItem[]>([
+    { id: Math.random().toString(), productId: "", quantity: 1 },
+  ]);
   const [baskiAciklama, setBaskiAciklama] = useState("");
   const [baskiPaidAmount, setBaskiPaidAmount] = useState("");
   const [baskiRemainingAmount, setBaskiRemainingAmount] = useState("");
-  const [baskiEditId, setBaskiEditId] = useState<string | null>(null);
-  const [isBaskiEditModalOpen, setBaskiEditModalOpen] = useState(false);
-  const [baskiEditAmount, setBaskiEditAmount] = useState("");
-  const [baskiEditPaid, setBaskiEditPaid] = useState("");
-  const [baskiEditDesc, setBaskiEditDesc] = useState("");
-  const [baskiEditDate, setBaskiEditDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const queryClient = useQueryClient();
@@ -6238,177 +6345,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     },
   });
 
-  const { data: baskiTransactions = [] } = useQuery<any[]>({
+  const { data: rawBaskiRecords = [] } = useQuery<any[]>({
     queryKey: ["baski_kayitlari", teamId],
     queryFn: async () => {
-      const q = supabaseClient.from("baski_kayitlari").select("*");
-
-      const { data, error } = await q;
-      console.log("FETCHED DATA:", data, "FETCH ERROR:", error);
+      const { data, error } = await supabaseClient.from("baski_kayitlari").select("*");
       if (error) throw error;
-      const mapped = (data || []).map((t: any) => {
-        let fallbackQty: number | string = "-";
-        if (t.description) {
-          const qtyMatch = String(t.description).match(/\((\d+)\s*Adet\)/i);
-          if (qtyMatch) fallbackQty = parseFloat(qtyMatch[1]);
-        }
-
-        const dbDate = t.created_at || t.tarih || t.date || new Date().toISOString();
-        const parsedTime = new Date(dbDate).getTime();
-
-        return {
-          id: t.id,
-          date: !isNaN(parsedTime)
-            ? new Date(parsedTime).toLocaleString("tr-TR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-",
-          product: "-",
-          quantity: t.adet ?? fallbackQty,
-          desc: t.aciklama || t.description || "-",
-          amount: t.toplam_tutar ?? t.amount ?? 0,
-          paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
-          rawDate: !isNaN(parsedTime) ? parsedTime : 0,
-        };
-      });
-
-      return mapped.sort((a: any, b: any) => b.rawDate - a.rawDate);
+      return data || [];
     },
   });
-
-  const addBaskiExpenseMutation = useMutation({
-    mutationFn: async ({
-      items,
-      paid,
-    }: {
-      items: { amount: number; desc: string; urun_id: string; adet: number }[];
-      paid: number;
-    }) => {
-      let remainingPaid = Math.max(0, paid);
-      const rowsToInsert = items.map((item, idx) => {
-        const isLast = idx === items.length - 1;
-        const rowPaid = isLast ? remainingPaid : Math.min(item.amount, remainingPaid);
-        remainingPaid = Math.max(0, remainingPaid - rowPaid);
-        return {
-          toplam_tutar: item.amount,
-          odenen_tutar: rowPaid,
-          kalan_tutar: Math.max(0, item.amount - rowPaid),
-          urun_id: item.urun_id,
-          adet: item.adet,
-          aciklama: item.desc,
-          team_id: teamId === "all" ? null : teamId,
-        };
-      });
-
-      const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
-      if (txErr) throw txErr;
-    },
-    onSuccess: () => {
-      toast.success("Baskı gideri başarıyla kaydedildi.");
-      setBaskiModalOpen(false);
-      setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
-      setBaskiAciklama("");
-      setBaskiPaidAmount("");
-      setBaskiRemainingAmount("");
-
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
-        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
-      ]);
-    },
-    onError: (error: any) => {
-      toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
-    },
-  });
-
-  const deleteBaskiExpenseMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabaseClient.from("baski_kayitlari").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Kayıt silindi");
-
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
-        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
-      ]);
-    },
-  });
-
-  const editBaskiExpenseMutation = useMutation({
-    mutationFn: async (input: {
-      id: string;
-      amount: number;
-      paid: number;
-      desc: string;
-      date: string;
-    }) => {
-      const remaining = input.amount - input.paid;
-      const { error } = await supabaseClient
-        .from("baski_kayitlari")
-        .update({
-          toplam_tutar: input.amount,
-          odenen_tutar: input.paid,
-          kalan_tutar: remaining > 0 ? remaining : 0,
-          aciklama: input.desc,
-          created_at: new Date(input.date).toISOString(),
-        })
-        .eq("id", input.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Kayıt güncellendi");
-      setBaskiEditModalOpen(false);
-
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
-        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
-        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
-      ]);
-    },
-  });
-
-  const openBaskiEdit = (tx: any) => {
-    setBaskiEditId(tx.id);
-    setBaskiEditAmount(String(tx.amount));
-    setBaskiEditPaid(String(tx.paidAmount));
-    setBaskiEditDesc(tx.desc);
-    setBaskiEditDate(
-      tx.rawDate && !isNaN(tx.rawDate)
-        ? new Date(tx.rawDate).toISOString().slice(0, 16)
-        : new Date().toISOString().slice(0, 16),
-    );
-    setBaskiEditModalOpen(true);
-  };
-
-  const filteredBaskiTransactions = baskiTransactions
-    .filter(
-      (tx: any) =>
-        (tx?.desc?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (tx?.product?.toLowerCase() || "").includes(searchQuery.toLowerCase()),
-    )
-    .sort((a: any, b: any) => (a?.desc || "").localeCompare(b?.desc || "", "tr"));
-
-  const genelToplam = filteredBaskiTransactions.reduce(
-    (sum: number, item: any) => sum + item.amount,
-    0,
-  );
-  const totalBaskiPaid = filteredBaskiTransactions.reduce(
-    (sum: number, item: any) => sum + item.paidAmount,
-    0,
-  );
-
-  const totalBaskiRemaining = genelToplam - totalBaskiPaid;
 
   const baskiPrintProducts = productsForBaski
     .filter((p: any) => {
@@ -6425,29 +6369,403 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       }),
     );
 
-  const calculateBaskiTotal = (
-    items: { id: string; productId: string; quantity: number | string }[],
-  ) =>
+  const resetBaskiModal = () => {
+    setBaskiModalOpen(false);
+    setBaskiModalMode("add");
+    setEditingRecordIds([]);
+    setEditingCreatedAt("");
+    setBaskiSchoolName("");
+    setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
+    setBaskiAciklama("");
+    setBaskiPaidAmount("");
+    setBaskiRemainingAmount("");
+  };
+
+  const getLineUnitPrice = (item: BaskiModalLineItem): number => {
+    if (!item.productId) return 0;
+    if (item.productId.startsWith("__legacy__")) {
+      return Number(item.legacyUnitPrice) || 0;
+    }
+    const p = productsForBaski.find((prod: any) => String(prod.id) === String(item.productId));
+    return parseFloat(p?.base_price || "0") || 0;
+  };
+
+  const getLineSizeLabel = (item: BaskiModalLineItem): string => {
+    if (item.productId.startsWith("__legacy__")) {
+      return item.legacyLabel || "Baskı";
+    }
+    const p = productsForBaski.find((prod: any) => String(prod.id) === String(item.productId));
+    return p?.name || item.legacyLabel || "Baskı";
+  };
+
+  const calculateBaskiTotal = (items: BaskiModalLineItem[]) =>
     items.reduce((acc, it) => {
       if (!it.productId) return acc;
-      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
       const qty = Math.max(0, Number(it.quantity) || 0);
-      return acc + (parseFloat(p?.base_price || "0") || 0) * qty;
+      return acc + getLineUnitPrice(it) * qty;
     }, 0);
 
   const baskiModalTotal = calculateBaskiTotal(baskiLineItems);
 
+  const saveBaskiModalMutation = useMutation({
+    mutationFn: async ({
+      mode,
+      existingIds,
+      createdAt,
+      items,
+      paid,
+    }: {
+      mode: "add" | "edit";
+      existingIds: string[];
+      createdAt?: string;
+      items: { amount: number; desc: string; urun_id: string | null; adet: number }[];
+      paid: number;
+    }) => {
+      let remainingPaid = Math.max(0, paid);
+      const preparedRows = items.map((item, idx) => {
+        const isLast = idx === items.length - 1;
+        const rowPaid = isLast ? remainingPaid : Math.min(item.amount, remainingPaid);
+        remainingPaid = Math.max(0, remainingPaid - rowPaid);
+        return {
+          toplam_tutar: item.amount,
+          odenen_tutar: rowPaid,
+          kalan_tutar: Math.max(0, item.amount - rowPaid),
+          urun_id: item.urun_id,
+          adet: item.adet,
+          aciklama: item.desc,
+          team_id: teamId === "all" ? null : teamId,
+        };
+      });
+
+      if (mode === "add" || existingIds.length === 0) {
+        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(preparedRows);
+        if (txErr) throw txErr;
+        return;
+      }
+
+      const overlapCount = Math.min(existingIds.length, preparedRows.length);
+      for (let i = 0; i < overlapCount; i++) {
+        const updatePayload: Record<string, any> = { ...preparedRows[i] };
+        if (createdAt) {
+          updatePayload.created_at = createdAt;
+        }
+        const { error: updErr } = await supabaseClient
+          .from("baski_kayitlari")
+          .update(updatePayload)
+          .eq("id", existingIds[i]);
+        if (updErr) throw updErr;
+      }
+
+      if (preparedRows.length > existingIds.length) {
+        const extraRows = preparedRows
+          .slice(existingIds.length)
+          .map((row) => (createdAt ? { ...row, created_at: createdAt } : row));
+        const { error: insErr } = await supabaseClient.from("baski_kayitlari").insert(extraRows);
+        if (insErr) throw insErr;
+      } else if (existingIds.length > preparedRows.length) {
+        const idsToDelete = existingIds.slice(preparedRows.length);
+        const { error: delErr } = await supabaseClient
+          .from("baski_kayitlari")
+          .delete()
+          .in("id", idsToDelete);
+        if (delErr) throw delErr;
+      }
+    },
+    onSuccess: (_data, variables) => {
+      toast.success(
+        variables.mode === "edit"
+          ? "Baskı gideri başarıyla güncellendi."
+          : "Baskı gideri başarıyla kaydedildi.",
+      );
+      resetBaskiModal();
+
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari", teamId] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari"] }),
+        queryClient.invalidateQueries({ queryKey: ["baski_kayitlari_overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
+      ]);
+    },
+    onError: (error: any) => {
+      toast.error("Baskı işlemi kaydedilirken hata oluştu: " + error.message);
+    },
+  });
+
+  const openBaskiAdd = () => {
+    setBaskiModalMode("add");
+    setEditingRecordIds([]);
+    setEditingCreatedAt("");
+    setBaskiSchoolName("");
+    setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
+    setBaskiAciklama("");
+    setBaskiPaidAmount("");
+    setBaskiRemainingAmount("");
+    setBaskiModalOpen(true);
+  };
+
+  const openBaskiEdit = (group: GroupedBaskiSchoolRow) => {
+    setBaskiModalMode("edit");
+    setEditingRecordIds(group.recordIds);
+    setEditingCreatedAt(group.latestIsoDate);
+    setBaskiSchoolName(group.schoolName === "Belirtilmedi" ? "" : group.schoolName);
+
+    const initialLines: BaskiModalLineItem[] =
+      group.items.length > 0
+        ? group.items.map((sz, idx) => ({
+            id: `${sz.sizeKey}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+            productId: sz.productId || `__legacy__${idx}`,
+            quantity: sz.quantity,
+            legacyLabel: sz.productId ? undefined : sz.sizeLabel,
+            legacyUnitPrice: sz.productId ? undefined : sz.legacyUnitPrice,
+          }))
+        : [{ id: Math.random().toString(), productId: "", quantity: 1 }];
+
+    setBaskiLineItems(initialLines);
+    setBaskiAciklama(group.note);
+
+    const initialTotal = calculateBaskiTotal(initialLines);
+    const paidNum = Number(group.paidAmount) || 0;
+    setBaskiPaidAmount(paidNum > 0 ? String(paidNum) : "");
+    setBaskiRemainingAmount(Math.max(0, initialTotal - paidNum).toString());
+    setBaskiModalOpen(true);
+  };
+
+  const groupedBaskiSchools: GroupedBaskiSchoolRow[] = (() => {
+    const parsedRecords = (rawBaskiRecords || [])
+      .map((t: any) => {
+        const rawDesc = String(t.aciklama ?? t.description ?? "").trim();
+        const dbDate = t.created_at || t.tarih || t.date || new Date().toISOString();
+        const parsedTime = new Date(dbDate).getTime();
+        const rawDate = !isNaN(parsedTime) ? parsedTime : 0;
+        const isoDate = !isNaN(parsedTime)
+          ? new Date(parsedTime).toISOString()
+          : new Date().toISOString();
+        const amount = Number(t.toplam_tutar ?? t.amount) || 0;
+        const paidAmount = Number(t.odenen_tutar ?? t.paid_amount) || 0;
+
+        let productId = "";
+        let sizeLabel = "Baskı";
+        let quantity = Number(t.adet) > 0 ? Number(t.adet) : 0;
+        let schoolRaw = "Belirtilmedi";
+        let note = "";
+
+        const standardMatch = rawDesc.match(
+          /^(.*?)\s*\((\d+(?:[.,]\d+)?)\s*Adet\)(?:\s*-\s*(.*))?$/i,
+        );
+
+        if (standardMatch) {
+          const extractedSize = standardMatch[1].trim();
+          const extractedQty = parseFloat(standardMatch[2].replace(",", ".")) || 1;
+          const parsedRest = splitBaskiSchoolAndNote(standardMatch[3] ?? "");
+          const matchedProd = resolveBaskiPrintProduct(
+            t.urun_id,
+            extractedSize,
+            baskiPrintProducts,
+            productsForBaski,
+          );
+          productId = matchedProd ? String(matchedProd.id) : "";
+          sizeLabel = matchedProd?.name || extractedSize || "Baskı";
+          if (!quantity) quantity = extractedQty;
+          schoolRaw = parsedRest.school;
+          note = parsedRest.note;
+        } else {
+          const matchedById = t.urun_id
+            ? productsForBaski.find((p: any) => String(p.id) === String(t.urun_id))
+            : null;
+          const dimPrefixMatch = rawDesc.match(
+            /^(\d+\s*x\s*\d+(?:\s*\([^)]*\))?)\s*[-–:]\s*(.+)$/i,
+          );
+
+          if (dimPrefixMatch) {
+            const extractedSize = dimPrefixMatch[1].trim();
+            const parsedRest = splitBaskiSchoolAndNote(dimPrefixMatch[2]);
+            const matchedProd =
+              matchedById ||
+              resolveBaskiPrintProduct(null, extractedSize, baskiPrintProducts, productsForBaski);
+            productId = matchedProd ? String(matchedProd.id) : "";
+            sizeLabel = matchedProd?.name || extractedSize;
+            if (!quantity) quantity = 1;
+            schoolRaw = parsedRest.school;
+            note = parsedRest.note;
+          } else if (matchedById) {
+            const parsedRest = splitBaskiSchoolAndNote(rawDesc);
+            productId = String(matchedById.id);
+            sizeLabel = matchedById.name || "Baskı";
+            if (!quantity) quantity = 1;
+            schoolRaw = parsedRest.school;
+            note = parsedRest.note;
+          } else {
+            const parsedRest = splitBaskiSchoolAndNote(rawDesc);
+            productId = "";
+            sizeLabel = "Baskı";
+            if (!quantity) quantity = 1;
+            schoolRaw = parsedRest.school;
+            note = parsedRest.note;
+          }
+        }
+
+        return {
+          id: String(t.id),
+          productId,
+          sizeLabel,
+          quantity,
+          schoolRaw,
+          note,
+          amount,
+          paidAmount,
+          rawDate,
+          isoDate,
+        };
+      })
+      .sort((a, b) => b.rawDate - a.rawDate);
+
+    const groupsMap = new Map<
+      string,
+      {
+        schoolKey: string;
+        schoolName: string;
+        notesSet: Set<string>;
+        rawDate: number;
+        latestIsoDate: string;
+        sizeMap: Map<string, BaskiSizeSummaryItem>;
+        totalQuantity: number;
+        amount: number;
+        paidAmount: number;
+        recordIds: string[];
+      }
+    >();
+
+    parsedRecords.forEach((rec) => {
+      const formattedSchool = formatBaskiSchoolDisplayName(rec.schoolRaw);
+      const schoolKey = formattedSchool.toLocaleLowerCase("tr-TR");
+
+      let group = groupsMap.get(schoolKey);
+      if (!group) {
+        group = {
+          schoolKey,
+          schoolName: formattedSchool,
+          notesSet: new Set<string>(),
+          rawDate: rec.rawDate,
+          latestIsoDate: rec.isoDate,
+          sizeMap: new Map<string, BaskiSizeSummaryItem>(),
+          totalQuantity: 0,
+          amount: 0,
+          paidAmount: 0,
+          recordIds: [],
+        };
+        groupsMap.set(schoolKey, group);
+      }
+
+      group.recordIds.push(rec.id);
+      if (rec.note) {
+        group.notesSet.add(rec.note);
+      }
+      if (rec.rawDate > group.rawDate) {
+        group.rawDate = rec.rawDate;
+        group.latestIsoDate = rec.isoDate;
+        group.schoolName = formattedSchool;
+      }
+
+      group.totalQuantity += rec.quantity;
+      group.amount += rec.amount;
+      group.paidAmount += rec.paidAmount;
+
+      const sizeKey = rec.productId
+        ? `prod:${rec.productId}`
+        : `label:${rec.sizeLabel.trim().toLocaleLowerCase("tr-TR")}`;
+
+      const existingSize = group.sizeMap.get(sizeKey);
+      if (existingSize) {
+        existingSize.quantity += rec.quantity;
+        existingSize.amount += rec.amount;
+        existingSize.legacyUnitPrice =
+          existingSize.quantity > 0 ? existingSize.amount / existingSize.quantity : 0;
+      } else {
+        group.sizeMap.set(sizeKey, {
+          sizeKey,
+          productId: rec.productId,
+          sizeLabel: rec.sizeLabel,
+          quantity: rec.quantity,
+          amount: rec.amount,
+          legacyUnitPrice: rec.quantity > 0 ? rec.amount / rec.quantity : 0,
+        });
+      }
+    });
+
+    return Array.from(groupsMap.values())
+      .map((g) => ({
+        schoolKey: g.schoolKey,
+        schoolName: g.schoolName,
+        note: g.notesSet.size > 0 ? Array.from(g.notesSet).join(", ") : "",
+        date:
+          g.rawDate > 0
+            ? new Date(g.rawDate).toLocaleString("tr-TR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-",
+        rawDate: g.rawDate,
+        latestIsoDate: g.latestIsoDate,
+        items: Array.from(g.sizeMap.values()).sort((a, b) =>
+          a.sizeLabel.localeCompare(b.sizeLabel, "tr", {
+            numeric: true,
+            sensitivity: "base",
+          }),
+        ),
+        totalQuantity: g.totalQuantity,
+        amount: g.amount,
+        paidAmount: g.paidAmount,
+        recordIds: g.recordIds,
+      }))
+      .sort((a, b) => b.rawDate - a.rawDate || a.schoolName.localeCompare(b.schoolName, "tr"));
+  })();
+
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase("tr-TR");
+  const filteredBaskiGroups = groupedBaskiSchools.filter((group) => {
+    if (!normalizedQuery) return true;
+    const schoolMatch = group.schoolName.toLocaleLowerCase("tr-TR").includes(normalizedQuery);
+    const noteMatch = group.note.toLocaleLowerCase("tr-TR").includes(normalizedQuery);
+    const dateMatch = group.date.toLocaleLowerCase("tr-TR").includes(normalizedQuery);
+    const sizesMatch = group.items.some((sz) =>
+      `${sz.sizeLabel} ${sz.quantity}`.toLocaleLowerCase("tr-TR").includes(normalizedQuery),
+    );
+    return schoolMatch || noteMatch || dateMatch || sizesMatch;
+  });
+
+  const totalBaskiQuantity = filteredBaskiGroups.reduce(
+    (sum, group) => sum + group.totalQuantity,
+    0,
+  );
+  const genelToplam = filteredBaskiGroups.reduce((sum, group) => sum + group.amount, 0);
+  const totalBaskiPaid = filteredBaskiGroups.reduce((sum, group) => sum + group.paidAmount, 0);
+  const totalBaskiRemaining = genelToplam - totalBaskiPaid;
+
   const handleExportBaskiPDF = () => {
-    const columns = ["Tarih", "Açıklama", "Adet", "Tutar", "Ödenen", "Kalan"];
-    const data = filteredBaskiTransactions.map((tx: any) => {
-      const remaining = tx.amount - tx.paidAmount;
+    const columns = [
+      "Tarih",
+      "Okul / Firma",
+      "Baskı Ölçüleri",
+      "Açıklama",
+      "Adet",
+      "Tutar",
+      "Ödenen",
+      "Kalan",
+    ];
+    const data = filteredBaskiGroups.map((group) => {
+      const remaining = group.amount - group.paidAmount;
+      const sizesText = group.items.map((sz) => `${sz.sizeLabel} — ${sz.quantity} Adet`).join("\n");
       return [
-        tx.date,
-        tx.desc,
-        tx.quantity.toString(),
-        `${tx.amount.toLocaleString()} ₺`,
-        `${tx.paidAmount.toLocaleString()} ₺`,
-        `${remaining.toLocaleString()} ₺`,
+        group.date,
+        group.schoolName,
+        sizesText,
+        group.note || "-",
+        group.totalQuantity.toString(),
+        `${group.amount.toLocaleString("tr-TR")} ₺`,
+        `${group.paidAmount.toLocaleString("tr-TR")} ₺`,
+        `${remaining.toLocaleString("tr-TR")} ₺`,
       ];
     });
 
@@ -6455,17 +6773,75 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       "GENEL TOPLAM",
       "",
       "",
-      `${genelToplam.toLocaleString()} ₺`,
-      `${totalBaskiPaid.toLocaleString()} ₺`,
-      `${totalBaskiRemaining.toLocaleString()} ₺`,
+      "",
+      totalBaskiQuantity.toString(),
+      `${genelToplam.toLocaleString("tr-TR")} ₺`,
+      `${totalBaskiPaid.toLocaleString("tr-TR")} ₺`,
+      `${totalBaskiRemaining.toLocaleString("tr-TR")} ₺`,
     ]);
 
     exportToPDF({
       title: "Baskı Giderleri",
-      subtitle: `${filteredBaskiTransactions.length} Baskı İşlemi`,
+      subtitle: `${filteredBaskiGroups.length} Okul / Firma Baskı Kaydı`,
       columns,
       data,
       filename: `Baski_Giderleri.pdf`,
+    });
+  };
+
+  const handleSaveBaskiModal = () => {
+    const cleanSchool = baskiSchoolName.trim();
+    if (!cleanSchool) {
+      toast.error("Lütfen Okul / Firma adını giriniz.");
+      return;
+    }
+
+    const validItems = baskiLineItems.filter((item) => item.productId && Number(item.quantity) > 0);
+    if (validItems.length === 0) return;
+
+    const cleanNote = baskiAciklama.trim();
+    const consolidatedMap = new Map<
+      string,
+      { amount: number; sizeLabel: string; urun_id: string | null; adet: number }
+    >();
+
+    validItems.forEach((item) => {
+      const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
+      const unitPrice = getLineUnitPrice(item);
+      const amount = unitPrice * qty;
+      const sizeLabel = getLineSizeLabel(item);
+      const isLegacy = item.productId.startsWith("__legacy__");
+      const key = isLegacy
+        ? `legacy:${sizeLabel.toLocaleLowerCase("tr-TR")}`
+        : `prod:${item.productId}`;
+
+      const existing = consolidatedMap.get(key);
+      if (existing) {
+        existing.adet += qty;
+        existing.amount += amount;
+      } else {
+        consolidatedMap.set(key, {
+          amount,
+          sizeLabel,
+          urun_id: isLegacy ? null : item.productId,
+          adet: qty,
+        });
+      }
+    });
+
+    const itemsToSave = Array.from(consolidatedMap.values()).map((entry) => ({
+      amount: entry.amount,
+      desc: formatBaskiRecordDesc(entry.sizeLabel, entry.adet, cleanSchool, cleanNote),
+      urun_id: entry.urun_id,
+      adet: entry.adet,
+    }));
+
+    saveBaskiModalMutation.mutate({
+      mode: baskiModalMode,
+      existingIds: editingRecordIds,
+      createdAt: editingCreatedAt || undefined,
+      items: itemsToSave,
+      paid: parseFloat(baskiPaidAmount) || 0,
     });
   };
 
@@ -6494,7 +6870,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[#9E9696]" />
             <Input
               type="text"
-              placeholder="Baskı ara..."
+              placeholder="Okul, ölçü veya açıklama ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11 bg-[#131316] border-white/5 text-white placeholder:text-gray-500 rounded-xl focus-visible:ring-[#A67C52]"
@@ -6515,7 +6891,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
               </Button>
               <Button
                 size="sm"
-                onClick={() => setBaskiModalOpen(true)}
+                onClick={openBaskiAdd}
                 className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
               >
                 <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#A67C52]" /> İşlem Ekle
@@ -6527,83 +6903,114 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
             <table className="w-full text-left text-sm text-[#9E9696]">
               <thead className="text-xs uppercase text-[#9E9696] bg-white/5 rounded-t-xl">
                 <tr>
-                  <th className="px-4 py-3 font-semibold rounded-tl-xl">Tarih</th>
+                  <th className="px-4 py-3 font-semibold rounded-tl-xl whitespace-nowrap">Tarih</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Okul / Firma</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Baskı Ölçüleri</th>
                   <th className="px-4 py-3 font-semibold">Açıklama</th>
-                  <th className="px-4 py-3 font-semibold text-center">Adet</th>
-                  <th className="px-4 py-3 font-semibold text-right">Tutar (₺)</th>
-                  <th className="px-4 py-3 font-semibold text-right">Ödenen (₺)</th>
-                  <th className="px-4 py-3 font-semibold text-right">Kalan (₺)</th>
-                  <th className="px-4 py-3 font-semibold text-center rounded-tr-xl">İşlemler</th>
+                  <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Adet</th>
+                  <th className="px-4 py-3 font-semibold text-right whitespace-nowrap">
+                    Tutar (₺)
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-right whitespace-nowrap">
+                    Ödenen (₺)
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-right whitespace-nowrap">
+                    Kalan (₺)
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-center rounded-tr-xl whitespace-nowrap">
+                    İşlemler
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredBaskiTransactions.length === 0 ? (
+                {filteredBaskiGroups.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl mt-4 block mx-4"
-                    >
-                      Henüz işlem bulunmuyor.
+                    <td colSpan={9} className="py-8 px-4">
+                      <div className="text-center py-8 text-sm font-medium border border-dashed border-white/5 rounded-2xl">
+                        Henüz işlem bulunmuyor.
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredBaskiTransactions.map((tx: any) => (
+                  filteredBaskiGroups.map((group) => (
                     <tr
-                      key={tx.id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                      key={group.schoolKey}
+                      className="border-b border-white/5 hover:bg-white/[0.03] transition-colors align-middle"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">{tx.date}</td>
-                      <td className="px-4 py-3 font-medium text-white">{tx.desc}</td>
-                      <td className="px-4 py-3 text-center font-mono">{tx.quantity}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
-                        {Number(tx.amount || 0).toLocaleString()} ₺
+                      <td className="px-4 py-3.5 whitespace-nowrap">{group.date}</td>
+                      <td className="px-4 py-3.5 font-semibold text-white whitespace-nowrap">
+                        {group.schoolName}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
-                        {Number(tx.paidAmount || 0).toLocaleString()} ₺
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-col gap-1.5 items-start min-w-[190px]">
+                          {group.items.map((sz, idx) => (
+                            <div
+                              key={`${sz.sizeKey}-${idx}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-xs"
+                            >
+                              <span className="font-semibold text-white">{sz.sizeLabel}</span>
+                              <span className="text-white/40">—</span>
+                              <span className="font-mono font-bold text-[#A67C52]">
+                                {sz.quantity} Adet
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-white">
-                        {Number((tx.amount || 0) - (tx.paidAmount || 0)).toLocaleString()} ₺
+                      <td className="px-4 py-3.5 text-white/80 max-w-[220px]">
+                        {group.note || "-"}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-center font-mono font-semibold text-white">
+                        {group.totalQuantity.toLocaleString("tr-TR")}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-white whitespace-nowrap">
+                        {Number(group.amount || 0).toLocaleString("tr-TR")} ₺
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-white whitespace-nowrap">
+                        {Number(group.paidAmount || 0).toLocaleString("tr-TR")} ₺
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono font-bold text-white whitespace-nowrap">
+                        {Number((group.amount || 0) - (group.paidAmount || 0)).toLocaleString(
+                          "tr-TR",
+                        )}{" "}
+                        ₺
+                      </td>
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openBaskiEdit(tx)}
+                          title="Baskı Gideri Düzenle"
+                          aria-label="Baskı Gideri Düzenle"
+                          onClick={() => openBaskiEdit(group)}
                           className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
                         >
                           <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteBaskiExpenseMutation.mutate(tx.id)}
-                          disabled={deleteBaskiExpenseMutation.isPending}
-                          className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
-              {filteredBaskiTransactions.length > 0 && (
+              {filteredBaskiGroups.length > 0 && (
                 <tfoot className="bg-white/5 font-bold text-white border-t border-white/10">
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={4}
                       className="px-4 py-4 text-right rounded-bl-xl text-lg font-bold text-white"
                     >
                       Genel Toplam:
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
-                      {genelToplam.toLocaleString()} ₺
+                    <td className="px-4 py-4 text-center font-mono text-lg font-bold text-white">
+                      {totalBaskiQuantity.toLocaleString("tr-TR")}
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
-                      {totalBaskiPaid.toLocaleString()} ₺
+                    <td className="px-4 py-4 text-right font-mono text-lg font-bold text-white whitespace-nowrap">
+                      {genelToplam.toLocaleString("tr-TR")} ₺
                     </td>
-                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
-                      {Math.abs(totalBaskiRemaining).toLocaleString()} ₺
+                    <td className="px-4 py-4 text-right font-mono text-lg font-bold text-white whitespace-nowrap">
+                      {totalBaskiPaid.toLocaleString("tr-TR")} ₺
+                    </td>
+                    <td className="px-4 py-4 text-right font-mono text-lg font-bold text-white whitespace-nowrap">
+                      {Math.abs(totalBaskiRemaining).toLocaleString("tr-TR")} ₺
                     </td>
                     <td className="px-4 py-4 rounded-br-xl"></td>
                   </tr>
@@ -6619,7 +7026,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 TOPLAM ÖDENEN
               </span>
               <h4 className="font-mono text-2xl font-black text-emerald-400 mt-1.5">
-                {Math.round(totalBaskiPaid).toLocaleString()} ₺
+                {Math.round(totalBaskiPaid).toLocaleString("tr-TR")} ₺
               </h4>
             </div>
             {(() => {
@@ -6639,7 +7046,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   </span>
                   <h4 className={`font-mono text-2xl font-black mt-1.5 ${color}`}>
                     {sign}
-                    {Math.abs(Math.round(netBalance)).toLocaleString()} ₺
+                    {Math.abs(Math.round(netBalance)).toLocaleString("tr-TR")} ₺
                   </h4>
                 </div>
               );
@@ -6651,23 +7058,34 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       <Dialog
         open={isBaskiModalOpen}
         onOpenChange={(open) => {
-          setBaskiModalOpen(open);
           if (!open) {
-            setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
-            setBaskiAciklama("");
-            setBaskiPaidAmount("");
-            setBaskiRemainingAmount("");
+            resetBaskiModal();
+          } else {
+            setBaskiModalOpen(true);
           }
         }}
       >
-        <DialogContent className="sm:max-w-[480px] bg-[#131316] text-white border-white/10">
+        <DialogContent className="sm:max-w-[500px] bg-[#131316] text-white border-white/10">
           <DialogHeader>
-            <DialogTitle>Baskı Gideri Ekle</DialogTitle>
+            <DialogTitle>
+              {baskiModalMode === "edit" ? "Baskı Gideri Düzenle" : "Baskı Gideri Ekle"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Okul / Firma</Label>
+              <Input
+                type="text"
+                placeholder="Örn: Millet İlkokulu"
+                value={baskiSchoolName}
+                onChange={(e) => setBaskiSchoolName(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+
             <div className="space-y-2.5">
-              <Label>Ürünler</Label>
-              <div className="space-y-2 max-h-[32vh] overflow-y-auto pr-1">
+              <Label>Baskı Ölçüleri</Label>
+              <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
                 {baskiLineItems.map((item) => (
                   <div key={item.id} className="flex gap-2 items-center">
                     <div className="flex-1 min-w-0">
@@ -6675,7 +7093,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         value={item.productId}
                         onValueChange={(val: string) => {
                           const nextItems = baskiLineItems.map((i) =>
-                            i.id === item.id ? { ...i, productId: val } : i,
+                            i.id === item.id
+                              ? {
+                                  ...i,
+                                  productId: val,
+                                  legacyLabel: undefined,
+                                  legacyUnitPrice: undefined,
+                                }
+                              : i,
                           );
                           setBaskiLineItems(nextItems);
                           const total = calculateBaskiTotal(nextItems);
@@ -6687,6 +7112,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                           <SelectValue placeholder="Ürün seçin..." />
                         </SelectTrigger>
                         <SelectContent className="bg-[#131316] border-white/10 text-white max-h-[300px]">
+                          {item.productId.startsWith("__legacy__") && (
+                            <SelectItem value={item.productId}>
+                              {item.legacyLabel || "Baskı"} ({item.legacyUnitPrice || 0} ₺)
+                            </SelectItem>
+                          )}
                           {baskiPrintProducts.map((p: any) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name} ({p.base_price || 0} ₺)
@@ -6765,22 +7195,27 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 + Ölçü Ekle
               </Button>
             </div>
+
             <div className="grid gap-2">
-              <Label>Açıklama</Label>
+              <Label>
+                Açıklama <span className="text-xs text-white/40 font-normal">(İsteğe bağlı)</span>
+              </Label>
               <Input
                 type="text"
-                placeholder="Hangi okul veya müşteri için?"
+                placeholder="Ek not veya açıklama..."
                 value={baskiAciklama}
                 onChange={(e) => setBaskiAciklama(e.target.value)}
                 className="bg-white/5 border-white/10 text-white"
               />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Ödenen Tutar (₺)</Label>
                 <Input
                   type="number"
                   min="0"
+                  placeholder="0"
                   value={baskiPaidAmount}
                   onChange={(e) => {
                     setBaskiPaidAmount(e.target.value);
@@ -6796,12 +7231,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   type="number"
                   step="any"
                   min="0"
+                  placeholder="0"
                   value={baskiRemainingAmount}
                   onChange={(e) => setBaskiRemainingAmount(e.target.value)}
                   className="bg-white/5 border-white/10 text-white"
                 />
               </div>
             </div>
+
             <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/30 rounded-lg mt-1 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-300">Toplam Tutar:</span>
               <span className="font-bold font-mono text-[#A67C52] text-lg">
@@ -6812,107 +7249,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           <DialogFooter>
             <Button
               disabled={
+                !baskiSchoolName.trim() ||
                 !baskiLineItems.some((i) => i.productId && Number(i.quantity) > 0) ||
-                addBaskiExpenseMutation.isPending
+                saveBaskiModalMutation.isPending
               }
-              onClick={() => {
-                const validItems = baskiLineItems.filter(
-                  (item) => item.productId && Number(item.quantity) > 0,
-                );
-                if (validItems.length > 0) {
-                  const cleanNote = baskiAciklama.trim();
-                  const itemsToInsert = validItems.map((item) => {
-                    const p = productsForBaski.find((prod: any) => prod.id === item.productId);
-                    const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
-                    const amount = (parseFloat(p?.base_price || "0") || 0) * qty;
-                    const desc = cleanNote
-                      ? `${p?.name} (${qty} Adet) - ${cleanNote}`
-                      : `${p?.name} (${qty} Adet)`;
-                    return {
-                      amount,
-                      desc,
-                      urun_id: item.productId,
-                      adet: qty,
-                    };
-                  });
-                  addBaskiExpenseMutation.mutate({
-                    items: itemsToInsert,
-                    paid: parseFloat(baskiPaidAmount) || 0,
-                  });
-                }
-              }}
+              onClick={handleSaveBaskiModal}
               className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
             >
-              {addBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isBaskiEditModalOpen} onOpenChange={setBaskiEditModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
-          <DialogHeader>
-            <DialogTitle>Baskı İşlemini Düzenle</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Tarih ve Saat</Label>
-              <Input
-                type="datetime-local"
-                value={baskiEditDate}
-                onChange={(e) => setBaskiEditDate(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Açıklama</Label>
-              <Input
-                type="text"
-                value={baskiEditDesc}
-                onChange={(e) => setBaskiEditDesc(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Toplam Tutar (₺)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={baskiEditAmount}
-                  onChange={(e) => setBaskiEditAmount(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ödenen Tutar (₺)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={baskiEditPaid}
-                  onChange={(e) => setBaskiEditPaid(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              disabled={editBaskiExpenseMutation.isPending || !baskiEditAmount}
-              onClick={() => {
-                if (baskiEditId) {
-                  editBaskiExpenseMutation.mutate({
-                    id: baskiEditId,
-                    amount: parseFloat(baskiEditAmount) || 0,
-                    paid: parseFloat(baskiEditPaid) || 0,
-                    desc: baskiEditDesc,
-                    date: baskiEditDate,
-                  });
-                }
-              }}
-              className="bg-[#A67C52] text-white hover:bg-[#8b6641] disabled:opacity-50"
-            >
-              {editBaskiExpenseMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+              {saveBaskiModalMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </DialogFooter>
         </DialogContent>
