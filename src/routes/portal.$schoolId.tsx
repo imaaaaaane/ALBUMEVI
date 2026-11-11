@@ -11,6 +11,9 @@ import {
   LogOut,
   ChevronRight,
   FileWarning,
+  AlertTriangle,
+  FolderDown,
+  Loader2,
   Info,
   Clock,
   Settings,
@@ -32,6 +35,9 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx-js-style";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { Turnstile } from "@marsidev/react-turnstile";
 
 export const Route = createFileRoute("/portal/$schoolId")({
@@ -42,6 +48,7 @@ export const Route = createFileRoute("/portal/$schoolId")({
 interface Student {
   id: string;
   name: string;
+  image_code?: string | null;
   packageSelection: string | null;
   image_url?: string;
   note?: string;
@@ -66,7 +73,152 @@ interface SelectionData {
   note: string;
 }
 
-import { getR2FileUrl, getR2PublicUrl } from "../lib/r2";
+import { getR2FileUrl, getR2PublicUrl, r2Client, R2_BUCKET_NAME } from "../lib/r2";
+
+function formatStudentImageCode(student: {
+  image_code?: string | null;
+  name?: string | null;
+  image_url?: string | null;
+}): string {
+  const urlWithoutQuery = (student.image_url || "").split("?")[0];
+  const urlFileName = urlWithoutQuery.split("/").pop() || "";
+  const dotIdx = urlFileName.lastIndexOf(".");
+  const rawExt = dotIdx !== -1 ? urlFileName.substring(dotIdx + 1).trim() : "";
+  const ext = rawExt && /^[a-zA-Z0-9]{2,5}$/.test(rawExt) ? rawExt.toLowerCase() : "jpg";
+
+  if (student.image_code && String(student.image_code).trim()) {
+    const code = String(student.image_code).trim().replace(/[/\\]/g, "_");
+    return /\.[a-zA-Z0-9]{2,5}$/.test(code) ? code : `${code}.${ext}`;
+  }
+
+  const rawName = (student.name || "").trim();
+  if (!rawName) {
+    return urlFileName || `IMG.${ext}`;
+  }
+
+  const hasExtension = /\.[a-zA-Z0-9]{2,5}$/.test(rawName);
+  const baseName = hasExtension ? rawName.replace(/\.[a-zA-Z0-9]{2,5}$/, "") : rawName;
+  const finalExt = hasExtension
+    ? rawName.substring(rawName.lastIndexOf(".") + 1).toLowerCase()
+    : ext;
+
+  const normalizedBase = /^_*[A-Za-z]{1,6}\s+\d+/.test(baseName)
+    ? baseName.replace(/\s+/g, "_")
+    : baseName;
+
+  return `${normalizedBase.replace(/[/\\]/g, "_")}.${finalExt}`;
+}
+
+function sanitizeForZipName(value: string, preserveHyphen = false): string {
+  const trMap: Record<string, string> = {
+    ç: "C",
+    Ç: "C",
+    ğ: "G",
+    Ğ: "G",
+    ı: "I",
+    I: "I",
+    i: "I",
+    İ: "I",
+    ö: "O",
+    Ö: "O",
+    ş: "S",
+    Ş: "S",
+    ü: "U",
+    Ü: "U",
+  };
+  const ascii = value
+    .split("")
+    .map((ch) => trMap[ch] ?? ch)
+    .join("")
+    .toUpperCase();
+
+  if (preserveHyphen) {
+    return ascii
+      .replace(/\//g, "-")
+      .replace(/[^A-Z0-9-]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  return ascii
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function formatVskZipFileName(schoolName: string, className: string): string {
+  const cleanSchool = sanitizeForZipName(schoolName || "OKUL", false) || "OKUL";
+  const cleanClass = sanitizeForZipName(className || "SINIF", true) || "SINIF";
+  return `${cleanSchool}_${cleanClass}_VSK.zip`;
+}
+
+function extractR2Key(pathOrUrl: string): string | null {
+  if (!pathOrUrl) return null;
+  if (!pathOrUrl.startsWith("http")) {
+    return pathOrUrl.replace(/^\/+/, "");
+  }
+  try {
+    const parsed = new URL(pathOrUrl);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (R2_BUCKET_NAME && parts[0] === R2_BUCKET_NAME) {
+      parts.shift();
+    }
+    return parts.length > 0 ? decodeURIComponent(parts.join("/")) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchStudentImageBytes(imageUrl: string): Promise<Uint8Array | ArrayBuffer> {
+  const r2Key = extractR2Key(imageUrl);
+
+  if (r2Key && R2_BUCKET_NAME) {
+    try {
+      const resp = await r2Client.send(
+        new GetObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: r2Key,
+        }),
+      );
+      if (resp.Body) {
+        return await resp.Body.transformToByteArray();
+      }
+    } catch {
+      // Fall through to presigned / public fetch
+    }
+  }
+
+  if (r2Key) {
+    try {
+      const signedUrl = await getR2FileUrl(r2Key);
+      const res = await fetch(signedUrl);
+      if (res.ok) {
+        return await res.arrayBuffer();
+      }
+    } catch {
+      // Fall through to public URL fetch
+    }
+  }
+
+  const publicUrl = getR2PublicUrl(imageUrl);
+  try {
+    const res = await fetch(publicUrl);
+    if (res.ok) {
+      return await res.arrayBuffer();
+    }
+  } catch {
+    // Fall through to raw URL fetch
+  }
+
+  if (imageUrl.startsWith("http") && imageUrl !== publicUrl) {
+    const res = await fetch(imageUrl);
+    if (res.ok) {
+      return await res.arrayBuffer();
+    }
+  }
+
+  throw new Error(`Fotoğraf indirilemedi: ${imageUrl}`);
+}
 
 const R2Image = ({ src, alt, className }: { src: string; alt?: string; className?: string }) => {
   const [url, setUrl] = useState<string | null>(null);
@@ -118,6 +270,29 @@ function SchoolPortal() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+
+  // Terms & No-Refund Notice Gate State
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(`portal_terms_accepted_${schoolId}`) === "true";
+    }
+    return false;
+  });
+
+  const showTermsModal = step >= 3 && !termsAccepted;
+
+  useEffect(() => {
+    if (!showTermsModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [showTermsModal]);
 
   // Selection State
   const [selectedClass, setSelectedClass] = useState<SchoolClass | null>(null);
@@ -261,7 +436,7 @@ function SchoolPortal() {
 
         const { data: dbClasses, error } = await (supabase as any)
           .from("classes")
-          .select("id, name, students(id, name, image_url, selection, note)")
+          .select("id, name, students(*)")
           .eq("school_id", actualSchoolId)
           .order("created_at", { ascending: true });
 
@@ -289,6 +464,7 @@ function SchoolPortal() {
               return {
                 id: s.id,
                 name: s.name,
+                image_code: s.image_code || null,
                 image_url: s.image_url,
                 packageSelection: s.selection || null,
                 note: s.note || "",
@@ -322,6 +498,69 @@ function SchoolPortal() {
     setClasses(updatedClasses);
     if (typeof window !== "undefined") {
       localStorage.setItem(`mock_school_classes_${schoolId}`, JSON.stringify(updatedClasses));
+    }
+  };
+
+  const [downloadingClassId, setDownloadingClassId] = useState<string | null>(null);
+
+  const handleDownloadClassPhotos = async (targetClass: SchoolClass, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (downloadingClassId) return;
+
+    const studentsWithPhotos = targetClass.students.filter((s) => Boolean(s.image_url));
+    if (studentsWithPhotos.length === 0) {
+      toast.error("Bu sınıfta indirilecek öğrenci fotoğrafı bulunamadı.");
+      return;
+    }
+
+    setDownloadingClassId(targetClass.id);
+    try {
+      const zip = new JSZip();
+      const usedNames = new Map<string, number>();
+      let addedCount = 0;
+
+      await Promise.all(
+        studentsWithPhotos.map(async (student) => {
+          if (!student.image_url) return;
+          try {
+            const bytes = await fetchStudentImageBytes(student.image_url);
+            const rawFileName = formatStudentImageCode(student);
+            const count = usedNames.get(rawFileName) || 0;
+            usedNames.set(rawFileName, count + 1);
+
+            let finalFileName = rawFileName;
+            if (count > 0) {
+              const dotIndex = rawFileName.lastIndexOf(".");
+              finalFileName =
+                dotIndex !== -1
+                  ? `${rawFileName.slice(0, dotIndex)}_${count + 1}${rawFileName.slice(dotIndex)}`
+                  : `${rawFileName}_${count + 1}`;
+            }
+
+            zip.file(finalFileName, bytes);
+            addedCount++;
+          } catch (err) {
+            console.error(`Fotoğraf indirilemedi (${student.name}):`, err);
+          }
+        }),
+      );
+
+      if (addedCount === 0) {
+        throw new Error("Fotoğraflar indirilemedi.");
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const zipFileName = formatVskZipFileName(schoolName, targetClass.className);
+      saveAs(zipBlob, zipFileName);
+      toast.success(
+        `${targetClass.className} sınıfı fotoğrafları (${addedCount} adet) başarıyla indirildi.`,
+      );
+    } catch (error: any) {
+      toast.error(error?.message || "Fotoğraflar hazırlanırken bir hata oluştu.");
+    } finally {
+      setDownloadingClassId(null);
     }
   };
 
@@ -367,6 +606,9 @@ function SchoolPortal() {
       }
 
       // Success
+      setTermsChecked(false);
+      setTermsAccepted(false);
+      sessionStorage.removeItem(`portal_terms_accepted_${schoolId}`);
       setStep(3);
     } catch (err) {
       console.error("LOGIN_EXCEPTION:", err);
@@ -378,6 +620,8 @@ function SchoolPortal() {
     sessionStorage.clear();
     setUsername("");
     setPassword("");
+    setTermsChecked(false);
+    setTermsAccepted(false);
     setStep(2);
   };
 
@@ -661,6 +905,84 @@ function SchoolPortal() {
         )}
       </AnimatePresence>
 
+      {/* Mandatory Terms & No-Refund Notice Modal Overlay */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <motion.div
+            key="terms-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="terms-modal-title"
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-lg w-full bg-[#131316] border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden"
+            >
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#A67C52]/15 border border-[#A67C52]/30">
+                  <AlertTriangle className="h-7 w-7 text-[#A67C52]" />
+                </div>
+
+                <h2
+                  id="terms-modal-title"
+                  className="text-xl md:text-2xl font-bold text-white mb-4 tracking-tight"
+                >
+                  Önemli Bilgilendirme ve Sipariş Onayı
+                </h2>
+
+                <p className="text-white/70 text-sm md:text-base leading-relaxed mb-6">
+                  Değerli Öğretmenimiz, sipariş seçimleriniz onaylanıp sistem bağlantısı
+                  kapatıldıktan sonra ürünleriniz öğrenciye özel olarak baskı ve üretim sürecine
+                  alınmaktadır. Bu nedenle, onaylanan ve teslim edilen siparişlerde kesinlikle iade
+                  veya değişim kabul edilmemektedir. Lütfen öğrencilerin ürün seçimlerini ve
+                  eklediğiniz notları kaydetmeden önce dikkatlice kontrol ediniz.
+                </p>
+
+                <label className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#A67C52]/50 cursor-pointer transition-colors mb-6 text-left select-none">
+                  <input
+                    type="checkbox"
+                    checked={termsChecked}
+                    onChange={(e) => setTermsChecked(e.target.checked)}
+                    className="h-5 w-5 rounded border-white/30 bg-black/40 accent-[#A67C52] cursor-pointer shrink-0"
+                  />
+                  <span className="text-sm font-medium text-white/90">
+                    Okudum, anladım ve onaylıyorum.
+                  </span>
+                </label>
+
+                <Button
+                  type="button"
+                  disabled={!termsChecked}
+                  onClick={() => {
+                    if (!termsChecked) return;
+                    setTermsAccepted(true);
+                    sessionStorage.setItem(`portal_terms_accepted_${schoolId}`, "true");
+                  }}
+                  className={`w-full h-12 bg-[#A67C52] text-white font-semibold rounded-xl text-base transition-all ${
+                    !termsChecked
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-[#A67C52]/90 shadow-lg shadow-[#A67C52]/20"
+                  }`}
+                >
+                  Seçime Başla
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {/* STEP 2: Login */}
         {step === 2 && (
@@ -707,7 +1029,9 @@ function SchoolPortal() {
                   </div>
                   <div className="flex justify-center pt-2">
                     <Turnstile
-                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"}
+                      siteKey={
+                        import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"
+                      }
                       onSuccess={(token) => setTurnstileToken(token)}
                       options={{ theme: "dark" }}
                     />
@@ -745,7 +1069,11 @@ function SchoolPortal() {
             {/* Header */}
             <div className="flex flex-col md:relative md:flex-row items-center justify-between bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-2xl mb-8 gap-4 md:gap-0">
               <div className="flex w-full md:w-auto justify-between items-center">
-                <img src="/logo-light.png" alt="ALBÜMEVİ" className="w-48 md:w-56 lg:w-64 h-auto rounded-md object-contain" />
+                <img
+                  src="/logo-light.png"
+                  alt="ALBÜMEVİ"
+                  className="w-48 md:w-56 lg:w-64 h-auto rounded-md object-contain"
+                />
                 <div className="flex items-center gap-2 md:hidden">
                   <Button
                     variant="ghost"
@@ -813,7 +1141,9 @@ function SchoolPortal() {
                     )}
                     <div className="relative z-10 flex flex-row justify-between w-full items-center">
                       <div>
-                        <h3 className="text-xl md:text-2xl font-bold group-hover:text-[#A67C52] transition-colors">{prod.name}</h3>
+                        <h3 className="text-xl md:text-2xl font-bold group-hover:text-[#A67C52] transition-colors">
+                          {prod.name}
+                        </h3>
                       </div>
                       <div className="text-2xl md:text-3xl font-bold">{prod.price} ₺</div>
                     </div>
@@ -831,22 +1161,45 @@ function SchoolPortal() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {classes.map((c) => (
-                  <button
+                  <div
                     key={c.id}
                     onClick={() => {
                       setSelectedClass(c);
                       setStep(4);
                     }}
-                    className="group bg-black/40 backdrop-blur-md hover:bg-[#A67C52]/10 border border-white/10 hover:border-[#A67C52]/30 p-4 md:p-6 rounded-2xl text-left transition-all duration-300 relative overflow-hidden cursor-pointer min-h-[44px]"
+                    className="group bg-black/40 backdrop-blur-md hover:bg-[#A67C52]/10 border border-white/10 hover:border-[#A67C52]/30 p-4 md:p-6 rounded-2xl text-left transition-all duration-300 relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[44px]"
                   >
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
-                      <ChevronRight className="w-6 h-6 text-[#A67C52]" />
+                    <div className="relative">
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+                        <ChevronRight className="w-6 h-6 text-[#A67C52]" />
+                      </div>
+                      <div className="text-4xl font-black mb-2 text-white/80 group-hover:text-white">
+                        {c.className}
+                      </div>
+                      <div className="text-sm text-white/50">{c.studentCount} Öğrenci</div>
                     </div>
-                    <div className="text-4xl font-black mb-2 text-white/80 group-hover:text-white">
-                      {c.className}
-                    </div>
-                    <div className="text-sm text-white/50">{c.studentCount} Öğrenci</div>
-                  </button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={downloadingClassId !== null}
+                      onClick={(e) => handleDownloadClassPhotos(c, e)}
+                      className="mt-4 w-full border border-[#A67C52]/40 text-[#A67C52] hover:bg-[#A67C52]/10 hover:text-[#A67C52] bg-transparent rounded-xl text-xs font-semibold h-9 transition-colors disabled:opacity-50"
+                    >
+                      {downloadingClassId === c.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Hazırlanıyor...
+                        </>
+                      ) : (
+                        <>
+                          <FolderDown className="w-3.5 h-3.5 mr-1.5" />
+                          Sınıf Fotoğraflarını İndir (VSK)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -863,19 +1216,25 @@ function SchoolPortal() {
                     { id: "Teslim Edildi", label: "Teslim Edildi", icon: Truck },
                   ].map((stage, idx, arr) => {
                     const isActive = stage.id === globalStatus;
-                    const isPast = arr.findIndex(s => s.id === globalStatus) > idx;
+                    const isPast = arr.findIndex((s) => s.id === globalStatus) > idx;
                     const isCompleted = isPast || isActive;
 
                     return (
                       <div key={stage.id} className="flex-1 relative flex flex-col items-center">
                         {/* Connecting Line (hidden on mobile, visible on md+) */}
                         {idx !== arr.length - 1 && (
-                          <div className={`hidden md:block absolute top-6 left-[50%] w-full h-[2px] ${isPast ? 'bg-[#A67C52]' : 'bg-white/10'}`} />
+                          <div
+                            className={`hidden md:block absolute top-6 left-[50%] w-full h-[2px] ${isPast ? "bg-[#A67C52]" : "bg-white/10"}`}
+                          />
                         )}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-2 transition-all ${isCompleted ? (isActive ? 'bg-[#A67C52]/20 border-[#A67C52] text-[#A67C52]' : 'bg-[#A67C52] border-[#A67C52] text-black') : 'bg-black/50 border-white/10 text-white/30'}`}>
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-2 transition-all ${isCompleted ? (isActive ? "bg-[#A67C52]/20 border-[#A67C52] text-[#A67C52]" : "bg-[#A67C52] border-[#A67C52] text-black") : "bg-black/50 border-white/10 text-white/30"}`}
+                        >
                           <stage.icon className="w-5 h-5" />
                         </div>
-                        <span className={`mt-3 text-sm font-semibold text-center ${isCompleted ? (isActive ? 'text-[#A67C52]' : 'text-white/80') : 'text-white/30'}`}>
+                        <span
+                          className={`mt-3 text-sm font-semibold text-center ${isCompleted ? (isActive ? "text-[#A67C52]" : "text-white/80") : "text-white/30"}`}
+                        >
                           {stage.label}
                         </span>
                       </div>
@@ -907,21 +1266,43 @@ function SchoolPortal() {
             exit={{ opacity: 0, y: -20 }}
             className="max-w-6xl mx-auto px-4 pt-8"
           >
-            <div className="flex items-center gap-4 mb-8">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setStep(3)}
-                className="text-white/50 hover:text-white shrink-0"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </Button>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {selectedClass.className} Sınıfı Seçimleri
-                </h2>
-                <p className="text-white/50">Öğrencilerin paket seçimlerini belirleyin.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setStep(3)}
+                  className="text-white/50 hover:text-white shrink-0"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    {selectedClass.className} Sınıfı Seçimleri
+                  </h2>
+                  <p className="text-white/50">Öğrencilerin paket seçimlerini belirleyin.</p>
+                </div>
               </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={downloadingClassId !== null}
+                onClick={(e) => handleDownloadClassPhotos(selectedClass, e)}
+                className="border border-[#A67C52]/40 text-[#A67C52] hover:bg-[#A67C52]/10 hover:text-[#A67C52] bg-transparent rounded-xl font-semibold h-10 px-4 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {downloadingClassId === selectedClass.id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Hazırlanıyor...
+                  </>
+                ) : (
+                  <>
+                    <FolderDown className="w-4 h-4 mr-2" />
+                    Sınıf Fotoğraflarını İndir (VSK)
+                  </>
+                )}
+              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-24">
@@ -990,7 +1371,9 @@ function SchoolPortal() {
                                 className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0 relative z-10"
                               />
                             )}
-                            <span className="font-medium text-sm flex-1 relative z-10">{prod.name}</span>
+                            <span className="font-medium text-sm flex-1 relative z-10">
+                              {prod.name}
+                            </span>
                             <span className="font-bold text-sm ml-2 bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap relative z-10">
                               {prod.price} ₺
                             </span>

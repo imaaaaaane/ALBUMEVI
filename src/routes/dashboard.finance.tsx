@@ -201,7 +201,15 @@ const getSchoolRemaining = (f: School, rates?: Record<string, number>) => {
   const debt = getSchoolDebt(f, rates);
   const contribution = getSchoolContribution(f, rates);
   const paid = getSchoolPaid(f, rates);
-  return (debt - contribution) - paid;
+  return debt - contribution - paid;
+};
+
+const safeDateStr = (val?: string | null) => {
+  if (!val) return new Date().toISOString().split("T")[0];
+  const d = new Date(val);
+  return isNaN(d.getTime())
+    ? new Date().toISOString().split("T")[0]
+    : d.toISOString().split("T")[0];
 };
 
 function AccountingDashboard() {
@@ -285,22 +293,22 @@ function AccountingDashboard() {
         .order("created_at", { ascending: true });
 
       if (tErr)
-        return suppliers.map((s) => ({
+        return suppliers.map((s: any) => ({
           id: s.id,
           name: s.name,
           currency: s.currency as any,
           transactions: [],
         }));
 
-      return suppliers.map((s) => ({
+      return suppliers.map((s: any) => ({
         id: s.id,
         name: s.name,
         currency: s.currency as any,
-        transactions: transactions
-          .filter((t) => String(t.supplier_id) === String(s.id))
-          .map((t) => ({
+        transactions: (transactions || [])
+          .filter((t: any) => String(t.supplier_id) === String(s.id))
+          .map((t: any) => ({
             id: t.id,
-            date: new Date(t.created_at).toISOString().split("T")[0],
+            date: safeDateStr(t.created_at),
             type: t.transaction_type as "debt" | "payment",
             amount: Number(t.amount),
             desc: t.description ?? "",
@@ -328,7 +336,7 @@ function AccountingDashboard() {
       setAddCategoryModalOpen(false);
       setNewCategoryName("");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Bölüm eklenirken hata oluştu: " + error.message);
     },
   });
@@ -350,7 +358,7 @@ function AccountingDashboard() {
         .order("created_at", { ascending: true });
 
       if (tErr)
-        return firms.map((s) => ({
+        return firms.map((s: any) => ({
           id: s.id,
           name: s.name,
           currency: s.currency as any,
@@ -360,15 +368,15 @@ function AccountingDashboard() {
       console.log("Firms Raw:", firms);
       console.log("Firm Transactions Raw:", transactions);
 
-      return firms.map((s) => ({
+      return firms.map((s: any) => ({
         id: s.id,
         name: s.name,
         currency: s.currency as any,
-        transactions: transactions
-          .filter((t) => String(t.firm_id) === String(s.id))
-          .map((t) => ({
+        transactions: (transactions || [])
+          .filter((t: any) => String(t.firm_id) === String(s.id))
+          .map((t: any) => ({
             id: t.id,
-            date: new Date(t.created_at).toISOString().split("T")[0],
+            date: safeDateStr(t.created_at),
             type: t.transaction_type as "debt" | "payment",
             amount: Number(t.amount),
             desc: t.description ?? "",
@@ -408,17 +416,19 @@ function AccountingDashboard() {
       console.log("Employees Raw:", employees);
       console.log("Employee Transactions Raw:", transactions);
 
-      return employees.map((s) => ({
+      return employees.map((s: any) => ({
         id: s.id,
         name: s.name,
         currency: s.currency as any,
         total_debt: Number(s.total_debt || 0),
         total_paid: Number(s.total_paid || 0),
         transactions: (transactions || [])
-          .filter((t) => String(t.employee_id || t.personel_id || t.profile_id) === String(s.id))
-          .map((t) => ({
+          .filter(
+            (t: any) => String(t.employee_id || t.personel_id || t.profile_id) === String(s.id),
+          )
+          .map((t: any) => ({
             id: t.id,
-            date: new Date(t.created_at).toISOString().split("T")[0],
+            date: safeDateStr(t.created_at),
             type: t.transaction_type as EmployeeTransaction["type"],
             amount: Number(t.amount),
             desc: t.description ?? "",
@@ -444,7 +454,7 @@ function AccountingDashboard() {
         .order("sira", { ascending: true });
       if (sErr) return [];
 
-      return expenses.map((s) => ({
+      return expenses.map((s: any) => ({
         id: s.id,
         name: s.name,
         currency: s.currency as any,
@@ -523,29 +533,30 @@ function AccountingDashboard() {
             .filter((t: any) => String(t.school_id) === sid)
             .map((t: any) => ({
               id: t.id,
-              date: new Date(t.created_at).toISOString().split("T")[0],
+              date: safeDateStr(t.created_at),
               type: t.transaction_type as "debt" | "payment",
               amount: Number(t.amount),
               desc: t.description ?? "",
               createdAt: t.created_at,
+              currency: t.currency,
             })),
         };
       });
     },
   });
 
-  const { data: printExpensesData = [] } = useQuery({
+  const { data: printExpensesData = [] } = useQuery<any[]>({
     queryKey: ["baski_kayitlari_overview", teamId],
     queryFn: async () => {
-      let q = supabaseClient.from("baski_kayitlari").select("*");
+      const q = supabaseClient.from("baski_kayitlari").select("*");
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
   const totalPaidBaski = printExpensesData.reduce(
-    (sum, item) => sum + (Number(item.toplam_tutar ?? item.amount) || 0),
+    (sum: number, item: any) => sum + (Number(item.toplam_tutar ?? item.amount) || 0),
     0,
   );
 
@@ -597,7 +608,7 @@ function AccountingDashboard() {
         id: tx.id,
         desc: `${f.name} - ${tx.desc}`,
         date: tx.date,
-        amount: -convertToTry(tx.amount, f.currency), // Negative representing outflow
+        amount: -convertToTry(tx.amount, tx.currency || f.currency), // Negative representing outflow
         category: "cat-1",
         createdAt: tx.createdAt,
       });
@@ -625,7 +636,7 @@ function AccountingDashboard() {
         id: tx.id,
         desc: `${sch.name} - ${tx.desc}`,
         date: tx.date,
-        amount: -convertToTry(tx.amount, sch.currency),
+        amount: -convertToTry(tx.amount, tx.currency || sch.currency),
         category: "cat-5",
         createdAt: tx.createdAt,
       });
@@ -1045,7 +1056,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
-  const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
+  const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
@@ -1651,7 +1662,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                       />
                       <Select
                         value={newTxCurrency}
-                        onValueChange={(v: "TRY" | "EUR" | "USD") => setNewTxCurrency(v as any)}
+                        onValueChange={(v: string) => setNewTxCurrency(v as "TRY" | "EUR" | "USD")}
                       >
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
@@ -2149,13 +2160,6 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     </div>
   );
 }
-// ───────── Personel (Maaşlar) ListView Component ─────────
-
-interface EmployeesListViewProps {
-  employees: Employee[];
-  onBack: () => void;
-}
-
 // ───────── Firmalar (Cari Hesap) ListView Component ─────────
 
 interface FirmsListViewProps {
@@ -2198,10 +2202,10 @@ function FirmsListView({
   const [newTxDiscount, setNewTxDiscount] = useState("");
   const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTxDesc, setNewTxDesc] = useState("");
-  const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR">("TRY");
+  const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
   const [lineItems, setLineItems] = useState<
     { id: string; productId: string; quantity: number; price: number; sayfa_sayisi?: string }[]
-  >([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "1" }]);
+  >([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" }]);
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
@@ -2385,7 +2389,9 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
-      setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+      setLineItems([
+        { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
+      ]);
       setEditTxId(null);
     },
   });
@@ -2417,7 +2423,9 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
-      setLineItems([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0 }]);
+      setLineItems([
+        { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
+      ]);
       setEditTxId(null);
     },
   });
@@ -2581,7 +2589,7 @@ function FirmsListView({
   };
 
   useEffect(() => {
-    if (newTxType === "debt") {
+    if (newTxType === "debt" && lineItems.some((item) => item.productId !== "")) {
       const sum = lineItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
       const discount = parseFloat(newTxDiscount) || 0;
       const total = Math.max(0, sum - discount);
@@ -2596,7 +2604,7 @@ function FirmsListView({
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
     const data = selectedFirm.transactions.map((tx) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
-      const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency)}`;
+      const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedFirm.currency)}`;
       return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
     });
 
@@ -2789,7 +2797,13 @@ function FirmsListView({
               setNewTxDiscount("");
               setNewTxDesc("");
               setLineItems([
-                { id: Math.random().toString(), productId: "", quantity: 1, price: 0 },
+                {
+                  id: Math.random().toString(),
+                  productId: "",
+                  quantity: 1,
+                  price: 0,
+                  sayfa_sayisi: "5",
+                },
               ]);
               setOpenDropdownId(null);
             }
@@ -2819,7 +2833,7 @@ function FirmsListView({
                             productId: "",
                             quantity: 1,
                             price: 0,
-                            sayfa_sayisi: "1",
+                            sayfa_sayisi: "5",
                           },
                         ]);
                         setNewTxDesc("");
@@ -2851,8 +2865,8 @@ function FirmsListView({
                           <div className="flex-1">
                             <div className="relative flex-1">
                               {openDropdownId === item.id && (
-                                <div 
-                                  className="fixed inset-0 z-[9998]" 
+                                <div
+                                  className="fixed inset-0 z-[9998]"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -2880,64 +2894,96 @@ function FirmsListView({
                                 <div className="absolute w-full mt-1 z-[9999] max-h-56 overflow-y-auto shadow-2xl bg-[#1a1a1a] border border-white/20 rounded-lg">
                                   {(() => {
                                     const groupedProducts: Record<string, any[]> = {
-                                      'Panoramik': [],
-                                      'Baskı': [],
-                                      'Canvas': [],
-                                      'Okul İşleri': [],
-                                      'Diğer': []
+                                      Panoramik: [],
+                                      Baskı: [],
+                                      Canvas: [],
+                                      "Okul İşleri": [],
+                                      Diğer: [],
                                     };
-                                    
+
                                     (products || []).forEach((p: any) => {
-                                      const name = (p.name || '').toLowerCase();
-                                      const cat = (p.category || '').toLowerCase();
-                                      
-                                      if (cat.includes('panoramik') || name.includes('panoramik')) {
-                                        groupedProducts['Panoramik'].push(p);
-                                      } else if (cat.includes('canvas') || name.includes('canvas') || cat.includes('kanvas') || name.includes('kanvas')) {
-                                        groupedProducts['Canvas'].push(p);
-                                      } else if (cat.includes('baskı') || name.includes('baskı') || cat.includes('baski') || name.includes('baski')) {
-                                        groupedProducts['Baskı'].push(p);
-                                      } else if (cat.includes('ahşap') || name.includes('ahşap') || cat.includes('ahsap') || name.includes('ahsap') || cat.includes('album') || name.includes('album') || cat.includes('albüm') || name.includes('albüm') || cat.includes('okul') || name.includes('okul')) {
-                                        groupedProducts['Okul İşleri'].push(p);
+                                      const name = (p.name || "").toLowerCase();
+                                      const cat = (p.category || "").toLowerCase();
+
+                                      if (cat.includes("panoramik") || name.includes("panoramik")) {
+                                        groupedProducts["Panoramik"].push(p);
+                                      } else if (
+                                        cat.includes("canvas") ||
+                                        name.includes("canvas") ||
+                                        cat.includes("kanvas") ||
+                                        name.includes("kanvas")
+                                      ) {
+                                        groupedProducts["Canvas"].push(p);
+                                      } else if (
+                                        cat.includes("baskı") ||
+                                        name.includes("baskı") ||
+                                        cat.includes("baski") ||
+                                        name.includes("baski")
+                                      ) {
+                                        groupedProducts["Baskı"].push(p);
+                                      } else if (
+                                        cat.includes("ahşap") ||
+                                        name.includes("ahşap") ||
+                                        cat.includes("ahsap") ||
+                                        name.includes("ahsap") ||
+                                        cat.includes("album") ||
+                                        name.includes("album") ||
+                                        cat.includes("albüm") ||
+                                        name.includes("albüm") ||
+                                        cat.includes("okul") ||
+                                        name.includes("okul")
+                                      ) {
+                                        groupedProducts["Okul İşleri"].push(p);
                                       } else {
-                                        groupedProducts['Diğer'].push(p);
+                                        groupedProducts["Diğer"].push(p);
                                       }
                                     });
 
-                                    return Object.entries(groupedProducts).map(([category, items]) => {
-                                      if (items.length === 0) return null;
-                                      
-                                      items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+                                    return Object.entries(groupedProducts).map(
+                                      ([category, items]) => {
+                                        if (items.length === 0) return null;
 
-                                      return (
-                                        <div key={category}>
-                                          <div className="px-3 py-2 text-xs font-bold text-white/50 bg-[#111111] uppercase tracking-wider sticky top-0 z-10 border-b border-white/5">
-                                            {category}
-                                          </div>
-                                          {items.map((p: any) => (
-                                            <div
-                                              key={p.id}
-                                              onClick={() => {
-                                                updateLineItem(item.id, "productId", p.id);
-                                                setOpenDropdownId(null);
-                                              }}
-                                              className="p-2.5 text-sm cursor-pointer hover:bg-white/10 border-b border-white/5 last:border-0 transition-colors text-white flex items-center justify-between"
-                                            >
-                                              <div className="flex items-center">
-                                                <Check
-                                                  className={cn(
-                                                    "mr-2 h-4 w-4 text-[#A67C52]",
-                                                    item.productId === p.id ? "opacity-100" : "opacity-0",
-                                                  )}
-                                                />
-                                                {p.name}
-                                              </div>
-                                              <span className="text-white/50 text-xs">{getProductPrice(p, "5")} ₺</span>
+                                        items.sort((a, b) =>
+                                          a.name.localeCompare(b.name, undefined, {
+                                            numeric: true,
+                                            sensitivity: "base",
+                                          }),
+                                        );
+
+                                        return (
+                                          <div key={category}>
+                                            <div className="px-3 py-2 text-xs font-bold text-white/50 bg-[#111111] uppercase tracking-wider sticky top-0 z-10 border-b border-white/5">
+                                              {category}
                                             </div>
-                                          ))}
-                                        </div>
-                                      );
-                                    });
+                                            {items.map((p: any) => (
+                                              <div
+                                                key={p.id}
+                                                onClick={() => {
+                                                  updateLineItem(item.id, "productId", p.id);
+                                                  setOpenDropdownId(null);
+                                                }}
+                                                className="p-2.5 text-sm cursor-pointer hover:bg-white/10 border-b border-white/5 last:border-0 transition-colors text-white flex items-center justify-between"
+                                              >
+                                                <div className="flex items-center">
+                                                  <Check
+                                                    className={cn(
+                                                      "mr-2 h-4 w-4 text-[#A67C52]",
+                                                      item.productId === p.id
+                                                        ? "opacity-100"
+                                                        : "opacity-0",
+                                                    )}
+                                                  />
+                                                  {p.name}
+                                                </div>
+                                                <span className="text-white/50 text-xs">
+                                                  {getProductPrice(p, "5")} ₺
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        );
+                                      },
+                                    );
                                   })()}
                                 </div>
                               )}
@@ -2957,13 +3003,16 @@ function FirmsListView({
                           {(() => {
                             const p = products.find((prod: any) => prod.id === item.productId);
                             const category = p?.category?.toUpperCase() || "";
-                            const hasPages = p && category !== "CANVAS" && category !== "OKUL İŞLERİ";
+                            const hasPages =
+                              p && category !== "CANVAS" && category !== "OKUL İŞLERİ";
                             if (!hasPages) return null;
                             return (
                               <div className="w-20">
                                 <Select
                                   value={item.sayfa_sayisi || "5"}
-                                  onValueChange={(v) => updateLineItem(item.id, "sayfa_sayisi", v)}
+                                  onValueChange={(v: string) =>
+                                    updateLineItem(item.id, "sayfa_sayisi", v)
+                                  }
                                 >
                                   <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-11 px-2">
                                     <SelectValue placeholder="Sayfa" />
@@ -3028,18 +3077,21 @@ function FirmsListView({
                         step="0.01"
                         value={newTxAmount}
                         onChange={(e) => setNewTxAmount(e.target.value)}
-                        readOnly={newTxType === "debt"}
-                        className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`}
+                        readOnly={
+                          newTxType === "debt" && lineItems.some((item) => item.productId !== "")
+                        }
+                        className={`h-11 border-white/10 text-white rounded-xl flex-1 font-mono ${newTxType === "debt" && lineItems.some((item) => item.productId !== "") ? "bg-white/10 opacity-70 pointer-events-none" : "bg-white/5"}`}
                       />
                       <Select
                         value={newTxCurrency}
-                        onValueChange={(v: "TRY" | "EUR") => setNewTxCurrency(v)}
+                        onValueChange={(v: string) => setNewTxCurrency(v as "TRY" | "EUR" | "USD")}
                       >
                         <SelectTrigger className="w-20 h-11 bg-white/5 border-white/10 text-white rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-[#111111] border-white/10 text-white">
                           <SelectItem value="TRY">TRY</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
                           <SelectItem value="EUR">EUR</SelectItem>
                         </SelectContent>
                       </Select>
@@ -3899,12 +3951,16 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     setNewTxAmount(tx.amount.toString());
     setNewTxDesc(tx.desc);
     if (tx.date) {
-      const parts = tx.date.split(".");
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        setNewTxDate(`${year}-${month}-${day}`);
+      if (tx.date.includes("-")) {
+        setNewTxDate(tx.date.split("T")[0]);
       } else {
-        setNewTxDate(new Date().toISOString().split("T")[0]);
+        const parts = tx.date.split(".");
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          setNewTxDate(`${year}-${month}-${day}`);
+        } else {
+          setNewTxDate(new Date().toISOString().split("T")[0]);
+        }
       }
     }
     setIsAddTxOpen(true);
@@ -4777,7 +4833,14 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
   const filteredExpenses = expenses
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+    .sort((a, b) => {
+      if (a.sira != null && b.sira != null && a.sira !== b.sira) {
+        return a.sira - b.sira;
+      }
+      if (a.sira != null && b.sira == null) return -1;
+      if (a.sira == null && b.sira != null) return 1;
+      return a.name.localeCompare(b.name, "tr");
+    });
 
   return (
     <div className="space-y-8">
@@ -4841,7 +4904,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
 
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="expensesList">
-            {(provided) => (
+            {(provided: any) => (
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
@@ -4857,7 +4920,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
                     const remaining = getExpenseRemaining(f, exchangeRates);
                     return (
                       <Draggable key={f.id} draggableId={f.id.toString()} index={index}>
-                        {(provided, snapshot) => (
+                        {(provided: any) => (
                           <motion.div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -5357,7 +5420,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         })
         .eq("id", input.id);
 
-      const { error: delErr } = await supabaseClient.from("school_transactions").delete().eq("school_id", input.id);
+      const { error: delErr } = await supabaseClient
+        .from("school_transactions")
+        .delete()
+        .eq("school_id", input.id);
       if (delErr) throw delErr;
 
       if (input.taken_amount > 0) {
@@ -5495,8 +5561,14 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       data,
       summary: [
         { label: "Toplam Satış", value: `${taken.toLocaleString()} ₺` },
-        { label: "Katkı Payı", value: `${getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺` },
-        { label: "Net Borç", value: `${(taken - getSchoolContribution(selectedSchool, exchangeRates)).toLocaleString()} ₺` },
+        {
+          label: "Katkı Payı",
+          value: `${getSchoolContribution(selectedSchool, exchangeRates).toLocaleString()} ₺`,
+        },
+        {
+          label: "Net Borç",
+          value: `${(taken - getSchoolContribution(selectedSchool, exchangeRates)).toLocaleString()} ₺`,
+        },
         { label: "Ödenen", value: `${paid.toLocaleString()} ₺` },
         { label: "Kalan Ödeme", value: `${remaining.toLocaleString()} ₺` },
       ],
@@ -5779,9 +5851,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">
-                Toplam Satış (₺)
-              </Label>
+              <Label className="text-sm font-semibold text-gray-300">Toplam Satış (₺)</Label>
               <Input
                 type="number"
                 min="0"
@@ -5792,9 +5862,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">
-                Okul Katkı Payı (₺)
-              </Label>
+              <Label className="text-sm font-semibold text-gray-300">Okul Katkı Payı (₺)</Label>
               <Input
                 type="number"
                 min="0"
@@ -5870,9 +5938,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">
-                Toplam Satış (₺)
-              </Label>
+              <Label className="text-sm font-semibold text-gray-300">Toplam Satış (₺)</Label>
               <Input
                 type="number"
                 min="0"
@@ -5883,9 +5949,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">
-                Okul Katkı Payı (₺)
-              </Label>
+              <Label className="text-sm font-semibold text-gray-300">Okul Katkı Payı (₺)</Label>
               <Input
                 type="number"
                 step="any"
@@ -6146,7 +6210,9 @@ interface BaskiListViewProps {
 function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const { teamId } = useAuth();
   const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
-  const [baskiLineItems, setBaskiLineItems] = useState([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
+  const [baskiLineItems, setBaskiLineItems] = useState([
+    { id: Math.random().toString(), productId: "", quantity: 1 },
+  ]);
   const [baskiAciklama, setBaskiAciklama] = useState("");
   const [baskiPaidAmount, setBaskiPaidAmount] = useState("");
   const [baskiRemainingAmount, setBaskiRemainingAmount] = useState("");
@@ -6160,7 +6226,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
 
   const queryClient = useQueryClient();
 
-  const { data: productsForBaski = [] } = useQuery({
+  const { data: productsForBaski = [] } = useQuery<any[]>({
     queryKey: ["products_for_baski"],
     queryFn: async () => {
       const { data, error } = await supabaseClient
@@ -6168,42 +6234,49 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         .select("*")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  const { data: baskiTransactions = [] } = useQuery({
+  const { data: baskiTransactions = [] } = useQuery<any[]>({
     queryKey: ["baski_kayitlari", teamId],
     queryFn: async () => {
-      let q = supabaseClient
-        .from("baski_kayitlari")
-        .select("*");
+      const q = supabaseClient.from("baski_kayitlari").select("*");
 
       const { data, error } = await q;
-      console.log('FETCHED DATA:', data, 'FETCH ERROR:', error);
+      console.log("FETCHED DATA:", data, "FETCH ERROR:", error);
       if (error) throw error;
-      const mapped = (data || []).map((t) => {
+      const mapped = (data || []).map((t: any) => {
         let fallbackQty: number | string = "-";
         if (t.description) {
           const qtyMatch = String(t.description).match(/\((\d+)\s*Adet\)/i);
           if (qtyMatch) fallbackQty = parseFloat(qtyMatch[1]);
         }
-        
+
         const dbDate = t.created_at || t.tarih || t.date || new Date().toISOString();
+        const parsedTime = new Date(dbDate).getTime();
 
         return {
           id: t.id,
-          date: new Date(dbDate).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          date: !isNaN(parsedTime)
+            ? new Date(parsedTime).toLocaleString("tr-TR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-",
           product: "-",
           quantity: t.adet ?? fallbackQty,
           desc: t.aciklama || t.description || "-",
           amount: t.toplam_tutar ?? t.amount ?? 0,
           paidAmount: t.odenen_tutar ?? t.paid_amount ?? 0,
-          rawDate: new Date(dbDate).getTime(),
+          rawDate: !isNaN(parsedTime) ? parsedTime : 0,
         };
       });
 
-      return mapped.sort((a, b) => b.rawDate - a.rawDate);
+      return mapped.sort((a: any, b: any) => b.rawDate - a.rawDate);
     },
   });
 
@@ -6248,7 +6321,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         queryClient.invalidateQueries({ queryKey: ["finance_metrics"] }),
       ]);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Baskı gideri eklenirken hata oluştu: " + error.message);
     },
   });
@@ -6271,7 +6344,13 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   });
 
   const editBaskiExpenseMutation = useMutation({
-    mutationFn: async (input: { id: string; amount: number; paid: number; desc: string; date: string }) => {
+    mutationFn: async (input: {
+      id: string;
+      amount: number;
+      paid: number;
+      desc: string;
+      date: string;
+    }) => {
       const remaining = input.amount - input.paid;
       const { error } = await supabaseClient
         .from("baski_kayitlari")
@@ -6303,7 +6382,11 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
     setBaskiEditAmount(String(tx.amount));
     setBaskiEditPaid(String(tx.paidAmount));
     setBaskiEditDesc(tx.desc);
-    setBaskiEditDate(tx.rawDate ? new Date(tx.rawDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16));
+    setBaskiEditDate(
+      tx.rawDate && !isNaN(tx.rawDate)
+        ? new Date(tx.rawDate).toISOString().slice(0, 16)
+        : new Date().toISOString().slice(0, 16),
+    );
     setBaskiEditModalOpen(true);
   };
 
@@ -6491,9 +6574,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     <td className="px-4 py-4 text-right text-lg font-bold text-white">
                       {totalBaskiPaid.toLocaleString()} ₺
                     </td>
-                    <td
-                      className="px-4 py-4 text-right text-lg font-bold text-white"
-                    >
+                    <td className="px-4 py-4 text-right text-lg font-bold text-white">
                       {Math.abs(totalBaskiRemaining).toLocaleString()} ₺
                     </td>
                     <td className="px-4 py-4 rounded-br-xl"></td>
@@ -6553,14 +6634,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     <div className="flex-1 relative">
                       <Select
                         value={item.productId}
-                        onValueChange={(val) => {
+                        onValueChange={(val: string) => {
                           setBaskiLineItems((prev) =>
-                            prev.map((i) => (i.id === item.id ? { ...i, productId: val } : i))
+                            prev.map((i) => (i.id === item.id ? { ...i, productId: val } : i)),
                           );
                           const total = baskiLineItems.reduce((acc, it) => {
                             const pid = it.id === item.id ? val : it.productId;
                             const p = productsForBaski.find((prod: any) => prod.id === pid);
-                            return acc + (parseFloat(p?.base_price || "0") * it.quantity);
+                            return acc + parseFloat(p?.base_price || "0") * it.quantity;
                           }, 0);
                           const paid = parseFloat(baskiPaidAmount) || 0;
                           setBaskiRemainingAmount(Math.max(0, total - paid).toString());
@@ -6591,12 +6672,14 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         onChange={(e) => {
                           const qty = parseFloat(e.target.value) || 1;
                           setBaskiLineItems((prev) =>
-                            prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i))
+                            prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i)),
                           );
                           const total = baskiLineItems.reduce((acc, it) => {
                             const q = it.id === item.id ? qty : it.quantity;
-                            const p = productsForBaski.find((prod: any) => prod.id === it.productId);
-                            return acc + (parseFloat(p?.base_price || "0") * q);
+                            const p = productsForBaski.find(
+                              (prod: any) => prod.id === it.productId,
+                            );
+                            return acc + parseFloat(p?.base_price || "0") * q;
                           }, 0);
                           const paid = parseFloat(baskiPaidAmount) || 0;
                           setBaskiRemainingAmount(Math.max(0, total - paid).toString());
@@ -6610,10 +6693,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          setBaskiLineItems((prev) => prev.filter((i) => i.id !== item.id));
-                          setTimeout(() => {
-                            // Let state update trigger a recalculation (simplified for UI)
-                          }, 10);
+                          const nextItems = baskiLineItems.filter((i) => i.id !== item.id);
+                          setBaskiLineItems(nextItems);
+                          const total = nextItems.reduce((acc, it) => {
+                            const p = productsForBaski.find(
+                              (prod: any) => prod.id === it.productId,
+                            );
+                            return acc + parseFloat(p?.base_price || "0") * it.quantity;
+                          }, 0);
+                          const paid = parseFloat(baskiPaidAmount) || 0;
+                          setBaskiRemainingAmount(Math.max(0, total - paid).toString());
                         }}
                         className="h-10 w-10 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-md shrink-0"
                       >
@@ -6627,7 +6716,12 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setBaskiLineItems((prev) => [...prev, { id: Math.random().toString(), productId: "", quantity: 1 }])}
+                onClick={() =>
+                  setBaskiLineItems((prev) => [
+                    ...prev,
+                    { id: Math.random().toString(), productId: "", quantity: 1 },
+                  ])
+                }
                 className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-md h-9 mt-1 border-dashed"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
@@ -6654,7 +6748,7 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     setBaskiPaidAmount(e.target.value);
                     const total = baskiLineItems.reduce((acc, it) => {
                       const p = productsForBaski.find((prod: any) => prod.id === it.productId);
-                      return acc + (parseFloat(p?.base_price || "0") * it.quantity);
+                      return acc + parseFloat(p?.base_price || "0") * it.quantity;
                     }, 0);
                     const paid = parseFloat(e.target.value) || 0;
                     setBaskiRemainingAmount(Math.max(0, total - paid).toString());
@@ -6674,14 +6768,16 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 />
               </div>
             </div>
-            {baskiLineItems.some(item => item.productId) && (
+            {baskiLineItems.some((item) => item.productId) && (
               <div className="p-3 bg-[#D0A36D]/10 border border-[#D0A36D]/20 rounded-md mt-2 flex justify-between items-center">
                 <span className="text-sm text-gray-300">Toplam Gider:</span>
                 <span className="font-bold text-[#D0A36D] text-lg">
-                  {baskiLineItems.reduce((acc, it) => {
-                    const p = productsForBaski.find((prod: any) => prod.id === it.productId);
-                    return acc + (parseFloat(p?.base_price || "0") * it.quantity);
-                  }, 0).toLocaleString("tr-TR")}{" "}
+                  {baskiLineItems
+                    .reduce((acc, it) => {
+                      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
+                      return acc + parseFloat(p?.base_price || "0") * it.quantity;
+                    }, 0)
+                    .toLocaleString("tr-TR")}{" "}
                   ₺
                 </span>
               </div>
@@ -6690,21 +6786,22 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
           <DialogFooter>
             <Button
               disabled={
-                !baskiLineItems.some(i => i.productId) ||
-                addBaskiExpenseMutation.isPending
+                !baskiLineItems.some((i) => i.productId) || addBaskiExpenseMutation.isPending
               }
               onClick={() => {
-                const validItems = baskiLineItems.filter(item => item.productId && item.quantity > 0);
+                const validItems = baskiLineItems.filter(
+                  (item) => item.productId && item.quantity > 0,
+                );
                 if (validItems.length > 0) {
-                  const itemsToInsert = validItems.map(item => {
+                  const itemsToInsert = validItems.map((item) => {
                     const p = productsForBaski.find((prod: any) => prod.id === item.productId);
-                    const amount = (parseFloat(p?.base_price || "0")) * item.quantity;
+                    const amount = parseFloat(p?.base_price || "0") * item.quantity;
                     const desc = `${p?.name} (${item.quantity} Adet) - ${baskiAciklama.trim()}`;
                     return {
                       amount,
                       desc,
                       urun_id: item.productId,
-                      adet: item.quantity
+                      adet: item.quantity,
                     };
                   });
                   addBaskiExpenseMutation.mutate({

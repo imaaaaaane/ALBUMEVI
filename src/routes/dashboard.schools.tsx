@@ -15,15 +15,15 @@ import {
   UploadCloud,
   FileText,
   ChevronRight,
+  ChevronDown,
+  Search,
+  MapPin,
+  ArrowUpDown,
   StickyNote,
   Pencil,
 } from "lucide-react";
 import { uploadFileToR2, getR2FileUrl, getR2PublicUrl } from "../lib/r2";
-import {
-  fetchAllRows,
-  fetchAllRowsSafe,
-  parseSelectionTokens,
-} from "@/lib/supabase-fetch-all";
+import { fetchAllRows, fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
 import {
   Accordion,
   AccordionContent,
@@ -96,6 +96,108 @@ interface ClassOrdersModalState {
   packageName: string;
   className: string;
   orders: ClassOrderItem[];
+}
+
+type SectionSortOption = "orders_desc" | "orders_asc" | "alpha_asc" | "alpha_desc";
+
+interface SectionHeaderToolbarProps {
+  search: string;
+  onSearchChange: (val: string) => void;
+  cityFilter: string;
+  onCityFilterChange: (val: string) => void;
+  cities: string[];
+  sort: SectionSortOption;
+  onSortChange: (val: SectionSortOption) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (val: string) => void;
+}
+
+function SectionHeaderToolbar({
+  search,
+  onSearchChange,
+  cityFilter,
+  onCityFilterChange,
+  cities,
+  sort,
+  onSortChange,
+  statusFilter,
+  onStatusFilterChange,
+}: SectionHeaderToolbarProps) {
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="flex flex-wrap items-center gap-2.5 pt-3 border-t border-white/10"
+    >
+      <div className="relative flex-1 min-w-[200px]">
+        <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Input
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Okul ara..."
+          className="h-9 pl-9 pr-8 bg-[#131316] border-white/10 text-white text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] focus-visible:border-[#A67C52] placeholder:text-white/40"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      <Select value={cityFilter} onValueChange={onCityFilterChange}>
+        <SelectTrigger className="w-[160px] h-9 bg-[#131316] border-white/10 text-white text-xs rounded-xl focus:ring-1 focus:ring-[#A67C52]">
+          <div className="flex items-center gap-1.5 truncate">
+            <MapPin className="w-3.5 h-3.5 text-[#A67C52] shrink-0" />
+            <SelectValue placeholder="Tüm Şehirler" />
+          </div>
+        </SelectTrigger>
+        <SelectContent className="bg-[#131316] border-white/10 text-white">
+          <SelectItem value="all">Tüm Şehirler</SelectItem>
+          {cities.map((city) => (
+            <SelectItem key={city} value={city}>
+              {city}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {statusFilter !== undefined && onStatusFilterChange && (
+        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+          <SelectTrigger className="w-[130px] h-9 bg-[#131316] border-white/10 text-white text-xs rounded-xl focus:ring-1 focus:ring-[#A67C52]">
+            <SelectValue placeholder="Durum" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#131316] border-white/10 text-white">
+            <SelectItem value="all">Tümü</SelectItem>
+            <SelectItem value="Aktif" className="text-emerald-400">
+              Aktif
+            </SelectItem>
+            <SelectItem value="Pasif" className="text-red-400">
+              Pasif
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+
+      <Select value={sort} onValueChange={(v) => onSortChange(v as SectionSortOption)}>
+        <SelectTrigger className="w-[225px] h-9 bg-[#131316] border-white/10 text-white text-xs rounded-xl focus:ring-1 focus:ring-[#A67C52]">
+          <div className="flex items-center gap-1.5 truncate">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[#A67C52] shrink-0" />
+            <SelectValue placeholder="Sıralama" />
+          </div>
+        </SelectTrigger>
+        <SelectContent className="bg-[#131316] border-white/10 text-white">
+          <SelectItem value="orders_desc">Sipariş Sayısı (Çoktan Aza)</SelectItem>
+          <SelectItem value="orders_asc">Sipariş Sayısı (Azdan Çoğa)</SelectItem>
+          <SelectItem value="alpha_asc">Alfabetik (A-Z)</SelectItem>
+          <SelectItem value="alpha_desc">Alfabetik (Z-A)</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 function formatStudentImageCode(student: {
@@ -579,9 +681,7 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
               <Button
                 onClick={handleSubmit}
                 disabled={
-                  isBusy ||
-                  !newClassName.trim() ||
-                  (!isEditing && selectedFiles.length === 0)
+                  isBusy || !newClassName.trim() || (!isEditing && selectedFiles.length === 0)
                 }
                 className="flex-1 h-10 px-0 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl"
               >
@@ -815,7 +915,8 @@ function ManageSchools() {
           school_id: s?.school_id ? String(s.school_id) : "__orphan_school__",
           name: "Bilinmeyen Şube",
         };
-        const schoolId = classInfo.school_id || (s?.school_id ? String(s.school_id) : "__orphan_school__");
+        const schoolId =
+          classInfo.school_id || (s?.school_id ? String(s.school_id) : "__orphan_school__");
 
         const rawNote =
           typeof s.note === "string" && s.note.trim() !== ""
@@ -964,7 +1065,6 @@ function ManageSchools() {
     },
   });
 
-
   const { data: products = [] } = useQuery({
     queryKey: ["products", "schools"],
     queryFn: async () => {
@@ -982,7 +1082,9 @@ function ManageSchools() {
     return products.filter((p: any) => {
       const rawCategory = String(p?.category ?? "").trim();
       const normalizedCategory = rawCategory.toLocaleLowerCase("tr-TR");
-      const normalizedName = String(p?.name ?? "").trim().toLocaleLowerCase("tr-TR");
+      const normalizedName = String(p?.name ?? "")
+        .trim()
+        .toLocaleLowerCase("tr-TR");
 
       if (!normalizedName || normalizedName.includes("kargo")) {
         return false;
@@ -1236,18 +1338,77 @@ function ManageSchools() {
 
   const modalInputClasses =
     "bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] focus-visible:border-[#A67C52] transition-all placeholder:text-white/30";
+
+  // Independent state per section
+  const [isRecentOrdersOpen, setIsRecentOrdersOpen] = useState(true);
+  const [recentSearch, setRecentSearch] = useState("");
+  const [recentCityFilter, setRecentCityFilter] = useState("all");
+  const [recentSort, setRecentSort] = useState<SectionSortOption>("orders_desc");
+
+  const [isPrintCodesOpen, setIsPrintCodesOpen] = useState(true);
+  const [printSearch, setPrintSearch] = useState("");
+  const [printCityFilter, setPrintCityFilter] = useState("all");
+  const [printSort, setPrintSort] = useState<SectionSortOption>("orders_desc");
+
+  const [isAllSchoolsOpen, setIsAllSchoolsOpen] = useState(true);
+  const [schoolsSearch, setSchoolsSearch] = useState("");
+  const [schoolsCityFilter, setSchoolsCityFilter] = useState("all");
+  const [schoolsStatusFilter, setSchoolsStatusFilter] = useState("all");
+  const [schoolsSort, setSchoolsSort] = useState<SectionSortOption>("alpha_asc");
+
+  const schoolCityMap = useMemo(() => {
+    const map = new Map<string, string>();
+    schools.forEach((s: any) => {
+      if (s?.id != null) {
+        map.set(String(s.id), String(s.city || "").trim());
+      }
+    });
+    return map;
+  }, [schools]);
+
+  const uniqueCities = useMemo(() => {
+    const seen = new Map<string, string>();
+    schools.forEach((s: any) => {
+      const rawCity = String(s?.city || "").trim();
+      if (!rawCity) return;
+      const key = rawCity.toLocaleLowerCase("tr");
+      if (!seen.has(key)) {
+        seen.set(key, rawCity);
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "tr"));
+  }, [schools]);
+
+  const orderCountBySchoolId = useMemo(() => {
+    const map = new Map<string, number>();
+    orders.forEach((order: any) => {
+      const sid = String(order?.school_id || "");
+      if (!sid) return;
+      const qty = Number(order?.quantity) || 0;
+      map.set(sid, (map.get(sid) || 0) + qty);
+    });
+    return map;
+  }, [orders]);
+
   const groupedBySchool = useMemo(() => {
     return orders.reduce((acc: any, order: any) => {
       if (!acc[order.school_id]) {
-        acc[order.school_id] = { school_name: order.school_name, packages: [] };
+        acc[order.school_id] = {
+          school_id: order.school_id,
+          school_name: order.school_name,
+          city: schoolCityMap.get(String(order.school_id)) || "",
+          total_orders: 0,
+          packages: [],
+        };
       }
+      acc[order.school_id].total_orders += Number(order.quantity) || 0;
       acc[order.school_id].packages.push({
         ...order,
         class_breakdown: buildClassBreakdown(order.students || []),
       });
       return acc;
     }, {});
-  }, [orders]);
+  }, [orders, schoolCityMap]);
 
   const hierarchicalOrders = useMemo(() => {
     const schoolGroups = new Map();
@@ -1256,12 +1417,15 @@ function ManageSchools() {
         schoolGroups.set(order.school_id, {
           school_id: order.school_id,
           school_name: order.school_name,
+          city: schoolCityMap.get(String(order.school_id)) || "",
+          total_orders: 0,
           latest_date: order.created_at,
           packages: [],
         });
       }
 
       const school = schoolGroups.get(order.school_id);
+      school.total_orders += Number(order.quantity) || 0;
       const orderTs = new Date(order.created_at || 0).getTime() || 0;
       const latestTs = new Date(school.latest_date || 0).getTime() || 0;
       if (orderTs > latestTs) {
@@ -1274,12 +1438,114 @@ function ManageSchools() {
       });
     });
 
-    return Array.from(schoolGroups.values()).sort(
-      (a, b) =>
-        (new Date(b.latest_date || 0).getTime() || 0) -
-        (new Date(a.latest_date || 0).getTime() || 0),
+    return Array.from(schoolGroups.values());
+  }, [orders, schoolCityMap]);
+
+  const sortSchoolEntries = <T,>(
+    list: T[],
+    sortOption: SectionSortOption,
+    getName: (item: T) => string,
+    getOrderCount: (item: T) => number,
+  ): T[] => {
+    return [...list].sort((a, b) => {
+      const nameA = getName(a) || "";
+      const nameB = getName(b) || "";
+      const countA = getOrderCount(a);
+      const countB = getOrderCount(b);
+
+      if (sortOption === "orders_desc") {
+        return countB - countA || nameA.localeCompare(nameB, "tr");
+      }
+      if (sortOption === "orders_asc") {
+        return countA - countB || nameA.localeCompare(nameB, "tr");
+      }
+      if (sortOption === "alpha_desc") {
+        return nameB.localeCompare(nameA, "tr");
+      }
+      return nameA.localeCompare(nameB, "tr");
+    });
+  };
+
+  const filteredRecentOrders = useMemo(() => {
+    const q = recentSearch.trim().toLocaleLowerCase("tr");
+    const filtered = hierarchicalOrders.filter((school: any) => {
+      const nameMatch =
+        !q ||
+        String(school.school_name || "")
+          .toLocaleLowerCase("tr")
+          .includes(q);
+      const cityMatch =
+        recentCityFilter === "all" ||
+        String(school.city || "").toLocaleLowerCase("tr") ===
+          recentCityFilter.toLocaleLowerCase("tr");
+      return nameMatch && cityMatch;
+    });
+
+    return sortSchoolEntries(
+      filtered,
+      recentSort,
+      (s: any) => String(s.school_name || ""),
+      (s: any) => Number(s.total_orders) || 0,
     );
-  }, [orders]);
+  }, [hierarchicalOrders, recentSearch, recentCityFilter, recentSort]);
+
+  const filteredPrintCodeSchools = useMemo(() => {
+    const q = printSearch.trim().toLocaleLowerCase("tr");
+    const allPrintSchools = Object.values(groupedBySchool) as any[];
+    const filtered = allPrintSchools.filter((school: any) => {
+      const nameMatch =
+        !q ||
+        String(school.school_name || "")
+          .toLocaleLowerCase("tr")
+          .includes(q);
+      const cityMatch =
+        printCityFilter === "all" ||
+        String(school.city || "").toLocaleLowerCase("tr") ===
+          printCityFilter.toLocaleLowerCase("tr");
+      return nameMatch && cityMatch;
+    });
+
+    return sortSchoolEntries(
+      filtered,
+      printSort,
+      (s: any) => String(s.school_name || ""),
+      (s: any) => Number(s.total_orders) || 0,
+    );
+  }, [groupedBySchool, printSearch, printCityFilter, printSort]);
+
+  const filteredAllSchools = useMemo(() => {
+    const q = schoolsSearch.trim().toLocaleLowerCase("tr");
+    const filtered = schools.filter((s: any) => {
+      const nameMatch =
+        !q ||
+        String(s?.name || "")
+          .toLocaleLowerCase("tr")
+          .includes(q);
+      const cityMatch =
+        schoolsCityFilter === "all" ||
+        String(s?.city || "")
+          .trim()
+          .toLocaleLowerCase("tr") === schoolsCityFilter.toLocaleLowerCase("tr");
+      const normalizedStatus =
+        String(s?.status || "Aktif").toLowerCase() === "aktif" ? "Aktif" : "Pasif";
+      const statusMatch = schoolsStatusFilter === "all" || normalizedStatus === schoolsStatusFilter;
+      return nameMatch && cityMatch && statusMatch;
+    });
+
+    return sortSchoolEntries(
+      filtered,
+      schoolsSort,
+      (s: any) => String(s?.name || ""),
+      (s: any) => orderCountBySchoolId.get(String(s?.id || "")) || 0,
+    );
+  }, [
+    schools,
+    schoolsSearch,
+    schoolsCityFilter,
+    schoolsStatusFilter,
+    schoolsSort,
+    orderCountBySchoolId,
+  ]);
 
   return (
     <div className="space-y-6 text-white selection:bg-[#A67C52] selection:text-white pb-10">
@@ -1487,118 +1753,378 @@ function ManageSchools() {
         transition={{ delay: 0.3 }}
         className="overflow-hidden rounded-2xl border border-white/10 bg-[#131316] shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-white/5">
-          <div>
-            <h2 className="font-semibold text-lg text-white">Son Siparişler</h2>
-            <p className="text-xs text-white/50">Son gelen paket siparişleri.</p>
-          </div>
-          <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/30 px-3 py-1">
-            {orders.filter((o: any) => o.order_status === "Hazırlanıyor").length} Hazırlanıyor
-          </Badge>
-        </div>
-        <div className="p-2 md:p-4">
-          {hierarchicalOrders.length === 0 ? (
-            <div className="text-center text-white/40 py-8">
-              Sipariş bulunamadı.
+        <div
+          onClick={() => setIsRecentOrdersOpen((prev) => !prev)}
+          className={`px-6 py-5 bg-white/5 cursor-pointer select-none hover:bg-white/[0.07] transition-colors space-y-3 ${
+            isRecentOrdersOpen ? "border-b border-white/5" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="font-semibold text-lg text-white">Son Siparişler</h2>
+                <Badge className="border-white/10 bg-black/40 text-white/70 hover:bg-black/40 text-xs">
+                  {filteredRecentOrders.length} okul
+                </Badge>
+              </div>
+              <p className="text-xs text-white/50">Son gelen paket siparişleri.</p>
             </div>
-          ) : (
-            <Accordion type="multiple" className="space-y-4">
-              {hierarchicalOrders.map((school: any, idx: number) => (
-                <AccordionItem
-                  key={school.school_id}
-                  value={school.school_id}
-                  className="border border-white/10 bg-black/40 rounded-xl overflow-hidden"
-                >
-                  <AccordionTrigger className="px-6 py-4 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline">
-                    <div className="flex items-center gap-4 text-left">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 font-bold text-white/70 shrink-0">
-                        {idx + 1}
+            <div className="flex items-center gap-3">
+              <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/30 px-3 py-1">
+                {orders.filter((o: any) => o.order_status === "Hazırlanıyor").length} Hazırlanıyor
+              </Badge>
+              <button
+                type="button"
+                aria-label={isRecentOrdersOpen ? "Bölümü daralt" : "Bölümü genişlet"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRecentOrdersOpen((prev) => !prev);
+                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#131316] text-[#A67C52] hover:bg-[#A67C52]/15 hover:border-[#A67C52]/40 transition-colors cursor-pointer"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    isRecentOrdersOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {isRecentOrdersOpen && (
+            <SectionHeaderToolbar
+              search={recentSearch}
+              onSearchChange={setRecentSearch}
+              cityFilter={recentCityFilter}
+              onCityFilterChange={setRecentCityFilter}
+              cities={uniqueCities}
+              sort={recentSort}
+              onSortChange={setRecentSort}
+            />
+          )}
+        </div>
+
+        {isRecentOrdersOpen && (
+          <div className="p-2 md:p-4">
+            {hierarchicalOrders.length === 0 ? (
+              <div className="text-center text-white/40 py-8">Sipariş bulunamadı.</div>
+            ) : filteredRecentOrders.length === 0 ? (
+              <div className="text-center text-white/40 py-8">
+                Filtrelere uygun okul siparişi bulunamadı.
+              </div>
+            ) : (
+              <Accordion type="multiple" className="space-y-4">
+                {filteredRecentOrders.map((school: any, idx: number) => (
+                  <AccordionItem
+                    key={school.school_id}
+                    value={school.school_id}
+                    className="border border-white/10 bg-black/40 rounded-xl overflow-hidden"
+                  >
+                    <AccordionTrigger className="px-6 py-4 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-3 gap-4 text-left">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 font-bold text-white/70 shrink-0">
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold text-lg text-white">
+                                {school.school_name}
+                              </h3>
+                              {school.city && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/60 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                                  <MapPin className="w-3 h-3 text-[#A67C52]" />
+                                  {school.city}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/50">
+                              Son Sipariş: {new Date(school.latest_date).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-1 rounded-md shrink-0">
+                          {school.total_orders} sipariş
+                        </span>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-lg text-white">{school.school_name}</h3>
-                        <p className="text-xs text-white/50">
-                          Son Sipariş: {new Date(school.latest_date).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-6 pt-2">
-                    <Accordion type="multiple" className="space-y-3">
-                      {school.packages.map((pkg: any) => (
-                        <AccordionItem
-                          key={pkg.id}
-                          value={pkg.id}
-                          className="border border-white/5 bg-white/5 rounded-lg overflow-hidden"
-                        >
-                          <AccordionTrigger className="px-4 py-3 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline group">
-                            <div className="flex items-center justify-between w-full pr-4 text-left">
-                              <div>
-                                <h4 className="font-medium text-white">{pkg.package_name}</h4>
-                                <div className="text-xs text-white/50 flex items-center gap-2 mt-1">
-                                  <span>{pkg.quantity} adet</span>
-                                  <span>•</span>
-                                  <span className="text-[#A67C52]">{Number(pkg.total_price).toLocaleString()} ₺</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6 pt-2">
+                      <Accordion type="multiple" className="space-y-3">
+                        {school.packages.map((pkg: any) => (
+                          <AccordionItem
+                            key={pkg.id}
+                            value={pkg.id}
+                            className="border border-white/5 bg-white/5 rounded-lg overflow-hidden"
+                          >
+                            <AccordionTrigger className="px-4 py-3 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline group">
+                              <div className="flex items-center justify-between w-full pr-4 text-left">
+                                <div>
+                                  <h4 className="font-medium text-white">{pkg.package_name}</h4>
+                                  <div className="text-xs text-white/50 flex items-center gap-2 mt-1">
+                                    <span>{pkg.quantity} adet</span>
+                                    <span>•</span>
+                                    <span className="text-[#A67C52]">
+                                      {Number(pkg.total_price).toLocaleString()} ₺
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Badge
+                                    className={
+                                      pkg.order_status === "Hazırlandı"
+                                        ? "border-transparent bg-emerald-500/15 text-emerald-400"
+                                        : "border-transparent bg-[#A67C52]/20 text-[#A67C52]"
+                                    }
+                                  >
+                                    {pkg.order_status}
+                                  </Badge>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <Badge
-                                  className={
-                                    pkg.order_status === "Hazırlandı"
-                                      ? "border-transparent bg-emerald-500/15 text-emerald-400"
-                                      : "border-transparent bg-[#A67C52]/20 text-[#A67C52]"
-                                  }
-                                >
-                                  {pkg.order_status}
-                                </Badge>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 pb-4 pt-2">
+                              <div className="flex justify-end gap-2 mb-4">
+                                <div className="flex bg-black/40 border border-white/10 p-1 rounded-xl">
+                                  {["Bekliyor", "Üretimde", "Kargoya Hazır", "Teslim Edildi"].map(
+                                    (status) => (
+                                      <button
+                                        key={status}
+                                        disabled={updatePackageStatus.isPending}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          updatePackageStatus.mutate({
+                                            schoolId: pkg.school_id,
+                                            packageName: pkg.package_name,
+                                            newStatus: status,
+                                            directOrderId: pkg.direct_order_id,
+                                          });
+                                        }}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                                          pkg.order_status === status
+                                            ? "bg-[#A67C52] text-black shadow-md"
+                                            : "text-white/50 hover:text-white hover:bg-white/10"
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4 pt-2">
-                            <div className="flex justify-end gap-2 mb-4">
-                              <div className="flex bg-black/40 border border-white/10 p-1 rounded-xl">
-                                {["Bekliyor", "Üretimde", "Kargoya Hazır", "Teslim Edildi"].map(
-                                  (status) => (
+
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                                    Şube Dağılımı
+                                  </h5>
+                                  <span className="text-[11px] text-white/40">
+                                    Kod ve notları görmek için şubeye tıklayın
+                                  </span>
+                                </div>
+                                {pkg.class_breakdown.length === 0 ? (
+                                  <div className="text-sm text-white/40 italic">
+                                    Veri bulunamadı
+                                  </div>
+                                ) : (
+                                  pkg.class_breakdown.map((cb: ClassBreakdownItem, i: number) => (
                                     <button
-                                      key={status}
-                                      disabled={updatePackageStatus.isPending}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        updatePackageStatus.mutate({
-                                          schoolId: pkg.school_id,
+                                      key={i}
+                                      type="button"
+                                      onClick={() =>
+                                        openClassOrdersModal({
+                                          schoolName: school.school_name,
                                           packageName: pkg.package_name,
-                                          newStatus: status,
-                                          directOrderId: pkg.direct_order_id,
-                                        });
-                                      }}
-                                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                                        pkg.order_status === status
-                                          ? "bg-[#A67C52] text-black shadow-md"
-                                          : "text-white/50 hover:text-white hover:bg-white/10"
-                                      }`}
+                                          className: cb.class_name,
+                                          orders: cb.orders,
+                                        })
+                                      }
+                                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-black/30 hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
                                     >
-                                      {status}
+                                      <div className="flex items-center gap-2.5">
+                                        <span className="text-sm font-semibold text-white group-hover:text-[#A67C52] transition-colors">
+                                          {cb.class_name}
+                                        </span>
+                                        {cb.notes_count > 0 && (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 bg-amber-500/15 border border-amber-500/25 px-2 py-0.5 rounded-md">
+                                            <StickyNote className="w-3 h-3" />
+                                            {cb.notes_count} not
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-1 rounded-md">
+                                          {cb.count} sipariş
+                                        </span>
+                                        <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-[#A67C52] group-hover:translate-x-0.5 transition-all" />
+                                      </div>
                                     </button>
-                                  ),
+                                  ))
                                 )}
                               </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-                                  Şube Dağılımı
-                                </h5>
-                                <span className="text-[11px] text-white/40">
-                                  Kod ve notları görmek için şubeye tıklayın
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Baskı Dosyaları (Kod ve Not Referansı) */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="overflow-hidden rounded-2xl border border-white/10 bg-[#131316] shadow-xl"
+      >
+        <div
+          onClick={() => setIsPrintCodesOpen((prev) => !prev)}
+          className={`px-6 py-5 bg-white/5 cursor-pointer select-none hover:bg-white/[0.07] transition-colors space-y-3 ${
+            isPrintCodesOpen ? "border-b border-white/5" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="font-semibold text-lg text-white">Baskı Dosya Kodları</h2>
+                <Badge className="border-white/10 bg-black/40 text-white/70 hover:bg-black/40 text-xs">
+                  {filteredPrintCodeSchools.length} okul
+                </Badge>
+              </div>
+              <p className="text-xs text-white/50">
+                Şube satırlarına tıklayarak ham dosya kodlarını (RAW/JPG) ve sipariş notlarını
+                görüntüleyin.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#A67C52]/20 text-[#A67C52]">
+                <FileText className="h-4 w-4" />
+              </div>
+              <button
+                type="button"
+                aria-label={isPrintCodesOpen ? "Bölümü daralt" : "Bölümü genişlet"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPrintCodesOpen((prev) => !prev);
+                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#131316] text-[#A67C52] hover:bg-[#A67C52]/15 hover:border-[#A67C52]/40 transition-colors cursor-pointer"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    isPrintCodesOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {isPrintCodesOpen && (
+            <SectionHeaderToolbar
+              search={printSearch}
+              onSearchChange={setPrintSearch}
+              cityFilter={printCityFilter}
+              onCityFilterChange={setPrintCityFilter}
+              cities={uniqueCities}
+              sort={printSort}
+              onSortChange={setPrintSort}
+            />
+          )}
+        </div>
+
+        {isPrintCodesOpen && (
+          <div className="p-4">
+            {Object.keys(groupedBySchool).length === 0 ? (
+              <div className="text-center text-white/40 py-8">Henüz sipariş kodu bulunmuyor.</div>
+            ) : filteredPrintCodeSchools.length === 0 ? (
+              <div className="text-center text-white/40 py-8">
+                Filtrelere uygun okul bulunamadı.
+              </div>
+            ) : (
+              <Accordion type="multiple" className="space-y-4">
+                {filteredPrintCodeSchools.map((school: any) => (
+                  <AccordionItem
+                    key={school.packages[0].school_id}
+                    value={school.packages[0].school_id}
+                    className="border border-white/10 rounded-xl bg-white/5 overflow-hidden"
+                  >
+                    <AccordionTrigger className="px-6 py-4 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-3 gap-3 text-left">
+                        <div className="flex items-center gap-3">
+                          <SchoolIcon className="w-5 h-5 text-[#A67C52] shrink-0" />
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-white">{school.school_name}</span>
+                              {school.city && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/60 bg-black/30 border border-white/10 px-2 py-0.5 rounded-md">
+                                  <MapPin className="w-3 h-3 text-[#A67C52]" />
+                                  {school.city}
                                 </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-white/50 font-normal">
+                              {school.packages.length} farklı paket siparişi
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-1 rounded-md shrink-0">
+                          {school.total_orders} sipariş
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6 pt-2">
+                      <div className="grid gap-4 mt-3">
+                        {school.packages.map((pkg: any) => (
+                          <div
+                            key={pkg.id}
+                            className="p-4 rounded-xl border border-white/5 bg-black/25 space-y-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-[#A67C52]/10 flex items-center justify-center shrink-0">
+                                  <Package className="w-5 h-5 text-[#A67C52]" />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white">{pkg.package_name}</div>
+                                  <div className="text-xs text-white/50">
+                                    {pkg.quantity} sipariş
+                                  </div>
+                                </div>
                               </div>
-                              {pkg.class_breakdown.length === 0 ? (
-                                <div className="text-sm text-white/40 italic">Veri bulunamadı</div>
-                              ) : (
-                                pkg.class_breakdown.map((cb: ClassBreakdownItem, i: number) => (
+                              {pkg.students.length > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    openClassOrdersModal({
+                                      schoolName: school.school_name,
+                                      packageName: pkg.package_name,
+                                      className: "Tüm Şubeler",
+                                      orders: [...pkg.students].sort(
+                                        (a: ClassOrderItem, b: ClassOrderItem) =>
+                                          a.image_code.localeCompare(b.image_code, undefined, {
+                                            numeric: true,
+                                            sensitivity: "base",
+                                          }),
+                                      ),
+                                    })
+                                  }
+                                  className="h-8 bg-white/5 hover:bg-white/10 border-white/10 text-white text-xs cursor-pointer"
+                                >
+                                  <FileText className="w-3.5 h-3.5 mr-1.5 text-[#A67C52]" />
+                                  Tüm Paket Kodları
+                                </Button>
+                              )}
+                            </div>
+
+                            {pkg.class_breakdown && pkg.class_breakdown.length > 0 && (
+                              <div className="grid gap-1.5 pt-1">
+                                {pkg.class_breakdown.map((cb: ClassBreakdownItem, idx: number) => (
                                   <button
-                                    key={i}
+                                    key={idx}
                                     type="button"
                                     onClick={() =>
                                       openClassOrdersModal({
@@ -1608,10 +2134,10 @@ function ManageSchools() {
                                         orders: cb.orders,
                                       })
                                     }
-                                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-black/30 hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
+                                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
                                   >
                                     <div className="flex items-center gap-2.5">
-                                      <span className="text-sm font-semibold text-white group-hover:text-[#A67C52] transition-colors">
+                                      <span className="text-sm font-medium text-white group-hover:text-[#A67C52] transition-colors">
                                         {cb.class_name}
                                       </span>
                                       {cb.notes_count > 0 && (
@@ -1622,158 +2148,25 @@ function ManageSchools() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-1 rounded-md">
+                                      <span className="text-xs font-medium text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-0.5 rounded">
                                         {cb.count} sipariş
                                       </span>
                                       <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-[#A67C52] group-hover:translate-x-0.5 transition-all" />
                                     </div>
                                   </button>
-                                ))
-                              )}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Baskı Dosyaları (Kod ve Not Referansı) */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="overflow-hidden rounded-2xl border border-white/10 bg-[#131316] shadow-xl"
-      >
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-white/5">
-          <div>
-            <h2 className="font-semibold text-lg text-white">Baskı Dosya Kodları</h2>
-            <p className="text-xs text-white/50">
-              Şube satırlarına tıklayarak ham dosya kodlarını (RAW/JPG) ve sipariş notlarını görüntüleyin.
-            </p>
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#A67C52]/20 text-[#A67C52]">
-            <FileText className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="p-4">
-          {Object.keys(groupedBySchool).length === 0 ? (
-            <div className="text-center text-white/40 py-8">
-              Henüz sipariş kodu bulunmuyor.
-            </div>
-          ) : (
-            <Accordion type="multiple" className="space-y-4">
-              {Object.values(groupedBySchool).map((school: any) => (
-                <AccordionItem
-                  key={school.packages[0].school_id}
-                  value={school.packages[0].school_id}
-                  className="border border-white/10 rounded-xl bg-white/5 overflow-hidden"
-                >
-                  <AccordionTrigger className="px-6 py-4 hover:bg-white/5 transition-colors [&[data-state=open]]:bg-white/5 hover:no-underline">
-                    <div className="flex items-center gap-3 text-left">
-                      <SchoolIcon className="w-5 h-5 text-[#A67C52]" />
-                      <div>
-                        <div className="font-semibold text-white">{school.school_name}</div>
-                        <div className="text-xs text-white/50 font-normal">
-                          {school.packages.length} farklı paket siparişi
-                        </div>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-6 pt-2">
-                    <div className="grid gap-4 mt-3">
-                      {school.packages.map((pkg: any) => (
-                        <div
-                          key={pkg.id}
-                          className="p-4 rounded-xl border border-white/5 bg-black/25 space-y-3"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-[#A67C52]/10 flex items-center justify-center shrink-0">
-                                <Package className="w-5 h-5 text-[#A67C52]" />
+                                ))}
                               </div>
-                              <div>
-                                <div className="font-medium text-white">{pkg.package_name}</div>
-                                <div className="text-xs text-white/50">{pkg.quantity} sipariş</div>
-                              </div>
-                            </div>
-                            {pkg.students.length > 0 && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  openClassOrdersModal({
-                                    schoolName: school.school_name,
-                                    packageName: pkg.package_name,
-                                    className: "Tüm Şubeler",
-                                    orders: [...pkg.students].sort((a: ClassOrderItem, b: ClassOrderItem) =>
-                                      a.image_code.localeCompare(b.image_code, undefined, {
-                                        numeric: true,
-                                        sensitivity: "base",
-                                      }),
-                                    ),
-                                  })
-                                }
-                                className="h-8 bg-white/5 hover:bg-white/10 border-white/10 text-white text-xs cursor-pointer"
-                              >
-                                <FileText className="w-3.5 h-3.5 mr-1.5 text-[#A67C52]" />
-                                Tüm Paket Kodları
-                              </Button>
                             )}
                           </div>
-
-                          {pkg.class_breakdown && pkg.class_breakdown.length > 0 && (
-                            <div className="grid gap-1.5 pt-1">
-                              {pkg.class_breakdown.map((cb: ClassBreakdownItem, idx: number) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() =>
-                                    openClassOrdersModal({
-                                      schoolName: school.school_name,
-                                      packageName: pkg.package_name,
-                                      className: cb.class_name,
-                                      orders: cb.orders,
-                                    })
-                                  }
-                                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/10 border border-white/5 hover:border-[#A67C52]/40 transition-all cursor-pointer group text-left"
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="text-sm font-medium text-white group-hover:text-[#A67C52] transition-colors">
-                                      {cb.class_name}
-                                    </span>
-                                    {cb.notes_count > 0 && (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 bg-amber-500/15 border border-amber-500/25 px-2 py-0.5 rounded-md">
-                                        <StickyNote className="w-3 h-3" />
-                                        {cb.notes_count} not
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-[#A67C52] bg-[#A67C52]/10 px-2.5 py-0.5 rounded">
-                                      {cb.count} sipariş
-                                    </span>
-                                    <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-[#A67C52] group-hover:translate-x-0.5 transition-all" />
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Schools table */}
@@ -1783,97 +2176,157 @@ function ManageSchools() {
         transition={{ delay: 0.4 }}
         className="overflow-hidden rounded-2xl border border-white/10 bg-[#131316] shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-white/5">
-          <div>
-            <h2 className="font-semibold text-lg text-white">Tüm Okullar</h2>
-            <p className="text-xs text-white/50">Sisteme kayıtlı okulların portal linkleri.</p>
+        <div
+          onClick={() => setIsAllSchoolsOpen((prev) => !prev)}
+          className={`px-6 py-5 bg-white/5 cursor-pointer select-none hover:bg-white/[0.07] transition-colors space-y-3 ${
+            isAllSchoolsOpen ? "border-b border-white/5" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="font-semibold text-lg text-white">Tüm Okullar</h2>
+                <Badge className="border-white/10 bg-black/40 text-white/70 hover:bg-black/40 text-xs">
+                  {filteredAllSchools.length} okul
+                </Badge>
+              </div>
+              <p className="text-xs text-white/50">Sisteme kayıtlı okulların portal linkleri.</p>
+            </div>
+            <button
+              type="button"
+              aria-label={isAllSchoolsOpen ? "Bölümü daralt" : "Bölümü genişlet"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAllSchoolsOpen((prev) => !prev);
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#131316] text-[#A67C52] hover:bg-[#A67C52]/15 hover:border-[#A67C52]/40 transition-colors cursor-pointer"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  isAllSchoolsOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
           </div>
+
+          {isAllSchoolsOpen && (
+            <SectionHeaderToolbar
+              search={schoolsSearch}
+              onSearchChange={setSchoolsSearch}
+              cityFilter={schoolsCityFilter}
+              onCityFilterChange={setSchoolsCityFilter}
+              cities={uniqueCities}
+              sort={schoolsSort}
+              onSortChange={setSchoolsSort}
+              statusFilter={schoolsStatusFilter}
+              onStatusFilterChange={setSchoolsStatusFilter}
+            />
+          )}
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-white/5 hover:bg-transparent">
-              <TableHead className="text-white/50">Okul</TableHead>
-              <TableHead className="text-white/50">Şehir</TableHead>
-              <TableHead className="text-white/50">Kullanıcı Adı</TableHead>
-              <TableHead className="text-white/50">Link Oluştur</TableHead>
-              <TableHead className="text-white/50">Durum</TableHead>
-              <TableHead className="text-right text-white/50">İşlemler</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+
+        {isAllSchoolsOpen && (
+          <Table>
+            <TableHeader>
               <TableRow className="border-white/5 hover:bg-transparent">
-                <TableCell colSpan={6} className="text-center text-white/40 py-8">
-                  Yükleniyor...
-                </TableCell>
+                <TableHead className="text-white/50">Okul</TableHead>
+                <TableHead className="text-white/50">Şehir</TableHead>
+                <TableHead className="text-white/50">Kullanıcı Adı</TableHead>
+                <TableHead className="text-white/50">Link Oluştur</TableHead>
+                <TableHead className="text-white/50">Durum</TableHead>
+                <TableHead className="text-right text-white/50">İşlemler</TableHead>
               </TableRow>
-            ) : schools.length === 0 ? (
-              <TableRow className="border-white/5 hover:bg-transparent">
-                <TableCell colSpan={6} className="text-center text-white/40 py-8">
-                  Kayıtlı okul bulunamadı.
-                </TableCell>
-              </TableRow>
-            ) : (
-              schools.map((s: any) => {
-                const link = `${origin}/portal/${s.id}`;
-                return (
-                  <TableRow
-                    key={s.id}
-                    className="border-white/5 hover:bg-white/5 transition-colors"
-                  >
-                    <TableCell className="font-medium text-white">{s.name}</TableCell>
-                    <TableCell className="text-white/70">{s.city || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs text-[#A67C52] bg-[#A67C52]/10 px-2 py-1 rounded inline-block mt-2">
-                      {s.login_username}
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard?.writeText(link);
-                          toast.success("Bağlantı kopyalandı");
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs hover:border-[#A67C52]/60 hover:text-[#A67C52] transition-colors cursor-pointer text-white/70"
-                      >
-                        <Link2 className="h-3 w-3" />
-                        /portal/{s.id}
-                        <Copy className="h-3 w-3 text-white/40" />
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={String(s.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif"}
-                        onValueChange={(val) => {
-                          toggleActiveStatus.mutate({ id: s.id, status: val });
-                        }}
-                      >
-                        <SelectTrigger
-                          className={`w-[100px] h-8 text-xs border-transparent focus:ring-0 ${
-                            String(s.status).toLowerCase() === "aktif"
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : "bg-red-500/15 text-red-400"
-                          }`}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableCell colSpan={6} className="text-center text-white/40 py-8">
+                    Yükleniyor...
+                  </TableCell>
+                </TableRow>
+              ) : schools.length === 0 ? (
+                <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableCell colSpan={6} className="text-center text-white/40 py-8">
+                    Kayıtlı okul bulunamadı.
+                  </TableCell>
+                </TableRow>
+              ) : filteredAllSchools.length === 0 ? (
+                <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableCell colSpan={6} className="text-center text-white/40 py-8">
+                    Filtrelere uygun okul bulunamadı.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAllSchools.map((s: any) => {
+                  const link = `${origin}/portal/${s.id}`;
+                  const schoolOrderCount = orderCountBySchoolId.get(String(s.id)) || 0;
+                  return (
+                    <TableRow
+                      key={s.id}
+                      className="border-white/5 hover:bg-white/5 transition-colors"
+                    >
+                      <TableCell className="font-medium text-white">
+                        <div className="flex items-center gap-2">
+                          <span>{s.name}</span>
+                          {schoolOrderCount > 0 && (
+                            <span className="text-[11px] font-semibold text-[#A67C52] bg-[#A67C52]/10 px-2 py-0.5 rounded">
+                              {schoolOrderCount} sipariş
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-white/70">{s.city || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-[#A67C52] bg-[#A67C52]/10 px-2 py-1 rounded inline-block mt-2">
+                        {s.login_username}
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(link);
+                            toast.success("Bağlantı kopyalandı");
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs hover:border-[#A67C52]/60 hover:text-[#A67C52] transition-colors cursor-pointer text-white/70"
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Aktif" className="text-emerald-500">
-                            Aktif
-                          </SelectItem>
-                          <SelectItem value="Pasif" className="text-red-500">
-                            Pasif
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-2">
-                      <ManageClassesModal schoolSlug={s.id} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                          <Link2 className="h-3 w-3" />
+                          /portal/{s.id}
+                          <Copy className="h-3 w-3 text-white/40" />
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={String(s.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif"}
+                          onValueChange={(val) => {
+                            toggleActiveStatus.mutate({ id: s.id, status: val });
+                          }}
+                        >
+                          <SelectTrigger
+                            className={`w-[100px] h-8 text-xs border-transparent focus:ring-0 ${
+                              String(s.status).toLowerCase() === "aktif"
+                                ? "bg-emerald-500/15 text-emerald-400"
+                                : "bg-red-500/15 text-red-400"
+                            }`}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Aktif" className="text-emerald-500">
+                              Aktif
+                            </SelectItem>
+                            <SelectItem value="Pasif" className="text-red-500">
+                              Pasif
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right flex items-center justify-end gap-2">
+                        <ManageClassesModal schoolSlug={s.id} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        )}
       </motion.div>
 
       {/* Class Orders Codes & Notes Modal */}
@@ -1888,155 +2341,158 @@ function ManageSchools() {
         }}
       >
         <DialogContent className="bg-[#131316] border border-white/10 text-white max-w-2xl shadow-2xl p-0 overflow-hidden">
-          {selectedClassModal && (() => {
-            const notesCount = selectedClassModal.orders.filter(
-              (o) => Boolean(o.note && o.note.trim() !== ""),
-            ).length;
-            const selectedOrdersCount = selectedClassModal.orders.filter(
-              (o) => o.is_selected !== false,
-            ).length;
+          {selectedClassModal &&
+            (() => {
+              const notesCount = selectedClassModal.orders.filter((o) =>
+                Boolean(o.note && o.note.trim() !== ""),
+              ).length;
+              const selectedOrdersCount = selectedClassModal.orders.filter(
+                (o) => o.is_selected !== false,
+              ).length;
 
-            return (
-              <>
-                <div className="px-6 pt-6 pb-4 border-b border-white/10 bg-white/[0.03] space-y-4">
-                  <DialogHeader className="space-y-1 text-left">
-                    <div className="text-xs font-medium text-[#A67C52] uppercase tracking-wider">
-                      {selectedClassModal.schoolName} • {selectedClassModal.packageName}
-                    </div>
-                    <div className="flex items-center justify-between gap-3 pr-6">
-                      <DialogTitle className="text-xl font-bold text-white">
-                        {selectedClassModal.className} — Sipariş Kodları ve Notlar
-                      </DialogTitle>
-                      <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
-                        {selectedOrdersCount} sipariş
-                      </Badge>
-                    </div>
-                  </DialogHeader>
+              return (
+                <>
+                  <div className="px-6 pt-6 pb-4 border-b border-white/10 bg-white/[0.03] space-y-4">
+                    <DialogHeader className="space-y-1 text-left">
+                      <div className="text-xs font-medium text-[#A67C52] uppercase tracking-wider">
+                        {selectedClassModal.schoolName} • {selectedClassModal.packageName}
+                      </div>
+                      <div className="flex items-center justify-between gap-3 pr-6">
+                        <DialogTitle className="text-xl font-bold text-white">
+                          {selectedClassModal.className} — Sipariş Kodları ve Notlar
+                        </DialogTitle>
+                        <Badge className="border-transparent bg-[#A67C52]/20 text-[#A67C52] hover:bg-[#A67C52]/20 shrink-0">
+                          {selectedOrdersCount} sipariş
+                        </Badge>
+                      </div>
+                    </DialogHeader>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Button
-                      type="button"
-                      disabled={selectedClassModal.orders.length === 0}
-                      onClick={handleCopyAllCodes}
-                      className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
-                    >
-                      {copiedAllCodes ? (
-                        <Check className="w-4 h-4 mr-2" />
-                      ) : (
-                        <Copy className="w-4 h-4 mr-2" />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Button
+                        type="button"
+                        disabled={selectedClassModal.orders.length === 0}
+                        onClick={handleCopyAllCodes}
+                        className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-4 h-10 cursor-pointer shadow-lg shadow-[#A67C52]/20"
+                      >
+                        {copiedAllCodes ? (
+                          <Check className="w-4 h-4 mr-2" />
+                        ) : (
+                          <Copy className="w-4 h-4 mr-2" />
+                        )}
+                        {copiedAllCodes
+                          ? lang === "TR"
+                            ? "Tüm Kodlar Kopyalandı!"
+                            : "Copied All Codes!"
+                          : lang === "TR"
+                            ? "Tüm Kodları Kopyala"
+                            : "Copy All Codes"}
+                      </Button>
+
+                      {notesCount > 0 && (
+                        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-lg">
+                          <StickyNote className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{notesCount} notlu fotoğraf</span>
+                        </div>
                       )}
-                      {copiedAllCodes
-                        ? lang === "TR"
-                          ? "Tüm Kodlar Kopyalandı!"
-                          : "Copied All Codes!"
-                        : lang === "TR"
-                          ? "Tüm Kodları Kopyala"
-                          : "Copy All Codes"}
-                    </Button>
+                    </div>
+                  </div>
 
-                    {notesCount > 0 && (
-                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-lg">
-                        <StickyNote className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{notesCount} notlu fotoğraf</span>
+                  <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    {selectedClassModal.orders.length === 0 ? (
+                      <div className="text-center text-white/40 py-10 text-sm">
+                        Bu şube için sipariş kaydı bulunamadı.
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-white/10 bg-black/35 overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-white/[0.05]">
+                            <TableRow className="border-white/10 hover:bg-transparent">
+                              <TableHead className="w-12 text-white/50 text-xs font-semibold uppercase tracking-wider">
+                                #
+                              </TableHead>
+                              <TableHead className="w-[220px] text-white/50 text-xs font-semibold uppercase tracking-wider">
+                                Fotoğraf Kodu
+                              </TableHead>
+                              <TableHead className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                                Sipariş Notu
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedClassModal.orders.map((orderItem, idx) => {
+                              const hasNote = Boolean(
+                                orderItem.note && orderItem.note.trim() !== "",
+                              );
+                              const rowKey = `${orderItem.id}-${idx}`;
+                              return (
+                                <TableRow
+                                  key={rowKey}
+                                  className={
+                                    hasNote
+                                      ? "border-amber-500/20 bg-amber-500/[0.10] hover:bg-amber-500/[0.16] shadow-[inset_3px_0_0_0_#EAB308] transition-colors"
+                                      : "border-white/5 hover:bg-white/[0.04] transition-colors"
+                                  }
+                                >
+                                  <TableCell className="py-3 font-mono text-xs text-white/35 align-top">
+                                    {String(idx + 1).padStart(2, "0")}
+                                  </TableCell>
+
+                                  <TableCell className="py-3 align-top">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`font-mono text-sm select-all ${
+                                            hasNote
+                                              ? "font-bold text-amber-100"
+                                              : "font-semibold text-white/90"
+                                          }`}
+                                        >
+                                          {orderItem.image_code}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleCopySingleCode(rowKey, orderItem.image_code)
+                                          }
+                                          title="Kodu Kopyala"
+                                          className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                                        >
+                                          {copiedOrderId === rowKey ? (
+                                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="w-3.5 h-3.5" />
+                                          )}
+                                        </button>
+                                      </div>
+                                      {orderItem.is_selected === false && (
+                                        <span className="inline-block w-fit text-[10px] font-medium text-amber-200/80 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded">
+                                          Ürün seçilmedi • Not var
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+
+                                  <TableCell className="py-3 whitespace-normal align-top">
+                                    {hasNote ? (
+                                      <div className="flex items-start gap-2 text-sm font-medium text-amber-300 leading-relaxed break-words">
+                                        <StickyNote className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                        <span>{orderItem.note!.trim()}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-white/25 italic">Not yok</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="p-6 max-h-[60vh] overflow-y-auto">
-                  {selectedClassModal.orders.length === 0 ? (
-                    <div className="text-center text-white/40 py-10 text-sm">
-                      Bu şube için sipariş kaydı bulunamadı.
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-white/10 bg-black/35 overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-white/[0.05]">
-                          <TableRow className="border-white/10 hover:bg-transparent">
-                            <TableHead className="w-12 text-white/50 text-xs font-semibold uppercase tracking-wider">
-                              #
-                            </TableHead>
-                            <TableHead className="w-[220px] text-white/50 text-xs font-semibold uppercase tracking-wider">
-                              Fotoğraf Kodu
-                            </TableHead>
-                            <TableHead className="text-white/50 text-xs font-semibold uppercase tracking-wider">
-                              Sipariş Notu
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {selectedClassModal.orders.map((orderItem, idx) => {
-                            const hasNote = Boolean(orderItem.note && orderItem.note.trim() !== "");
-                            const rowKey = `${orderItem.id}-${idx}`;
-                            return (
-                              <TableRow
-                                key={rowKey}
-                                className={
-                                  hasNote
-                                    ? "border-amber-500/20 bg-amber-500/[0.10] hover:bg-amber-500/[0.16] shadow-[inset_3px_0_0_0_#EAB308] transition-colors"
-                                    : "border-white/5 hover:bg-white/[0.04] transition-colors"
-                                }
-                              >
-                                <TableCell className="py-3 font-mono text-xs text-white/35 align-top">
-                                  {String(idx + 1).padStart(2, "0")}
-                                </TableCell>
-
-                                <TableCell className="py-3 align-top">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={`font-mono text-sm select-all ${
-                                          hasNote
-                                            ? "font-bold text-amber-100"
-                                            : "font-semibold text-white/90"
-                                        }`}
-                                      >
-                                        {orderItem.image_code}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleCopySingleCode(rowKey, orderItem.image_code)
-                                        }
-                                        title="Kodu Kopyala"
-                                        className="p-1 rounded-md text-white/35 hover:text-[#A67C52] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                                      >
-                                        {copiedOrderId === rowKey ? (
-                                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                        ) : (
-                                          <Copy className="w-3.5 h-3.5" />
-                                        )}
-                                      </button>
-                                    </div>
-                                    {orderItem.is_selected === false && (
-                                      <span className="inline-block w-fit text-[10px] font-medium text-amber-200/80 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded">
-                                        Ürün seçilmedi • Not var
-                                      </span>
-                                    )}
-                                  </div>
-                                </TableCell>
-
-                                <TableCell className="py-3 whitespace-normal align-top">
-                                  {hasNote ? (
-                                    <div className="flex items-start gap-2 text-sm font-medium text-amber-300 leading-relaxed break-words">
-                                      <StickyNote className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                                      <span>{orderItem.note!.trim()}</span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-white/25 italic">Not yok</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              </>
-            );
-          })()}
+                </>
+              );
+            })()}
         </DialogContent>
       </Dialog>
 

@@ -53,8 +53,8 @@ type Rect = {
   h: number;
   x: number;
   y: number;
-  effW: number;
-  effH: number;
+  effW?: number;
+  effH?: number;
   name?: string;
 };
 type Plate = { w: number; h: number; shelves: { rects: Rect[] }[] };
@@ -70,19 +70,19 @@ type OptimizationResult = {
 };
 
 const packPiecesMaxRects = (
-  reqPieces: any[],
+  reqPieces: { w: number; h: number; name?: string }[],
   pw: number,
   ph: number,
   bicak: number,
   autoRotate: boolean,
-) => {
+): Plate[] => {
   let pieces = [...reqPieces].sort((a, b) => b.w * b.h - a.w * a.h);
-  const plates = [];
+  const plates: Plate[] = [];
 
   while (pieces.length > 0) {
     let freeRects = [{ x: 0, y: 0, w: pw, h: ph }];
-    const placedRects: any[] = [];
-    const unplaced = [];
+    const placedRects: Rect[] = [];
+    const unplaced: { w: number; h: number; name?: string }[] = [];
 
     for (let i = 0; i < pieces.length; i++) {
       const p = pieces[i];
@@ -206,14 +206,14 @@ function EbatlamaView() {
   });
 
   // Items Query
-  const { data: dbItems = [] } = useQuery({
+  const { data: dbItems = [], isFetched: isItemsFetched } = useQuery<CutItem[]>({
     queryKey: ["ebatlama_items"],
     queryFn: async () => {
       const { data, error } = await supabaseClient.from("ebatlama_items").select("*").order("sira");
       if (error && error.code !== "42P01") throw error; // Ignore undefined table error
       if (!data) return [];
 
-      const validData = data.filter((d) => {
+      const validData = data.filter((d: any) => {
         const bStr = String(d.boy || "").toLowerCase();
         const eStr = String(d.en || "").toLowerCase();
         // Only block literally corrupt string placeholders like "Boy" or "En", allow empty string WIPs
@@ -221,7 +221,7 @@ function EbatlamaView() {
         return true;
       });
 
-      return validData.map((d) => ({
+      return validData.map((d: any) => ({
         id: d.id,
         sira: d.sira,
         parcaAdi: d.parca_adi || "",
@@ -248,13 +248,14 @@ function EbatlamaView() {
       loadedPlateRef.current = "";
       return;
     }
+    if (!isItemsFetched) return;
     // Only sync from DB if we just switched to a new plate size
     if (loadedPlateRef.current !== plateSize) {
-      const filtered = dbItems.filter((i) => i.plaka_tipi === plateSize);
+      const filtered = dbItems.filter((i: CutItem) => i.plaka_tipi === plateSize);
       setItems(filtered);
       loadedPlateRef.current = plateSize;
     }
-  }, [dbItems, plateSize]);
+  }, [dbItems, plateSize, isItemsFetched]);
 
   useEffect(() => {
     if (settings) {
@@ -273,10 +274,6 @@ function EbatlamaView() {
   const upsertItemMutation = useMutation({
     mutationFn: async (item: CutItem) => {
       const { id, sira, parcaAdi, boy, en, adet } = item;
-
-      const b = parseFloat(boy);
-      const e = parseFloat(en);
-      const a = parseFloat(adet);
 
       // Allow partial saves so inputs survive refresh. Block only obvious garbage strings.
       if (String(boy).toLowerCase().includes("boy") || String(en).toLowerCase().includes("en")) {
@@ -299,9 +296,17 @@ function EbatlamaView() {
           .update(payload)
           .eq("id", id)
           .select()
-          .single();
+          .maybeSingle();
         if (error) throw error;
-        return data;
+        if (data) return data;
+
+        const { data: insertedData, error: insertError } = await supabaseClient
+          .from("ebatlama_items")
+          .insert({ id, ...payload })
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        return insertedData;
       } else {
         const { data, error } = await supabaseClient
           .from("ebatlama_items")
@@ -312,7 +317,7 @@ function EbatlamaView() {
         return { ...data, oldId: id }; // return oldId to update UI state
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       if (data) {
         queryClient.invalidateQueries({ queryKey: ["ebatlama_items"] });
         if (data.oldId) {
@@ -323,6 +328,9 @@ function EbatlamaView() {
         }
       }
     },
+    onError: (err: any) => {
+      toast.error(`Kaydedilirken hata oluştu: ${err.message}`);
+    },
   });
 
   const updateSiraMutation = useMutation({
@@ -331,7 +339,7 @@ function EbatlamaView() {
         supabaseClient.from("ebatlama_items").update({ sira: u.sira }).eq("id", u.id),
       );
       const results = await Promise.all(updatePromises);
-      const error = results.find((r) => r.error)?.error;
+      const error = results.find((r: any) => r.error)?.error;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -417,10 +425,12 @@ function EbatlamaView() {
   };
 
   const handleAddItem = () => {
-    const newItem = {
-      id:
-        crypto.randomUUID() ||
-        Date.now().toString() + "-" + Math.random().toString(36).substring(2, 9),
+    if (!plateSize) {
+      toast.error("Lütfen önce plaka ebatı seçiniz.");
+      return;
+    }
+    const newItem: CutItem = {
+      id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       sira: items.length + 1,
       parcaAdi: "",
       boy: "",
@@ -601,19 +611,19 @@ function EbatlamaView() {
         toJpeg(element, {
           quality: 1,
           backgroundColor: "#ffffff",
-          filter: (node) => {
+          filter: (node: HTMLElement) => {
             if (node.id === "3d-controls") return false;
             return true;
           },
         })
-          .then((dataUrl) => {
+          .then((dataUrl: string) => {
             const link = document.createElement("a");
             link.download = "kesim-semasi.jpg";
             link.href = dataUrl;
             link.click();
             toast.success("Sonuçlar başarıyla indirildi!");
           })
-          .catch((err) => {
+          .catch((err: unknown) => {
             console.error("Download error!", err);
             toast.error("İndirme sırasında bir hata oluştu.");
           })
@@ -679,7 +689,7 @@ function EbatlamaView() {
                 </label>
                 <Select
                   value={thickness}
-                  onValueChange={(v) => {
+                  onValueChange={(v: string) => {
                     setThickness(v);
                     const newPlateSizes = plateSizeMapping[v] || [];
                     const newSettings: any = { thickness: v };
@@ -707,7 +717,7 @@ function EbatlamaView() {
                 </label>
                 <Select
                   value={plateSize || undefined}
-                  onValueChange={(v) => {
+                  onValueChange={(v: string) => {
                     setPlateSize(v);
                     const defaultBicak = "0";
                     setBicakPayi(defaultBicak);
@@ -734,7 +744,7 @@ function EbatlamaView() {
                   type="number"
                   min="0"
                   value={bicakPayi}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setBicakPayi(e.target.value);
                     updateSettingsMutation.mutate({ bicak_payi: e.target.value });
                   }}
@@ -801,7 +811,7 @@ function EbatlamaView() {
                     </tr>
                   </thead>
                   <Droppable droppableId="ebatlamaList">
-                    {(provided) => (
+                    {(provided: any) => (
                       <tbody ref={provided.innerRef} {...provided.droppableProps}>
                         {plateSize
                           ? items.map((item, index) => {
@@ -811,7 +821,7 @@ function EbatlamaView() {
 
                               return (
                                 <Draggable key={item.id} draggableId={item.id} index={index}>
-                                  {(provided, snapshot) => (
+                                  {(provided: any, snapshot: any) => (
                                     <tr
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
@@ -829,7 +839,7 @@ function EbatlamaView() {
                                         <Input
                                           type="text"
                                           value={item.parcaAdi || ""}
-                                          onChange={(e) =>
+                                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             handleItemChange(item.id, "parcaAdi", e.target.value)
                                           }
                                           onBlur={() => handleItemBlur(item.id)}
@@ -843,7 +853,7 @@ function EbatlamaView() {
                                           step="any"
                                           min="0"
                                           value={item.boy}
-                                          onChange={(e) =>
+                                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             handleItemChange(item.id, "boy", e.target.value)
                                           }
                                           onBlur={() => handleItemBlur(item.id)}
@@ -867,7 +877,7 @@ function EbatlamaView() {
                                           type="number"
                                           min="0"
                                           value={item.en}
-                                          onChange={(e) =>
+                                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             handleItemChange(item.id, "en", e.target.value)
                                           }
                                           onBlur={() => handleItemBlur(item.id)}
@@ -880,7 +890,7 @@ function EbatlamaView() {
                                           type="number"
                                           min="1"
                                           value={item.adet}
-                                          onChange={(e) =>
+                                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             handleItemChange(item.id, "adet", e.target.value)
                                           }
                                           onBlur={() => handleItemBlur(item.id)}
