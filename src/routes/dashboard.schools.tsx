@@ -200,6 +200,32 @@ function SectionHeaderToolbar({
   );
 }
 
+function usePersistedSectionOpen(sectionKey: string, defaultOpen = false) {
+  const storageKey = `albumevi_schools_section_collapsed_${sectionKey}`;
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return defaultOpen;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "true") return false;
+      if (stored === "false") return true;
+    } catch {
+      // Ignore localStorage access errors
+    }
+    return defaultOpen;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(storageKey, String(!isOpen));
+    } catch {
+      // Ignore localStorage write errors
+    }
+  }, [storageKey, isOpen]);
+
+  return [isOpen, setIsOpen] as const;
+}
+
 function formatStudentImageCode(student: {
   image_code?: string | null;
   name?: string | null;
@@ -1339,18 +1365,18 @@ function ManageSchools() {
   const modalInputClasses =
     "bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] focus-visible:border-[#A67C52] transition-all placeholder:text-white/30";
 
-  // Independent state per section
-  const [isRecentOrdersOpen, setIsRecentOrdersOpen] = useState(true);
+  // Independent state per section (collapsed by default, persisted in localStorage)
+  const [isRecentOrdersOpen, setIsRecentOrdersOpen] = usePersistedSectionOpen("recent_orders");
   const [recentSearch, setRecentSearch] = useState("");
   const [recentCityFilter, setRecentCityFilter] = useState("all");
   const [recentSort, setRecentSort] = useState<SectionSortOption>("orders_desc");
 
-  const [isPrintCodesOpen, setIsPrintCodesOpen] = useState(true);
+  const [isPrintCodesOpen, setIsPrintCodesOpen] = usePersistedSectionOpen("print_codes");
   const [printSearch, setPrintSearch] = useState("");
   const [printCityFilter, setPrintCityFilter] = useState("all");
   const [printSort, setPrintSort] = useState<SectionSortOption>("orders_desc");
 
-  const [isAllSchoolsOpen, setIsAllSchoolsOpen] = useState(true);
+  const [isAllSchoolsOpen, setIsAllSchoolsOpen] = usePersistedSectionOpen("all_schools");
   const [schoolsSearch, setSchoolsSearch] = useState("");
   const [schoolsCityFilter, setSchoolsCityFilter] = useState("all");
   const [schoolsStatusFilter, setSchoolsStatusFilter] = useState("all");

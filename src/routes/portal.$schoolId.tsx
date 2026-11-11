@@ -930,8 +930,8 @@ function SchoolPortal() {
               className="max-w-lg w-full bg-[#131316] border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden"
             >
               <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#A67C52]/15 border border-[#A67C52]/30">
-                  <AlertTriangle className="h-7 w-7 text-[#A67C52]" />
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 border border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
+                  <AlertTriangle className="h-7 w-7 text-red-500" />
                 </div>
 
                 <h2
@@ -1195,7 +1195,7 @@ function SchoolPortal() {
                       ) : (
                         <>
                           <FolderDown className="w-3.5 h-3.5 mr-1.5" />
-                          Sınıf Fotoğraflarını İndir (VSK)
+                          e-Okul İçin İndir
                         </>
                       )}
                     </Button>
@@ -1299,7 +1299,7 @@ function SchoolPortal() {
                 ) : (
                   <>
                     <FolderDown className="w-4 h-4 mr-2" />
-                    Sınıf Fotoğraflarını İndir (VSK)
+                    e-Okul İçin İndir
                   </>
                 )}
               </Button>

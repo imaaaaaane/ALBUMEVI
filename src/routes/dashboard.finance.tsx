@@ -6210,9 +6210,9 @@ interface BaskiListViewProps {
 function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   const { teamId } = useAuth();
   const [isBaskiModalOpen, setBaskiModalOpen] = useState(false);
-  const [baskiLineItems, setBaskiLineItems] = useState([
-    { id: Math.random().toString(), productId: "", quantity: 1 },
-  ]);
+  const [baskiLineItems, setBaskiLineItems] = useState<
+    { id: string; productId: string; quantity: number | string }[]
+  >([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
   const [baskiAciklama, setBaskiAciklama] = useState("");
   const [baskiPaidAmount, setBaskiPaidAmount] = useState("");
   const [baskiRemainingAmount, setBaskiRemainingAmount] = useState("");
@@ -6288,14 +6288,15 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
       items: { amount: number; desc: string; urun_id: string; adet: number }[];
       paid: number;
     }) => {
-      let remainingPaid = paid;
-      const rowsToInsert = items.map((item) => {
-        const rowPaid = Math.min(item.amount, remainingPaid);
-        remainingPaid -= rowPaid;
+      let remainingPaid = Math.max(0, paid);
+      const rowsToInsert = items.map((item, idx) => {
+        const isLast = idx === items.length - 1;
+        const rowPaid = isLast ? remainingPaid : Math.min(item.amount, remainingPaid);
+        remainingPaid = Math.max(0, remainingPaid - rowPaid);
         return {
           toplam_tutar: item.amount,
           odenen_tutar: rowPaid,
-          kalan_tutar: item.amount - rowPaid,
+          kalan_tutar: Math.max(0, item.amount - rowPaid),
           urun_id: item.urun_id,
           adet: item.adet,
           aciklama: item.desc,
@@ -6408,6 +6409,33 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
   );
 
   const totalBaskiRemaining = genelToplam - totalBaskiPaid;
+
+  const baskiPrintProducts = productsForBaski
+    .filter((p: any) => {
+      const n = (p.name || "").toLowerCase();
+      const cat = (p.category || "").toLowerCase();
+      return (
+        n.includes("baskı") || n.includes("baski") || cat.includes("baskı") || cat.includes("baski")
+      );
+    })
+    .sort((a: any, b: any) =>
+      (a.name || "").localeCompare(b.name || "", "tr", {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+
+  const calculateBaskiTotal = (
+    items: { id: string; productId: string; quantity: number | string }[],
+  ) =>
+    items.reduce((acc, it) => {
+      if (!it.productId) return acc;
+      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
+      const qty = Math.max(0, Number(it.quantity) || 0);
+      return acc + (parseFloat(p?.base_price || "0") || 0) * qty;
+    }, 0);
+
+  const baskiModalTotal = calculateBaskiTotal(baskiLineItems);
 
   const handleExportBaskiPDF = () => {
     const columns = ["Tarih", "Açıklama", "Adet", "Tutar", "Ödenen", "Kalan"];
@@ -6620,29 +6648,37 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
         </div>
       </div>
 
-      <Dialog open={isBaskiModalOpen} onOpenChange={setBaskiModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-[#111111] text-white border-white/10">
+      <Dialog
+        open={isBaskiModalOpen}
+        onOpenChange={(open) => {
+          setBaskiModalOpen(open);
+          if (!open) {
+            setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
+            setBaskiAciklama("");
+            setBaskiPaidAmount("");
+            setBaskiRemainingAmount("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[480px] bg-[#131316] text-white border-white/10">
           <DialogHeader>
             <DialogTitle>Baskı Gideri Ekle</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <Label>Ürünler</Label>
-              <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[32vh] overflow-y-auto pr-1">
                 {baskiLineItems.map((item) => (
-                  <div key={item.id} className="flex gap-2 items-start">
-                    <div className="flex-1 relative">
+                  <div key={item.id} className="flex gap-2 items-center">
+                    <div className="flex-1 min-w-0">
                       <Select
                         value={item.productId}
                         onValueChange={(val: string) => {
-                          setBaskiLineItems((prev) =>
-                            prev.map((i) => (i.id === item.id ? { ...i, productId: val } : i)),
+                          const nextItems = baskiLineItems.map((i) =>
+                            i.id === item.id ? { ...i, productId: val } : i,
                           );
-                          const total = baskiLineItems.reduce((acc, it) => {
-                            const pid = it.id === item.id ? val : it.productId;
-                            const p = productsForBaski.find((prod: any) => prod.id === pid);
-                            return acc + parseFloat(p?.base_price || "0") * it.quantity;
-                          }, 0);
+                          setBaskiLineItems(nextItems);
+                          const total = calculateBaskiTotal(nextItems);
                           const paid = parseFloat(baskiPaidAmount) || 0;
                           setBaskiRemainingAmount(Math.max(0, total - paid).toString());
                         }}
@@ -6650,39 +6686,44 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         <SelectTrigger className="w-full bg-white/5 border-white/10 text-white rounded-md hover:bg-white/10 h-10">
                           <SelectValue placeholder="Ürün seçin..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-[#111111] border-white/10 text-white max-h-[300px]">
-                          {productsForBaski
-                            .filter((p: any) => {
-                              const n = (p.name || "").toLowerCase();
-                              return n.includes("baskı") || n.includes("baski");
-                            })
-                            .map((p: any) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name} ({p.base_price || 0} ₺)
-                              </SelectItem>
-                            ))}
+                        <SelectContent className="bg-[#131316] border-white/10 text-white max-h-[300px]">
+                          {baskiPrintProducts.map((p: any) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} ({p.base_price || 0} ₺)
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="w-20">
+                    <div className="w-20 shrink-0">
                       <Input
                         type="number"
                         min="1"
+                        placeholder="Adet"
                         value={item.quantity}
                         onChange={(e) => {
-                          const qty = parseFloat(e.target.value) || 1;
-                          setBaskiLineItems((prev) =>
-                            prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i)),
+                          const raw = e.target.value;
+                          const nextQty: number | string =
+                            raw === "" ? "" : Math.max(0, parseFloat(raw) || 0);
+                          const nextItems = baskiLineItems.map((i) =>
+                            i.id === item.id ? { ...i, quantity: nextQty } : i,
                           );
-                          const total = baskiLineItems.reduce((acc, it) => {
-                            const q = it.id === item.id ? qty : it.quantity;
-                            const p = productsForBaski.find(
-                              (prod: any) => prod.id === it.productId,
-                            );
-                            return acc + parseFloat(p?.base_price || "0") * q;
-                          }, 0);
+                          setBaskiLineItems(nextItems);
+                          const total = calculateBaskiTotal(nextItems);
                           const paid = parseFloat(baskiPaidAmount) || 0;
                           setBaskiRemainingAmount(Math.max(0, total - paid).toString());
+                        }}
+                        onBlur={() => {
+                          const normalizedQty = Math.max(1, Number(item.quantity) || 1);
+                          if (normalizedQty !== item.quantity) {
+                            const nextItems = baskiLineItems.map((i) =>
+                              i.id === item.id ? { ...i, quantity: normalizedQty } : i,
+                            );
+                            setBaskiLineItems(nextItems);
+                            const total = calculateBaskiTotal(nextItems);
+                            const paid = parseFloat(baskiPaidAmount) || 0;
+                            setBaskiRemainingAmount(Math.max(0, total - paid).toString());
+                          }
                         }}
                         className="bg-white/5 border-white/10 text-white text-center h-10 px-2"
                       />
@@ -6692,21 +6733,18 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                         type="button"
                         variant="ghost"
                         size="icon"
+                        aria-label="Ölçüyü kaldır"
+                        title="Ölçüyü kaldır"
                         onClick={() => {
                           const nextItems = baskiLineItems.filter((i) => i.id !== item.id);
                           setBaskiLineItems(nextItems);
-                          const total = nextItems.reduce((acc, it) => {
-                            const p = productsForBaski.find(
-                              (prod: any) => prod.id === it.productId,
-                            );
-                            return acc + parseFloat(p?.base_price || "0") * it.quantity;
-                          }, 0);
+                          const total = calculateBaskiTotal(nextItems);
                           const paid = parseFloat(baskiPaidAmount) || 0;
                           setBaskiRemainingAmount(Math.max(0, total - paid).toString());
                         }}
-                        className="h-10 w-10 text-[#EF4444] hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-md shrink-0"
+                        className="h-9 w-9 text-white/50 hover:bg-red-500/10 hover:text-red-400 rounded-md shrink-0"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <X className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
@@ -6722,9 +6760,9 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                     { id: Math.random().toString(), productId: "", quantity: 1 },
                   ])
                 }
-                className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-md h-9 mt-1 border-dashed"
+                className="w-fit px-3 h-8 bg-transparent border border-[#A67C52]/40 text-[#A67C52] hover:bg-[#A67C52]/10 hover:text-[#A67C52] hover:border-[#A67C52]/70 rounded-lg text-xs font-semibold transition-colors"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Yeni Ürün Ekle
+                + Ölçü Ekle
               </Button>
             </div>
             <div className="grid gap-2">
@@ -6746,12 +6784,8 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                   value={baskiPaidAmount}
                   onChange={(e) => {
                     setBaskiPaidAmount(e.target.value);
-                    const total = baskiLineItems.reduce((acc, it) => {
-                      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
-                      return acc + parseFloat(p?.base_price || "0") * it.quantity;
-                    }, 0);
                     const paid = parseFloat(e.target.value) || 0;
-                    setBaskiRemainingAmount(Math.max(0, total - paid).toString());
+                    setBaskiRemainingAmount(Math.max(0, baskiModalTotal - paid).toString());
                   }}
                   className="bg-white/5 border-white/10 text-white"
                 />
@@ -6768,40 +6802,37 @@ function BaskiListView({ exchangeRates, onBack }: BaskiListViewProps) {
                 />
               </div>
             </div>
-            {baskiLineItems.some((item) => item.productId) && (
-              <div className="p-3 bg-[#D0A36D]/10 border border-[#D0A36D]/20 rounded-md mt-2 flex justify-between items-center">
-                <span className="text-sm text-gray-300">Toplam Gider:</span>
-                <span className="font-bold text-[#D0A36D] text-lg">
-                  {baskiLineItems
-                    .reduce((acc, it) => {
-                      const p = productsForBaski.find((prod: any) => prod.id === it.productId);
-                      return acc + parseFloat(p?.base_price || "0") * it.quantity;
-                    }, 0)
-                    .toLocaleString("tr-TR")}{" "}
-                  ₺
-                </span>
-              </div>
-            )}
+            <div className="p-3 bg-[#A67C52]/10 border border-[#A67C52]/30 rounded-lg mt-1 flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-300">Toplam Tutar:</span>
+              <span className="font-bold font-mono text-[#A67C52] text-lg">
+                {baskiModalTotal.toLocaleString("tr-TR")} ₺
+              </span>
+            </div>
           </div>
           <DialogFooter>
             <Button
               disabled={
-                !baskiLineItems.some((i) => i.productId) || addBaskiExpenseMutation.isPending
+                !baskiLineItems.some((i) => i.productId && Number(i.quantity) > 0) ||
+                addBaskiExpenseMutation.isPending
               }
               onClick={() => {
                 const validItems = baskiLineItems.filter(
-                  (item) => item.productId && item.quantity > 0,
+                  (item) => item.productId && Number(item.quantity) > 0,
                 );
                 if (validItems.length > 0) {
+                  const cleanNote = baskiAciklama.trim();
                   const itemsToInsert = validItems.map((item) => {
                     const p = productsForBaski.find((prod: any) => prod.id === item.productId);
-                    const amount = parseFloat(p?.base_price || "0") * item.quantity;
-                    const desc = `${p?.name} (${item.quantity} Adet) - ${baskiAciklama.trim()}`;
+                    const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
+                    const amount = (parseFloat(p?.base_price || "0") || 0) * qty;
+                    const desc = cleanNote
+                      ? `${p?.name} (${qty} Adet) - ${cleanNote}`
+                      : `${p?.name} (${qty} Adet)`;
                     return {
                       amount,
                       desc,
                       urun_id: item.productId,
-                      adet: item.quantity,
+                      adet: qty,
                     };
                   });
                   addBaskiExpenseMutation.mutate({
