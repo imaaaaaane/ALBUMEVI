@@ -57,18 +57,43 @@ export async function fetchAllRowsSafe<T = any>(
  * (comma-separated UUIDs, JSON arrays, legacy "paket1"/"paket2" keys).
  */
 export function parseSelectionTokens(rawSelection: unknown): string[] {
+  const INVALID_TOKENS = new Set(["", "null", "undefined", "false", "none", "[]", "{}"]);
+
   if (!rawSelection) return [];
   if (Array.isArray(rawSelection)) {
-    return rawSelection.map((v) => String(v ?? "").trim()).filter(Boolean);
+    return rawSelection
+      .map((v) => String(v ?? "").trim())
+      .filter((v) => !INVALID_TOKENS.has(v.toLowerCase()));
+  }
+  if (typeof rawSelection === "object") {
+    return Object.entries(rawSelection as Record<string, unknown>)
+      .filter(([, val]) => Boolean(val))
+      .map(([k]) => k.trim())
+      .filter((v) => !INVALID_TOKENS.has(v.toLowerCase()));
   }
   if (typeof rawSelection === "string") {
     const trimmed = rawSelection.trim();
-    if (!trimmed || trimmed === "null" || trimmed === "[]") return [];
+    if (INVALID_TOKENS.has(trimmed.toLowerCase())) return [];
     if (trimmed.startsWith("[")) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
-          return parsed.map((v) => String(v ?? "").trim()).filter(Boolean);
+          return parsed
+            .map((v) => String(v ?? "").trim())
+            .filter((v) => !INVALID_TOKENS.has(v.toLowerCase()));
+        }
+      } catch {
+        // Fall through to comma-separated parsing
+      }
+    }
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return Object.entries(parsed as Record<string, unknown>)
+            .filter(([, val]) => Boolean(val))
+            .map(([k]) => k.trim())
+            .filter((v) => !INVALID_TOKENS.has(v.toLowerCase()));
         }
       } catch {
         // Fall through to comma-separated parsing
@@ -77,7 +102,7 @@ export function parseSelectionTokens(rawSelection: unknown): string[] {
     return trimmed
       .split(",")
       .map((v) => v.trim())
-      .filter(Boolean);
+      .filter((v) => !INVALID_TOKENS.has(v.toLowerCase()));
   }
   return [];
 }
@@ -198,8 +223,8 @@ export function resolveNoteForPackage(
     return plainNote;
   }
 
-  // Legacy plain-text note on a multi-package student: match package name if mentioned,
-  // otherwise scope strictly to the first selected package so it is never duplicated across packages.
+  // Legacy plain-text note on a multi-package student: match package name or distinct keywords
+  // if mentioned, otherwise scope strictly to the first selected package so it never duplicates.
   const normPlain = plainNote.toLocaleLowerCase("tr-TR");
   const packagesMentioned = allMatchedPackages.filter((pkg) => {
     const n = (pkg.name || "").trim().toLocaleLowerCase("tr-TR");
@@ -208,6 +233,19 @@ export function resolveNoteForPackage(
 
   if (packagesMentioned.length === 1) {
     return packagesMentioned[0].id === targetPackage.id ? plainNote : null;
+  }
+
+  const keywordMatched = allMatchedPackages.filter((pkg) => {
+    const keywords = (pkg.name || "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/[()[\]{},./\\-]+/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && w !== "paket");
+    return keywords.some((kw) => normPlain.includes(kw));
+  });
+
+  if (keywordMatched.length === 1) {
+    return keywordMatched[0].id === targetPackage.id ? plainNote : null;
   }
 
   return allMatchedPackages[0]?.id === targetPackage.id ? plainNote : null;
