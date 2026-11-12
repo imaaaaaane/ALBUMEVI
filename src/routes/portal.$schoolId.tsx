@@ -70,10 +70,15 @@ interface PortalProduct {
 
 interface SelectionData {
   packages: string[];
-  note: string;
+  notesByPackage: Record<string, string>;
 }
 
 import { getR2FileUrl, getR2PublicUrl, r2Client, R2_BUCKET_NAME } from "../lib/r2";
+import {
+  parsePackageNotes,
+  parseSelectionTokens,
+  serializePackageNotes,
+} from "@/lib/supabase-fetch-all";
 
 function formatStudentImageCode(student: {
   image_code?: string | null;
@@ -304,10 +309,25 @@ function SchoolPortal() {
           const parsed = JSON.parse(savedSelections);
           const migrated: Record<string, SelectionData> = {};
           for (const key in parsed) {
-            if (Array.isArray(parsed[key])) {
-              migrated[key] = { packages: parsed[key], note: "" };
-            } else {
-              migrated[key] = parsed[key];
+            const entry = parsed[key];
+            if (Array.isArray(entry)) {
+              migrated[key] = { packages: entry, notesByPackage: {} };
+            } else if (entry && typeof entry === "object") {
+              const packages = Array.isArray(entry.packages) ? entry.packages : [];
+              const notesByPackage: Record<string, string> = {
+                ...(entry.notesByPackage && typeof entry.notesByPackage === "object"
+                  ? entry.notesByPackage
+                  : {}),
+              };
+              if (
+                typeof entry.note === "string" &&
+                entry.note.trim() &&
+                Object.keys(notesByPackage).length === 0 &&
+                packages.length > 0
+              ) {
+                notesByPackage[packages[0]] = entry.note;
+              }
+              migrated[key] = { packages, notesByPackage };
             }
           }
           return migrated;
@@ -422,8 +442,9 @@ function SchoolPortal() {
 
         if (spError) throw spError;
 
+        let loadedProducts: PortalProduct[] = [];
         if (spData) {
-          const mappedProducts = spData
+          loadedProducts = spData
             .filter((sp: any) => sp.products)
             .map((sp: any) => ({
               id: sp.product_id,
@@ -431,7 +452,7 @@ function SchoolPortal() {
               price: Number(sp.custom_price) || 0,
               image_url: sp.products.image_url,
             }));
-          setSchoolProducts(mappedProducts);
+          setSchoolProducts(loadedProducts);
         }
 
         const { data: dbClasses, error } = await (supabase as any)
@@ -442,7 +463,6 @@ function SchoolPortal() {
 
         if (error) throw error;
 
-        let hasSelections = false;
         const initialSelections: Record<string, SelectionData> = {};
 
         if (dbClasses) {
@@ -451,16 +471,59 @@ function SchoolPortal() {
             className: c.name,
             studentCount: c.students?.length || 0,
             students: (c.students || []).map((s: any) => {
-              if (s.selection || s.note) {
-                hasSelections = true;
-                let parsedSelection: string[] = [];
-                try {
-                  parsedSelection = s.selection ? JSON.parse(s.selection) : [];
-                } catch {
-                  parsedSelection = s.selection ? s.selection.split(",").filter(Boolean) : [];
+              const rawTokens = parseSelectionTokens(s.selection);
+              const parsedSelection = rawTokens.map((tok) => {
+                if (
+                  loadedProducts.length > 0 &&
+                  !loadedProducts.some((p) => p.id === tok) &&
+                  (tok === "paket1" || tok === "paket2")
+                ) {
+                  if (tok === "paket1" && loadedProducts[0]) return loadedProducts[0].id;
+                  if (tok === "paket2" && loadedProducts[1]) return loadedProducts[1].id;
                 }
-                initialSelections[s.id] = { packages: parsedSelection, note: s.note || "" };
+                return tok;
+              });
+
+              const { byPackage, plainNote } = parsePackageNotes(s.note);
+              const notesByPackage: Record<string, string> = {};
+
+              if (Object.keys(byPackage).length > 0) {
+                parsedSelection.forEach((pkgId, idx) => {
+                  const rawTok = rawTokens[idx];
+                  const prod = loadedProducts.find((p) => p.id === pkgId);
+                  if (byPackage[pkgId]) {
+                    notesByPackage[pkgId] = byPackage[pkgId];
+                  } else if (rawTok && byPackage[rawTok]) {
+                    notesByPackage[pkgId] = byPackage[rawTok];
+                  } else if (prod?.name) {
+                    const normName = prod.name.trim().toLocaleLowerCase("tr-TR");
+                    for (const [k, v] of Object.entries(byPackage)) {
+                      if (k.trim().toLocaleLowerCase("tr-TR") === normName && v) {
+                        notesByPackage[pkgId] = v;
+                        break;
+                      }
+                    }
+                  }
+                });
+              } else if (plainNote && parsedSelection.length > 0) {
+                if (parsedSelection.length === 1) {
+                  notesByPackage[parsedSelection[0]] = plainNote;
+                } else {
+                  const normPlain = plainNote.toLocaleLowerCase("tr-TR");
+                  const mentioned = parsedSelection.filter((pkgId) => {
+                    const prod = loadedProducts.find((p) => p.id === pkgId);
+                    const n = (prod?.name || "").trim().toLocaleLowerCase("tr-TR");
+                    return n.length > 0 && normPlain.includes(n);
+                  });
+                  const targetPkgId = mentioned.length === 1 ? mentioned[0] : parsedSelection[0];
+                  notesByPackage[targetPkgId] = plainNote;
+                }
               }
+
+              if (parsedSelection.length > 0 || Object.keys(notesByPackage).length > 0) {
+                initialSelections[s.id] = { packages: parsedSelection, notesByPackage };
+              }
+
               return {
                 id: s.id,
                 name: s.name,
@@ -476,8 +539,13 @@ function SchoolPortal() {
           setSelections((prev) => {
             const merged = { ...initialSelections };
             for (const key in prev) {
-              if (prev[key] && (prev[key].packages.length > 0 || prev[key].note)) {
-                merged[key] = prev[key];
+              const entry = prev[key];
+              if (
+                entry &&
+                (entry.packages.length > 0 ||
+                  Object.values(entry.notesByPackage || {}).some((v) => Boolean(v?.trim())))
+              ) {
+                merged[key] = entry;
               }
             }
             return merged;
@@ -627,22 +695,43 @@ function SchoolPortal() {
 
   const handleStudentSelectionChange = (studentId: string, selection: string) => {
     setSelections((prev) => {
-      const current = prev[studentId] || { packages: [], note: "" };
+      const current = prev[studentId] || { packages: [], notesByPackage: {} };
       const currentPackages = current.packages;
 
       if (currentPackages.includes(selection)) {
         const updated = currentPackages.filter((id) => id !== selection);
-        return { ...prev, [studentId]: { ...current, packages: updated } };
+        const updatedNotes = { ...(current.notesByPackage || {}) };
+        delete updatedNotes[selection];
+        return {
+          ...prev,
+          [studentId]: { ...current, packages: updated, notesByPackage: updatedNotes },
+        };
       } else {
-        return { ...prev, [studentId]: { ...current, packages: [...currentPackages, selection] } };
+        return {
+          ...prev,
+          [studentId]: {
+            ...current,
+            packages: [...currentPackages, selection],
+            notesByPackage: { ...(current.notesByPackage || {}) },
+          },
+        };
       }
     });
   };
 
-  const handleStudentNoteChange = (studentId: string, note: string) => {
+  const handleStudentPackageNoteChange = (studentId: string, productId: string, note: string) => {
     setSelections((prev) => {
-      const current = prev[studentId] || { packages: [], note: "" };
-      return { ...prev, [studentId]: { ...current, note } };
+      const current = prev[studentId] || { packages: [], notesByPackage: {} };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          notesByPackage: {
+            ...(current.notesByPackage || {}),
+            [productId]: note,
+          },
+        },
+      };
     });
   };
 
@@ -652,9 +741,9 @@ function SchoolPortal() {
     // Update Supabase
     try {
       const updates = selectedClass.students.map(async (s) => {
-        const selectionData = selections[s.id] || { packages: [], note: "" };
+        const selectionData = selections[s.id] || { packages: [], notesByPackage: {} };
         const selectionArr = selectionData.packages;
-        const noteStr = selectionData.note;
+        const noteStr = serializePackageNotes(selectionArr, selectionData.notesByPackage || {});
         const { error } = await (supabase as any)
           .from("students")
           .update({ selection: selectionArr.join(","), note: noteStr })
@@ -1347,49 +1436,52 @@ function SchoolPortal() {
                         const checkColor = idx % 2 === 0 ? "text-white" : "text-black";
 
                         return (
-                          <label
-                            key={prod.id}
-                            className={`flex items-center relative overflow-hidden min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}
-                          >
-                            <input
-                              type="checkbox"
-                              name={`package_${s.id}_${prod.id}`}
-                              value={prod.id}
-                              className="hidden"
-                              checked={isSelected || false}
-                              onChange={() => handleStudentSelectionChange(s.id, prod.id)}
-                            />
-                            <div
-                              className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 relative z-10 ${checkBgClass}`}
+                          <div key={prod.id} className="space-y-2">
+                            <label
+                              className={`flex items-center relative overflow-hidden min-h-[44px] p-3 rounded-xl cursor-pointer border transition-colors ${bgClass}`}
                             >
-                              {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
-                            </div>
-                            {prod.image_url && (
-                              <img
-                                src={getR2PublicUrl(prod.image_url)}
-                                alt={prod.name}
-                                className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0 relative z-10"
+                              <input
+                                type="checkbox"
+                                name={`package_${s.id}_${prod.id}`}
+                                value={prod.id}
+                                className="hidden"
+                                checked={isSelected || false}
+                                onChange={() => handleStudentSelectionChange(s.id, prod.id)}
+                              />
+                              <div
+                                className={`w-5 h-5 rounded-md border-2 mr-3 flex items-center justify-center flex-shrink-0 relative z-10 ${checkBgClass}`}
+                              >
+                                {isSelected && <CheckCircle2 className={`w-4 h-4 ${checkColor}`} />}
+                              </div>
+                              {prod.image_url && (
+                                <img
+                                  src={getR2PublicUrl(prod.image_url)}
+                                  alt={prod.name}
+                                  className="w-8 h-8 rounded-md object-cover mr-3 flex-shrink-0 relative z-10"
+                                />
+                              )}
+                              <span className="font-medium text-sm flex-1 relative z-10">
+                                {prod.name}
+                              </span>
+                              <span className="font-bold text-sm ml-2 bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap relative z-10">
+                                {prod.price} ₺
+                              </span>
+                            </label>
+                            {isSelected && (
+                              <input
+                                type="text"
+                                placeholder={`${prod.name} için sipariş notu...`}
+                                className="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/35 text-xs rounded-xl px-3.5 py-2 outline-none focus:border-[#A67C52] focus:ring-1 focus:ring-[#A67C52] transition-all"
+                                value={selections[s.id]?.notesByPackage?.[prod.id] ?? ""}
+                                onChange={(e) =>
+                                  handleStudentPackageNoteChange(s.id, prod.id, e.target.value)
+                                }
                               />
                             )}
-                            <span className="font-medium text-sm flex-1 relative z-10">
-                              {prod.name}
-                            </span>
-                            <span className="font-bold text-sm ml-2 bg-black/20 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap relative z-10">
-                              {prod.price} ₺
-                            </span>
-                          </label>
+                          </div>
                         );
                       })
                     )}
-                  </div>
-                  <div className="mt-4 border-t border-white/10 pt-4">
-                    <input
-                      type="text"
-                      placeholder="Öğrenci için not ekle..."
-                      className="mt-3 w-full bg-white/5 border border-white/10 text-white placeholder:text-white/30 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-[#A67C52] focus:ring-1 focus:ring-[#A67C52] transition-all"
-                      defaultValue={selections[s.id]?.note || ""}
-                      onBlur={(e) => handleStudentNoteChange(s.id, e.target.value)}
-                    />
                   </div>
                 </div>
               ))}

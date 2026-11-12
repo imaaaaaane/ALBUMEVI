@@ -23,7 +23,12 @@ import {
   Pencil,
 } from "lucide-react";
 import { uploadFileToR2, getR2FileUrl, getR2PublicUrl } from "../lib/r2";
-import { fetchAllRows, fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
+import {
+  fetchAllRows,
+  fetchAllRowsSafe,
+  parseSelectionTokens,
+  resolveNoteForPackage,
+} from "@/lib/supabase-fetch-all";
 import {
   Accordion,
   AccordionContent,
@@ -893,10 +898,6 @@ function ManageSchools() {
 
       // 2. Aggregate data in JavaScript without dropping orphaned classes, schools, or products
       const grouped: Record<string, any> = {};
-      const notedStudentsBySchool = new Map<
-        string,
-        Array<{ item: ClassOrderItem; created_at: string }>
-      >();
 
       const resolveSchoolDisplayName = (schoolId: string) => {
         if (schoolMap.has(schoolId)) return schoolMap.get(schoolId)!;
@@ -945,15 +946,20 @@ function ManageSchools() {
           classInfo.school_id || (s?.school_id ? String(s.school_id) : "__orphan_school__");
 
         const rawNote =
-          typeof s.note === "string" && s.note.trim() !== ""
-            ? s.note.trim()
-            : typeof s.notes === "string" && s.notes.trim() !== ""
-              ? s.notes.trim()
+          s?.note != null && String(s.note).trim() !== ""
+            ? s.note
+            : s?.notes != null && String(s.notes).trim() !== ""
+              ? s.notes
               : null;
 
         const parsedSelection = parseSelectionTokens(s?.selection);
         const spMapping = schoolProductsMap.get(schoolId);
-        const matchedProducts: Array<{ id: string; name: string; price: number }> = [];
+        const matchedProducts: Array<{
+          id: string;
+          name: string;
+          price: number;
+          rawToken?: string;
+        }> = [];
 
         if (parsedSelection.length > 0) {
           parsedSelection.forEach((selectedProductId: string) => {
@@ -986,67 +992,39 @@ function ManageSchools() {
               };
             }
 
-            matchedProducts.push(selectedProduct);
+            matchedProducts.push({
+              ...selectedProduct,
+              rawToken: selectedProductId,
+            });
           });
         }
 
-        // Skip students who have neither a selected product nor a note
-        if (matchedProducts.length === 0 && !rawNote) {
+        // Only include students in the specific package(s) they actually selected
+        if (matchedProducts.length === 0) {
           return;
         }
 
-        const baseItem: ClassOrderItem = {
+        const baseItem: Omit<ClassOrderItem, "note"> = {
           id: String(s.id),
           name: s.name || "Öğrenci",
           image_code: formatStudentImageCode(s),
           image_url: s.image_url || "",
           class_name: classInfo.name || "Bilinmeyen Şube",
-          note: rawNote,
           is_selected: true,
         };
 
         matchedProducts.forEach((selectedProduct) => {
           const grp = ensureGroup(schoolId, selectedProduct, s.created_at);
           if (!grp.studentMap.has(String(s.id))) {
+            const scopedNote = resolveNoteForPackage(rawNote, selectedProduct, matchedProducts);
             grp.quantity += 1;
             grp.total_price += selectedProduct.price || 0;
-            grp.studentMap.set(String(s.id), { ...baseItem, is_selected: true });
+            grp.studentMap.set(String(s.id), {
+              ...baseItem,
+              note: scopedNote,
+              is_selected: true,
+            });
           }
-        });
-
-        if (rawNote) {
-          if (!notedStudentsBySchool.has(schoolId)) {
-            notedStudentsBySchool.set(schoolId, []);
-          }
-          notedStudentsBySchool.get(schoolId)!.push({
-            item: { ...baseItem, is_selected: false },
-            created_at: s.created_at,
-          });
-        }
-      });
-
-      // Attach any student with a note (including students with NO selected product) to the school's modal lists
-      notedStudentsBySchool.forEach((notedEntries, schoolId) => {
-        let schoolGroups = Object.values(grouped).filter((g: any) => g.school_id === schoolId);
-
-        if (schoolGroups.length === 0) {
-          const spMapping = schoolProductsMap.get(schoolId);
-          const firstProduct = spMapping ? Array.from(spMapping.values())[0] : null;
-          const fallbackProduct = firstProduct || {
-            id: "notes_only",
-            name: "Öğrenci Notları",
-            price: 0,
-          };
-          const grp = ensureGroup(schoolId, fallbackProduct, notedEntries[0].created_at);
-          schoolGroups = [grp];
-        }
-
-        schoolGroups.forEach((grp: any) => {
-          notedEntries.forEach(({ item }) => {
-            if (!grp.studentMap.has(item.id)) {
-              grp.studentMap.set(item.id, item);
-            }
-          });
         });
       });
 
