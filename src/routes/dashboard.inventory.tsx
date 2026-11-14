@@ -19,7 +19,18 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ImagePlus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Package, DollarSign, Clock, Trash2, Pencil } from "lucide-react";
+import {
+  Plus,
+  Package,
+  DollarSign,
+  Clock,
+  Trash2,
+  Pencil,
+  BookOpen,
+  Printer,
+  Frame,
+  Layers,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +58,31 @@ import { motion } from "framer-motion";
 export const Route = createFileRoute("/dashboard/inventory")({
   component: Inventory,
 });
+
+type InventoryCategory = "Panoramik" | "Baskı" | "Canvas" | "Diğer";
+
+function getProductMainCategory(p: any): InventoryCategory {
+  const rawCat = String(p?.category ?? "")
+    .trim()
+    .toLocaleLowerCase("tr-TR");
+  const rawName = String(p?.name ?? p?.item_name ?? "")
+    .trim()
+    .toLocaleLowerCase("tr-TR");
+
+  // 1. Direct category match
+  if (rawCat === "panoramik") return "Panoramik";
+  if (rawCat === "baskı" || rawCat === "baski") return "Baskı";
+  if (rawCat === "canvas" || rawCat === "kanvas") return "Canvas";
+  if (rawCat === "diğer" || rawCat === "diger") return "Diğer";
+
+  // 2. Keyword check in name (e.g. Panoramik (25x40), 10x15 (baskı), 50x50 (kanvas), Kargo)
+  if (rawName.includes("panoramik")) return "Panoramik";
+  if (rawName.includes("baskı") || rawName.includes("baski")) return "Baskı";
+  if (rawName.includes("canvas") || rawName.includes("kanvas")) return "Canvas";
+
+  // 3. Fallback for all other items (Okul İşleri albums, frames, kumbaras, Kargo, misc) -> Diğer
+  return "Diğer";
+}
 
 function StatCard({
   label,
@@ -90,7 +126,6 @@ function SortableProductCard({
     id: p.id,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
-
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -176,26 +211,50 @@ function SortableProductCard({
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
           {(() => {
-            const c = p?.category;
-            const n = p?.name || '';
-            return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
-          })() ? (
-            <>
-              <div className="flex justify-between">
-                <span>5 Sayfa:</span>
-                <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["5"] ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺` : '-'}</span>
+            const isPanoramik = getProductMainCategory(p) === "Panoramik";
+            const hasSayfaFiyatlari = Boolean(
+              (p.sayfa_fiyatlari?.["5"] && Number(p.sayfa_fiyatlari["5"]) > 0) ||
+              (p.sayfa_fiyatlari?.["10"] && Number(p.sayfa_fiyatlari["10"]) > 0),
+            );
+            if (isPanoramik && hasSayfaFiyatlari) {
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span>5 Sayfa:</span>
+                    <span className="text-[#A67C52] font-semibold">
+                      {p.sayfa_fiyatlari?.["5"]
+                        ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺`
+                        : "-"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>10 Sayfa:</span>
+                    <span className="text-[#A67C52] font-semibold">
+                      {p.sayfa_fiyatlari?.["10"]
+                        ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺`
+                        : "-"}
+                    </span>
+                  </div>
+                  {Number(p.base_price) > 0 && (
+                    <div className="flex justify-between border-t border-white/5 pt-1 mt-0.5">
+                      <span>Baz Fiyat:</span>
+                      <span className="text-[#A67C52] font-semibold">
+                        {`${Number(p.base_price).toLocaleString()} ₺`}
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            }
+            return (
+              <div className="flex justify-between mt-auto">
+                <span>Varsayılan Fiyat:</span>
+                <span className="text-[#A67C52] font-semibold">
+                  {p.base_price ? `${Number(p.base_price).toLocaleString()} ₺` : "0 ₺"}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span>10 Sayfa:</span>
-                <span className="text-[#A67C52] font-semibold">{p.sayfa_fiyatlari?.["10"] ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺` : '-'}</span>
-              </div>
-            </>
-          ) : (
-            <div className="flex justify-between mt-auto">
-              <span>Satış Fiyatı:</span>
-              <span className="text-[#A67C52] font-semibold">{p.base_price ? `${Number(p.base_price).toLocaleString()} ₺` : '-'}</span>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
@@ -228,7 +287,12 @@ function Inventory() {
     "5": "0",
     "10": "0",
   };
-  const [form, setForm] = useState({ name: "", category: "Diğer", base_price: 0, sayfa_fiyatlari: initialFiyatlari });
+  const [form, setForm] = useState({
+    name: "",
+    category: "Diğer",
+    base_price: 0,
+    sayfa_fiyatlari: initialFiyatlari,
+  });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<{
@@ -252,52 +316,55 @@ function Inventory() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      // 1. Fetch all data independently
+      // 1. Fetch products from Supabase (checking "products", with fallbacks to "inventory" or "items")
       const [
-        pData,
+        rawProducts,
+        rawInventory,
+        rawItems,
         spData,
         stData,
         cData,
         albumeviSales,
         ordersData,
       ] = await Promise.all([
-        fetchAllRows<any>((from, to) =>
-          (supabase as any)
-            .from("products")
-            .select("*")
-            .order("sira", { ascending: true })
-            .order("created_at", { ascending: true })
-            .range(from, to),
-        ),
-        fetchAllRowsSafe<any>((from, to) =>
-          (supabase as any)
-            .from("school_products")
-            .select("school_id, product_id, custom_price")
-            .order("id", { ascending: true })
-            .range(from, to),
-        ),
-        fetchAllRowsSafe<any>((from, to) =>
-          (supabase as any)
-            .from("students")
-            .select("id, class_id, selection")
-            .range(from, to),
-        ),
-        fetchAllRowsSafe<any>((from, to) =>
-          (supabase as any).from("classes").select("id, school_id").range(from, to),
-        ),
-        fetchAllRowsSafe<any>((from, to) =>
-          (supabase as any).from("albumevi_sales").select("product_id, quantity").range(from, to),
-        ),
-        fetchAllRowsSafe<any>((from, to) =>
-          (supabase as any).from("orders").select("package_name, quantity").range(from, to),
-        ),
+        fetchAllRowsSafe<any>(supabase, "products", "*", "sira", true),
+        fetchAllRowsSafe<any>(supabase, "inventory", "*"),
+        fetchAllRowsSafe<any>(supabase, "items", "*"),
+        fetchAllRowsSafe<any>(supabase, "school_products", "*"),
+        fetchAllRowsSafe<any>(supabase, "students", "*"),
+        fetchAllRowsSafe<any>(supabase, "classes", "*"),
+        fetchAllRowsSafe<any>(supabase, "albumevi_sales", "*"),
+        fetchAllRowsSafe<any>(supabase, "orders", "*", "created_at", false),
       ]);
 
-      const productsWithStats = (pData ?? []).map((p: any) => ({
-        ...p,
-        sold_count: 0,
-        total_revenue: 0,
-      }));
+      let pData = rawProducts && rawProducts.length > 0 ? rawProducts : [];
+      if (pData.length === 0 && rawInventory && rawInventory.length > 0) {
+        pData = rawInventory;
+      }
+      if (pData.length === 0 && rawItems && rawItems.length > 0) {
+        pData = rawItems;
+      }
+
+      const productsWithStats = (pData ?? []).map((p: any) => {
+        const rawName = p.name || p.item_name || p.title || "İsimsiz Ürün";
+        const rawPrice = Number(p.base_price ?? p.unit_price ?? p.price ?? 0);
+        return {
+          ...p,
+          id: String(p.id),
+          name: rawName,
+          category: p.category || null,
+          base_price: isNaN(rawPrice) ? 0 : rawPrice,
+          sayfa_fiyatlari:
+            typeof p.sayfa_fiyatlari === "object" && p.sayfa_fiyatlari !== null
+              ? p.sayfa_fiyatlari
+              : {},
+          image_url: p.image_url || null,
+          sira: Number(p.sira ?? 0),
+          created_at: p.created_at || new Date().toISOString(),
+          sold_count: 0,
+          total_revenue: 0,
+        };
+      });
 
       // Create a map to quickly look up school_id from class_id
       const classMap = new Map();
@@ -624,39 +691,23 @@ function Inventory() {
     });
   };
 
-  const groupedProducts: Record<string, any[]> = {
-    'Panoramik': [],
-    'Baskı': [],
-    'Canvas': [],
-    'Okul İşleri': [],
-    'Diğer': []
+  const MAIN_CATEGORIES: InventoryCategory[] = ["Panoramik", "Baskı", "Canvas", "Diğer"];
+
+  const groupedProducts: Record<InventoryCategory, any[]> = {
+    Panoramik: [],
+    Baskı: [],
+    Canvas: [],
+    Diğer: [],
   };
 
   products.forEach((p: any) => {
-    const cat = p?.category;
-    
-    // Check Manual Override FIRST
-    if (['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri', 'Diğer'].includes(cat)) {
-      groupedProducts[cat as string].push(p);
-    } else {
-      // Fallback to Automatic Keyword Routing
-      const name = (p?.name || '').toLowerCase();
-      if (name.includes('panoramik')) {
-        groupedProducts['Panoramik'].push(p);
-      } else if (name.includes('baskı') || name.includes('baski')) {
-        groupedProducts['Baskı'].push(p);
-      } else if (name.includes('canvas') || name.includes('kanvas')) {
-        groupedProducts['Canvas'].push(p);
-      } else if (name.includes('kargo')) {
-        groupedProducts['Diğer'].push(p);
-      } else {
-        // Anything else goes to Okul İşleri
-        groupedProducts['Okul İşleri'].push(p);
-      }
-    }
+    const cat = getProductMainCategory(p);
+    groupedProducts[cat].push(p);
   });
 
-  const displayedProducts = selectedCategory ? groupedProducts[selectedCategory] || [] : [];
+  const displayedProducts = selectedCategory
+    ? groupedProducts[selectedCategory as InventoryCategory] || []
+    : [];
 
   return (
     <div className="space-y-8 min-h-screen bg-[#131316] text-white selection:bg-[#A67C52] selection:text-white pb-10">
@@ -669,7 +720,14 @@ function Inventory() {
               onClick={() => setSelectedCategory(null)}
               className="h-12 w-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white shrink-0"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                ></path>
+              </svg>
             </Button>
           )}
           <div>
@@ -682,7 +740,10 @@ function Inventory() {
           </div>
         </div>
         <Button
-          onClick={() => { setForm(prev => ({ ...prev, category: selectedCategory || "Diğer" })); setOpen(true); }}
+          onClick={() => {
+            setForm((prev) => ({ ...prev, category: selectedCategory || "Diğer" }));
+            setOpen(true);
+          }}
           className="bg-[#A67C52] text-white hover:bg-[#A67C52]/90 cursor-pointer h-12 px-6 rounded-xl shadow-lg shadow-[#A67C52]/20 font-semibold"
         >
           <Plus className="mr-2 h-5 w-5" /> Yeni Ürün Ekle
@@ -716,30 +777,69 @@ function Inventory() {
         </div>
       ) : !selectedCategory ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Object.entries(groupedProducts).map(([category, items]) => {
-            if (category === 'Okul İşleri' && items.length === 0) return null;
-            const coverImage = items.find(p => p.image_url)?.image_url;
+          {MAIN_CATEGORIES.map((category) => {
+            const items = groupedProducts[category] || [];
+            const coverImage = items.find((p) => p.image_url)?.image_url;
+
+            // Compute price summary for this category
+            const prices = items
+              .map((p) => {
+                const sp5 = Number(p.sayfa_fiyatlari?.["5"]);
+                const sp10 = Number(p.sayfa_fiyatlari?.["10"]);
+                const base = Number(p.base_price);
+                const candidates = [base, sp5, sp10].filter((val) => !isNaN(val) && val > 0);
+                return candidates.length > 0 ? Math.min(...candidates) : 0;
+              })
+              .filter((price) => price > 0);
+
+            const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+            const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+
+            const categoryIcons: Record<
+              InventoryCategory,
+              React.ComponentType<{ className?: string }>
+            > = {
+              Panoramik: BookOpen,
+              Baskı: Printer,
+              Canvas: Frame,
+              Diğer: Layers,
+            };
+            const IconComponent = categoryIcons[category] || Package;
+
             return (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className="relative group overflow-hidden rounded-3xl border border-white/10 bg-white/5 aspect-video hover:border-[#A67C52]/50 hover:shadow-xl hover:shadow-[#A67C52]/10 transition-all duration-300 text-left"
+                className="relative group overflow-hidden rounded-3xl border border-white/10 bg-white/5 aspect-video hover:border-[#A67C52]/50 hover:shadow-xl hover:shadow-[#A67C52]/10 transition-all duration-300 text-left cursor-pointer"
               >
                 {coverImage ? (
                   <>
-                    <img src={getR2PublicUrl(coverImage)} alt={category} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500 group-hover:scale-105" />
+                    <img
+                      src={getR2PublicUrl(coverImage)}
+                      alt={category}
+                      className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity duration-500 group-hover:scale-105"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent pointer-events-none" />
                   </>
                 ) : (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-colors">
-                    <Package className="w-16 h-16 text-[#A67C52]/20 group-hover:text-[#A67C52]/40 transition-colors" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-black/60 flex items-center justify-center group-hover:from-white/[0.08] transition-colors">
+                    <IconComponent className="w-16 h-16 text-[#A67C52]/20 group-hover:text-[#A67C52]/40 transition-colors" />
                   </div>
                 )}
                 <div className="absolute bottom-6 left-6 right-6 z-10">
                   <h3 className="text-3xl font-black text-white drop-shadow-md">{category}</h3>
-                  <p className="text-[#A67C52] font-semibold mt-1 bg-black/40 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
-                    {items.length} Ürün
-                  </p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-[#A67C52] font-semibold bg-black/60 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
+                      {items.length} Ürün
+                    </span>
+                    {minPrice > 0 && (
+                      <span className="text-white/80 font-medium bg-black/60 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
+                        {minPrice === maxPrice
+                          ? `${minPrice.toLocaleString("tr-TR")} ₺`
+                          : `${minPrice.toLocaleString("tr-TR")} - ${maxPrice.toLocaleString("tr-TR")} ₺`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             );
@@ -792,7 +892,10 @@ function Inventory() {
 
           <button
             type="button"
-            onClick={() => { setForm(prev => ({ ...prev, category: selectedCategory || "Diğer" })); setOpen(true); }}
+            onClick={() => {
+              setForm((prev) => ({ ...prev, category: selectedCategory || "Diğer" }));
+              setOpen(true);
+            }}
             className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/10 bg-transparent p-3 text-center transition-all hover:border-[#A67C52]/60 hover:bg-white/5 cursor-pointer"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#A67C52]/30 bg-[#A67C52]/10 text-[#A67C52] transition-transform group-hover:scale-110">
@@ -827,7 +930,7 @@ function Inventory() {
                 className="bg-white/5 border-white/10 text-white rounded-xl h-12 focus-visible:ring-[#A67C52]"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label className="text-white/70">Kategori</Label>
               <select
@@ -835,43 +938,68 @@ function Inventory() {
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="w-full bg-white/5 border border-white/10 text-white rounded-xl h-12 px-3 focus-visible:ring-[#A67C52] focus-visible:outline-none"
               >
-                <option value="Panoramik" className="bg-[#131316]">Panoramik</option>
-                <option value="Baskı" className="bg-[#131316]">Baskı</option>
-                <option value="Canvas" className="bg-[#131316]">Canvas</option>
-                <option value="Okul İşleri" className="bg-[#131316]">Okul İşleri</option>
-                <option value="Diğer" className="bg-[#131316]">Diğer</option>
+                <option value="Panoramik" className="bg-[#131316]">
+                  Panoramik
+                </option>
+                <option value="Baskı" className="bg-[#131316]">
+                  Baskı
+                </option>
+                <option value="Canvas" className="bg-[#131316]">
+                  Canvas
+                </option>
+                <option value="Okul İşleri" className="bg-[#131316]">
+                  Okul İşleri
+                </option>
+                <option value="Diğer" className="bg-[#131316]">
+                  Diğer
+                </option>
               </select>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {(() => {
-                const c = form?.category;
-                const n = form?.name || '';
-                return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
-              })() ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {[5, 10].map((num) => (
-                    <div key={num} className="space-y-2">
-                      <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={form.sayfa_fiyatlari[String(num)] || "0"}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            sayfa_fiyatlari: {
-                              ...form.sayfa_fiyatlari,
-                              [String(num)]: e.target.value,
-                            },
-                          })
-                        }
-                        className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
-                      />
-                    </div>
-                  ))}
+              {getProductMainCategory({ category: form.category, name: form.name }) ===
+              "Panoramik" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {[5, 10].map((num) => (
+                      <div key={num} className="space-y-2">
+                        <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={form.sayfa_fiyatlari[String(num)] || "0"}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              sayfa_fiyatlari: {
+                                ...form.sayfa_fiyatlari,
+                                [String(num)]: e.target.value,
+                              },
+                            })
+                          }
+                          className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Tekil / Baz Satış Fiyatı (₺)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.base_price || 0}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          base_price: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -940,43 +1068,68 @@ function Inventory() {
                 onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                 className="w-full bg-white/5 border border-white/10 text-white rounded-xl h-12 px-3 focus-visible:ring-[#A67C52] focus-visible:outline-none"
               >
-                <option value="Panoramik" className="bg-[#131316]">Panoramik</option>
-                <option value="Baskı" className="bg-[#131316]">Baskı</option>
-                <option value="Canvas" className="bg-[#131316]">Canvas</option>
-                <option value="Okul İşleri" className="bg-[#131316]">Okul İşleri</option>
-                <option value="Diğer" className="bg-[#131316]">Diğer</option>
+                <option value="Panoramik" className="bg-[#131316]">
+                  Panoramik
+                </option>
+                <option value="Baskı" className="bg-[#131316]">
+                  Baskı
+                </option>
+                <option value="Canvas" className="bg-[#131316]">
+                  Canvas
+                </option>
+                <option value="Okul İşleri" className="bg-[#131316]">
+                  Okul İşleri
+                </option>
+                <option value="Diğer" className="bg-[#131316]">
+                  Diğer
+                </option>
               </select>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="font-semibold text-[#A67C52]">Fiyatlandırma</h4>
-              {(() => {
-                const c = editForm?.category;
-                const n = editForm?.name || '';
-                return c === 'Panoramik' || (!['Panoramik', 'Baskı', 'Canvas', 'Okul İşleri'].includes(c) && n.toLowerCase().includes('panoramik'));
-              })() ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {[5, 10].map((num) => (
-                    <div key={num} className="space-y-2">
-                      <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editForm.sayfa_fiyatlari[String(num)] || "0"}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            sayfa_fiyatlari: {
-                              ...editForm.sayfa_fiyatlari,
-                              [String(num)]: e.target.value,
-                            },
-                          })
-                        }
-                        className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
-                      />
-                    </div>
-                  ))}
+              {getProductMainCategory({ category: editForm.category, name: editForm.name }) ===
+              "Panoramik" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {[5, 10].map((num) => (
+                      <div key={num} className="space-y-2">
+                        <Label className="text-white/70">{num} Sayfa Fiyatı (₺)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editForm.sayfa_fiyatlari[String(num)] || "0"}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              sayfa_fiyatlari: {
+                                ...editForm.sayfa_fiyatlari,
+                                [String(num)]: e.target.value,
+                              },
+                            })
+                          }
+                          className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/70">Tekil / Baz Satış Fiyatı (₺)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editForm.base_price || 0}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          base_price: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="bg-white/5 border-white/10 text-white rounded-xl h-10 focus-visible:ring-[#A67C52]"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1003,7 +1156,11 @@ function Inventory() {
                 {editForm.image_url || editForm.file ? (
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
                     <img
-                      src={editForm.file ? URL.createObjectURL(editForm.file) : getR2PublicUrl(editForm.image_url!)}
+                      src={
+                        editForm.file
+                          ? URL.createObjectURL(editForm.file)
+                          : getR2PublicUrl(editForm.image_url!)
+                      }
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
@@ -1042,7 +1199,6 @@ function Inventory() {
               </div>
             </div>
 
- 
             <DialogFooter className="mt-8">
               <Button
                 type="button"

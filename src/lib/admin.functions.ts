@@ -75,9 +75,7 @@ export const listOrders = createServerFn({ method: "GET" }).handler(async () => 
   return (orders ?? []).map((o: any) => ({
     ...o,
     school_name:
-      (o.school_id && schoolMap.get(String(o.school_id))) ||
-      o.school_name ||
-      "Bilinmeyen Okul",
+      (o.school_id && schoolMap.get(String(o.school_id))) || o.school_name || "Bilinmeyen Okul",
   }));
 });
 
@@ -143,12 +141,8 @@ export const addInventory = createServerFn({ method: "POST" })
 // ───────── Finance ─────────
 export const getFinanceSummary = createServerFn({ method: "GET" }).handler(async () => {
   const [orders, txs] = await Promise.all([
-    fetchAllRows<any>((from, to) =>
-      supabaseAdmin.from("orders").select("total_price, order_status").range(from, to),
-    ),
-    fetchAllRows<any>((from, to) =>
-      (supabaseAdmin as any).from("school_transactions").select("amount, type").range(from, to),
-    ),
+    fetchAllRows<any>(supabaseAdmin, "orders", "total_price, order_status"),
+    fetchAllRows<any>(supabaseAdmin, "school_transactions", "amount, type"),
   ]);
 
   const totalRevenue = (orders ?? []).reduce(
