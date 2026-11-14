@@ -6411,13 +6411,13 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     mutationFn: async ({
       mode,
       existingIds,
-      createdAt,
+      tarih,
       items,
       paid,
     }: {
       mode: "add" | "edit";
       existingIds: string[];
-      createdAt?: string;
+      tarih?: string;
       items: { amount: number; desc: string; urun_id: string | null; adet: number }[];
       paid: number;
     }) => {
@@ -6438,7 +6438,8 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       });
 
       if (mode === "add" || existingIds.length === 0) {
-        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(preparedRows);
+        const rowsToInsert = tarih ? preparedRows.map((row) => ({ ...row, tarih })) : preparedRows;
+        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
         if (txErr) throw txErr;
         return;
       }
@@ -6446,8 +6447,8 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       const overlapCount = Math.min(existingIds.length, preparedRows.length);
       for (let i = 0; i < overlapCount; i++) {
         const updatePayload: Record<string, any> = { ...preparedRows[i] };
-        if (createdAt) {
-          updatePayload.created_at = createdAt;
+        if (tarih) {
+          updatePayload.tarih = tarih;
         }
         const { error: updErr } = await supabaseClient
           .from("baski_kayitlari")
@@ -6459,7 +6460,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       if (preparedRows.length > existingIds.length) {
         const extraRows = preparedRows
           .slice(existingIds.length)
-          .map((row) => (createdAt ? { ...row, created_at: createdAt } : row));
+          .map((row) => (tarih ? { ...row, tarih } : row));
         const { error: insErr } = await supabaseClient.from("baski_kayitlari").insert(extraRows);
         if (insErr) throw insErr;
       } else if (existingIds.length > preparedRows.length) {
@@ -6839,7 +6840,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     saveBaskiModalMutation.mutate({
       mode: baskiModalMode,
       existingIds: editingRecordIds,
-      createdAt: editingCreatedAt || undefined,
+      tarih: editingCreatedAt || undefined,
       items: itemsToSave,
       paid: parseFloat(baskiPaidAmount) || 0,
     });
