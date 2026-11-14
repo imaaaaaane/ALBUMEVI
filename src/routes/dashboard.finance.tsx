@@ -6411,13 +6411,13 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     mutationFn: async ({
       mode,
       existingIds,
-      tarih,
+      olusturmaTarihi,
       items,
       paid,
     }: {
       mode: "add" | "edit";
       existingIds: string[];
-      tarih?: string;
+      olusturmaTarihi?: string;
       items: { amount: number; desc: string; urun_id: string | null; adet: number }[];
       paid: number;
     }) => {
@@ -6426,20 +6426,23 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         const isLast = idx === items.length - 1;
         const rowPaid = isLast ? remainingPaid : Math.min(item.amount, remainingPaid);
         remainingPaid = Math.max(0, remainingPaid - rowPaid);
-        return {
+        const row: Record<string, any> = {
           toplam_tutar: item.amount,
           odenen_tutar: rowPaid,
           kalan_tutar: Math.max(0, item.amount - rowPaid),
-          urun_id: item.urun_id,
+          urun_id: item.urun_id || null,
           adet: item.adet,
           aciklama: item.desc,
           team_id: teamId === "all" ? null : teamId,
         };
+        if (olusturmaTarihi) {
+          row.olusturma_tarihi = olusturmaTarihi;
+        }
+        return row;
       });
 
       if (mode === "add" || existingIds.length === 0) {
-        const rowsToInsert = tarih ? preparedRows.map((row) => ({ ...row, tarih })) : preparedRows;
-        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(rowsToInsert);
+        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(preparedRows);
         if (txErr) throw txErr;
         return;
       }
@@ -6447,9 +6450,6 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       const overlapCount = Math.min(existingIds.length, preparedRows.length);
       for (let i = 0; i < overlapCount; i++) {
         const updatePayload: Record<string, any> = { ...preparedRows[i] };
-        if (tarih) {
-          updatePayload.tarih = tarih;
-        }
         const { error: updErr } = await supabaseClient
           .from("baski_kayitlari")
           .update(updatePayload)
@@ -6458,9 +6458,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       }
 
       if (preparedRows.length > existingIds.length) {
-        const extraRows = preparedRows
-          .slice(existingIds.length)
-          .map((row) => (tarih ? { ...row, tarih } : row));
+        const extraRows = preparedRows.slice(existingIds.length);
         const { error: insErr } = await supabaseClient.from("baski_kayitlari").insert(extraRows);
         if (insErr) throw insErr;
       } else if (existingIds.length > preparedRows.length) {
@@ -6535,7 +6533,8 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     const parsedRecords = (rawBaskiRecords || [])
       .map((t: any) => {
         const rawDesc = String(t.aciklama ?? t.description ?? "").trim();
-        const dbDate = t.created_at || t.tarih || t.date || new Date().toISOString();
+        const dbDate =
+          t.olusturma_tarihi || t.created_at || t.tarih || t.date || new Date().toISOString();
         const parsedTime = new Date(dbDate).getTime();
         const rawDate = !isNaN(parsedTime) ? parsedTime : 0;
         const isoDate = !isNaN(parsedTime)
@@ -6840,7 +6839,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     saveBaskiModalMutation.mutate({
       mode: baskiModalMode,
       existingIds: editingRecordIds,
-      tarih: editingCreatedAt || undefined,
+      olusturmaTarihi: editingCreatedAt || undefined,
       items: itemsToSave,
       paid: parseFloat(baskiPaidAmount) || 0,
     });

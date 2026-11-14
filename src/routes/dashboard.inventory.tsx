@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseClient } from "@/lib/supabaseClient";
 import { fetchAllRows, fetchAllRowsSafe, parseSelectionTokens } from "@/lib/supabase-fetch-all";
 import { toast } from "sonner";
 import { getR2PublicUrl } from "@/lib/r2";
@@ -317,6 +318,7 @@ function Inventory() {
     queryKey: ["products"],
     queryFn: async () => {
       // 1. Fetch products from Supabase (checking "products", with fallbacks to "inventory" or "items")
+      const client = supabaseClient || supabase;
       const [
         rawProducts,
         rawInventory,
@@ -327,14 +329,14 @@ function Inventory() {
         albumeviSales,
         ordersData,
       ] = await Promise.all([
-        fetchAllRowsSafe<any>(supabase, "products", "*", "sira", true),
-        fetchAllRowsSafe<any>(supabase, "inventory", "*"),
-        fetchAllRowsSafe<any>(supabase, "items", "*"),
-        fetchAllRowsSafe<any>(supabase, "school_products", "*"),
-        fetchAllRowsSafe<any>(supabase, "students", "*"),
-        fetchAllRowsSafe<any>(supabase, "classes", "*"),
-        fetchAllRowsSafe<any>(supabase, "albumevi_sales", "*"),
-        fetchAllRowsSafe<any>(supabase, "orders", "*", "created_at", false),
+        fetchAllRowsSafe<any>(client, "products", "*"),
+        fetchAllRowsSafe<any>(client, "inventory", "*"),
+        fetchAllRowsSafe<any>(client, "items", "*"),
+        fetchAllRowsSafe<any>(client, "school_products", "*"),
+        fetchAllRowsSafe<any>(client, "students", "*"),
+        fetchAllRowsSafe<any>(client, "classes", "*"),
+        fetchAllRowsSafe<any>(client, "albumevi_sales", "*"),
+        fetchAllRowsSafe<any>(client, "orders", "*", "created_at", false),
       ]);
 
       let pData = rawProducts && rawProducts.length > 0 ? rawProducts : [];
@@ -343,6 +345,16 @@ function Inventory() {
       }
       if (pData.length === 0 && rawItems && rawItems.length > 0) {
         pData = rawItems;
+      }
+      if (pData.length === 0) {
+        try {
+          const { data: directProducts } = await (client as any).from("products").select("*");
+          if (directProducts && directProducts.length > 0) {
+            pData = directProducts;
+          }
+        } catch (err) {
+          console.warn("[Inventory] direct fallback fetch failed:", err);
+        }
       }
 
       const productsWithStats = (pData ?? []).map((p: any) => {
