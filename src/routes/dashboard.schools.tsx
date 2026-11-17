@@ -21,6 +21,9 @@ import {
   ArrowUpDown,
   StickyNote,
   Pencil,
+  Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { uploadFileToR2, getR2FileUrl, getR2PublicUrl } from "../lib/r2";
 import {
@@ -62,6 +65,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -780,6 +784,562 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
             </Table>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditSchoolPackageLine {
+  key: string;
+  schoolProductId?: string | null;
+  productId: string;
+  name: string;
+  price: string;
+}
+
+interface EditSchoolDialogProps {
+  school: any;
+  catalogProducts: any[];
+  uniqueCities?: string[];
+}
+
+function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSchoolDialogProps) {
+  const { teamId } = useAuth();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [status, setStatus] = useState("Aktif");
+  const [packageLines, setPackageLines] = useState<EditSchoolPackageLine[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setName(school.name || "");
+    setCity(school.city || "");
+    setUsername(school.login_username || "");
+    setPassword(school.login_password || "");
+    setStatus(String(school.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif");
+    setShowPassword(false);
+
+    let isMounted = true;
+    setIsLoadingPackages(true);
+
+    (async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from("school_products")
+          .select("id, product_id, custom_price, products(id, name, base_price)")
+          .eq("school_id", school.id)
+          .order("created_at", { ascending: true });
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error("Failed to load school packages:", error);
+        }
+
+        if (data && data.length > 0) {
+          setPackageLines(
+            data.map((sp: any, idx: number) => ({
+              key: sp.id || `sp-${idx}`,
+              schoolProductId: sp.id,
+              productId: sp.product_id,
+              name: sp.products?.name || "Paket",
+              price: sp.custom_price != null ? String(sp.custom_price) : "",
+            })),
+          );
+        } else {
+          const defaultProd = catalogProducts[0];
+          setPackageLines([
+            {
+              key: Math.random().toString(),
+              schoolProductId: null,
+              productId: defaultProd?.id || "",
+              name: defaultProd?.name || "Paket 1",
+              price: defaultProd?.base_price != null ? String(defaultProd.base_price) : "150",
+            },
+          ]);
+        }
+      } catch (err) {
+        console.error("Error fetching school packages:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingPackages(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, school, catalogProducts]);
+
+  const handleCatalogSelect = (key: string, selectedProductId: string) => {
+    setPackageLines((prev) =>
+      prev.map((line) => {
+        if (line.key !== key) return line;
+        const prod = catalogProducts.find((p: any) => p.id === selectedProductId);
+        return {
+          ...line,
+          productId: selectedProductId,
+          name: prod?.name || line.name,
+          price:
+            line.price && Number(line.price) > 0
+              ? line.price
+              : prod?.base_price != null
+                ? String(prod.base_price)
+                : line.price,
+        };
+      }),
+    );
+  };
+
+  const handlePackageNameChange = (key: string, newName: string) => {
+    setPackageLines((prev) =>
+      prev.map((line) => {
+        if (line.key !== key) return line;
+        // Check if the newly typed name matches an existing catalog product
+        const matched = catalogProducts.find(
+          (p: any) =>
+            p.name?.trim().toLocaleLowerCase("tr-TR") === newName.trim().toLocaleLowerCase("tr-TR"),
+        );
+        return {
+          ...line,
+          name: newName,
+          productId: matched ? matched.id : line.productId,
+        };
+      }),
+    );
+  };
+
+  const handlePackagePriceChange = (key: string, newPrice: string) => {
+    setPackageLines((prev) =>
+      prev.map((line) => (line.key === key ? { ...line, price: newPrice } : line)),
+    );
+  };
+
+  const handleAddPackageLine = () => {
+    const nextIndex = packageLines.length + 1;
+    const defaultProd = catalogProducts[Math.min(packageLines.length, catalogProducts.length - 1)];
+    setPackageLines((prev) => [
+      ...prev,
+      {
+        key: Math.random().toString(),
+        schoolProductId: null,
+        productId: defaultProd?.id || "",
+        name: defaultProd?.name || `Paket ${nextIndex}`,
+        price: defaultProd?.base_price != null ? String(defaultProd.base_price) : "200",
+      },
+    ]);
+  };
+
+  const handleRemovePackage = (key: string) => {
+    setPackageLines((prev) => prev.filter((line) => line.key !== key));
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error("Lütfen okul adını girin.");
+      return;
+    }
+    if (!username.trim()) {
+      toast.error("Lütfen portal kullanıcı adını girin.");
+      return;
+    }
+
+    for (let i = 0; i < packageLines.length; i++) {
+      const line = packageLines[i];
+      if (!line.name.trim()) {
+        toast.error(`Lütfen ${i + 1}. paketin adını doldurun.`);
+        return;
+      }
+      if (line.price === "" || isNaN(Number(line.price))) {
+        toast.error(`Lütfen ${i + 1}. paketin geçerli bir fiyatını girin.`);
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      // 1. Ensure active Supabase session
+      await supabase.auth.getSession();
+
+      // 2. Update schools table
+      const { error: schoolError } = await (supabase as any)
+        .from("schools")
+        .update({
+          name: name.trim(),
+          city: city.trim() || null,
+          login_username: username.trim(),
+          login_password: password.trim(),
+          status: status,
+        })
+        .eq("id", school.id);
+
+      if (schoolError) throw new Error(schoolError.message);
+
+      // 3. Resolve product IDs for all packages
+      const resolvedPackages: Array<{
+        schoolProductId?: string | null;
+        productId: string;
+        price: number;
+        name: string;
+      }> = [];
+
+      for (const line of packageLines) {
+        let finalPid = line.productId;
+        const trimmedName = line.name.trim();
+
+        if (!finalPid) {
+          const match = catalogProducts.find(
+            (p: any) =>
+              p.name?.trim().toLocaleLowerCase("tr-TR") === trimmedName.toLocaleLowerCase("tr-TR"),
+          );
+          if (match) {
+            finalPid = match.id;
+          } else {
+            const { data: newProd, error: prodErr } = await (supabase as any)
+              .from("products")
+              .insert({
+                name: trimmedName,
+                category: "Okul İşleri",
+                base_price: Number(line.price) || 0,
+                team_id: teamId === "all" ? null : teamId,
+              })
+              .select("id")
+              .single();
+            if (prodErr) throw new Error(prodErr.message);
+            finalPid = newProd.id;
+          }
+        }
+
+        resolvedPackages.push({
+          schoolProductId: line.schoolProductId,
+          productId: finalPid,
+          price: Number(line.price) || 0,
+          name: trimmedName,
+        });
+      }
+
+      // 4. Sync school_products in Supabase
+      const { data: currentSp } = await (supabase as any)
+        .from("school_products")
+        .select("id")
+        .eq("school_id", school.id);
+
+      const currentDbIds = (currentSp || []).map((x: any) => x.id);
+      const keptDbIds = resolvedPackages.map((x) => x.schoolProductId).filter(Boolean) as string[];
+      const deleteIds = currentDbIds.filter((id: string) => !keptDbIds.includes(id));
+
+      if (deleteIds.length > 0) {
+        const { error: delErr } = await (supabase as any)
+          .from("school_products")
+          .delete()
+          .in("id", deleteIds);
+        if (delErr) throw new Error(delErr.message);
+      }
+
+      for (const pkg of resolvedPackages) {
+        if (pkg.schoolProductId) {
+          const { error: updErr } = await (supabase as any)
+            .from("school_products")
+            .update({
+              product_id: pkg.productId,
+              custom_price: pkg.price,
+            })
+            .eq("id", pkg.schoolProductId);
+          if (updErr) throw new Error(updErr.message);
+        } else {
+          const { error: insErr } = await (supabase as any).from("school_products").insert({
+            school_id: school.id,
+            product_id: pkg.productId,
+            custom_price: pkg.price,
+            team_id: teamId === "all" ? null : teamId,
+          });
+          if (insErr) throw new Error(insErr.message);
+        }
+      }
+
+      // 5. Update local storage mock details if present
+      if (typeof window !== "undefined") {
+        const mockKey = `mock_school_details_${school.id}`;
+        const oldMock = localStorage.getItem(mockKey);
+        const parsed = oldMock ? JSON.parse(oldMock) : {};
+        localStorage.setItem(
+          mockKey,
+          JSON.stringify({
+            ...parsed,
+            login_username: username.trim(),
+            password: password.trim(),
+            ...(resolvedPackages[0]
+              ? {
+                  package1_name: resolvedPackages[0].name,
+                  package1_price: resolvedPackages[0].price,
+                }
+              : {}),
+            ...(resolvedPackages[1]
+              ? {
+                  package2_name: resolvedPackages[1].name,
+                  package2_price: resolvedPackages[1].price,
+                }
+              : {}),
+          }),
+        );
+      }
+
+      // 6. Invalidate all relevant queries for immediate dashboard-wide sync
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["schools"] }),
+        qc.invalidateQueries({ queryKey: ["orders"] }),
+        qc.invalidateQueries({ queryKey: ["products"] }),
+        qc.invalidateQueries({ queryKey: ["school_products"] }),
+        qc.invalidateQueries({ queryKey: ["classes", school.id] }),
+      ]);
+
+      toast.success(`${name.trim()} bilgileri ve paketleri başarıyla güncellendi.`);
+      setOpen(false);
+    } catch (err: any) {
+      console.error("Save error:", err);
+      toast.error(err.message || "Okul kaydedilirken bir hata oluştu.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 bg-[#A67C52]/10 border-[#A67C52]/30 text-[#A67C52] hover:bg-[#A67C52]/20 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer text-xs font-medium"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          Düzenle
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-[#131316] border border-white/10 text-white rounded-2xl p-6">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+            <Pencil className="w-5 h-5 text-[#A67C52]" />
+            Okul Düzenle
+          </DialogTitle>
+          <DialogDescription className="text-white/50 text-xs">
+            Okul genel bilgilerini, portal erişim şifresini ve okul paket/fiyatlarını güncelleyin.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Okul Adı */}
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-xs">Okul Adı</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Örn: Millet İlkokulu"
+              className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] h-10"
+            />
+          </div>
+
+          {/* Şehir / İlçe */}
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-xs">Şehir / İlçe</Label>
+            <Input
+              list={`cities-list-${school.id}`}
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Örn: Batman, Kozluk, Baykan, Diyarbakır"
+              className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] h-10"
+            />
+            <datalist id={`cities-list-${school.id}`}>
+              {uniqueCities.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* Kullanıcı Adı & Şifre */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-white/70 text-xs">Portal Kullanıcı Adı</Label>
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Örn: 75YIL, CUMHURİYET"
+                className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] font-mono h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-white/70 text-xs">Portal Şifresi</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Öğretmen giriş şifresi"
+                  className="bg-white/5 border-white/10 text-white rounded-xl focus-visible:ring-1 focus-visible:ring-[#A67C52] pr-10 h-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Durum */}
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-xs">Okul Durumu</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#131316] border-white/10 text-white">
+                <SelectItem value="Aktif" className="text-emerald-400">
+                  Aktif
+                </SelectItem>
+                <SelectItem value="Pasif" className="text-red-400">
+                  Pasif
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Paketler & Fiyatlar */}
+          <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-white/90 font-semibold text-sm">Paketler & Fiyatlar</Label>
+                <p className="text-[11px] text-white/40 mt-0.5">
+                  Bu okula tanımlı paketleri, isimleri ve birim fiyatlarını (₺) yönetin.
+                </p>
+              </div>
+              <span className="text-xs text-[#A67C52] bg-[#A67C52]/10 px-2 py-0.5 rounded font-mono">
+                {packageLines.length} Paket
+              </span>
+            </div>
+
+            {isLoadingPackages ? (
+              <div className="flex items-center justify-center py-6 text-white/40 text-xs gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#A67C52]" />
+                Paketler yükleniyor...
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {packageLines.map((pkg, idx) => (
+                  <div
+                    key={pkg.key}
+                    className="p-3 rounded-xl border border-white/10 bg-white/5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#A67C52]">Paket #{idx + 1}</span>
+                      {packageLines.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePackage(pkg.key)}
+                          className="text-white/40 hover:text-red-400 hover:bg-red-500/10 p-1 rounded transition-colors cursor-pointer"
+                          title="Bu paketi kaldır"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                      <div className="sm:col-span-4 space-y-1">
+                        <label className="text-[10px] text-white/50 block">Katalog Seçimi</label>
+                        <Select
+                          value={pkg.productId || ""}
+                          onValueChange={(val) => handleCatalogSelect(pkg.key, val)}
+                        >
+                          <SelectTrigger className="h-9 bg-white/5 border-white/10 text-white text-xs rounded-lg">
+                            <SelectValue placeholder="Katalogdan seç..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#131316] border-white/10 text-white max-h-56">
+                            {catalogProducts.map((p: any) => (
+                              <SelectItem key={p.id} value={p.id} className="text-xs">
+                                {p.name} {p.base_price ? `(${p.base_price} ₺)` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="sm:col-span-5 space-y-1">
+                        <label className="text-[10px] text-white/50 block">Paket Adı</label>
+                        <Input
+                          value={pkg.name}
+                          onChange={(e) => handlePackageNameChange(pkg.key, e.target.value)}
+                          placeholder="Örn: Ahşap albüm (üçlü)"
+                          className="h-9 bg-white/5 border-white/10 text-white text-xs rounded-lg"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3 space-y-1">
+                        <label className="text-[10px] text-white/50 block">Fiyat (₺)</label>
+                        <Input
+                          type="number"
+                          step="any"
+                          value={pkg.price}
+                          onChange={(e) => handlePackagePriceChange(pkg.key, e.target.value)}
+                          placeholder="600"
+                          className="h-9 bg-white/5 border-white/10 text-white text-xs rounded-lg text-center font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddPackageLine}
+                  className="w-full bg-transparent border-dashed border-[#A67C52]/40 text-[#A67C52] hover:bg-[#A67C52]/10 hover:border-[#A67C52] h-9 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />+ Yeni Paket Ekle
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="mt-4 gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="text-white/60 hover:text-white hover:bg-white/5 h-10 px-4 rounded-xl text-xs"
+          >
+            İptal
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || !name.trim() || !username.trim()}
+            className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl px-5 h-10 shadow-lg shadow-[#A67C52]/20 cursor-pointer disabled:opacity-50 text-xs"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              "Değişiklikleri Kaydet"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -2377,6 +2937,11 @@ function ManageSchools() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right flex items-center justify-end gap-2">
+                        <EditSchoolDialog
+                          school={s}
+                          catalogProducts={products}
+                          uniqueCities={uniqueCities}
+                        />
                         <ManageClassesModal schoolSlug={s.id} />
                       </TableCell>
                     </TableRow>
