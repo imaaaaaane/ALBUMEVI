@@ -2170,6 +2170,25 @@ interface FirmsListViewProps {
   onBack: () => void;
 }
 
+const parseDiscountFromDesc = (desc?: string): { parsedDiscount: number; cleanDesc: string } => {
+  if (!desc) return { parsedDiscount: 0, cleanDesc: "" };
+  const match = desc.match(/\s*\((?:İ|i|I|ı)ndirim:\s*([\d.,]+)\s*(?:₺|TL)?\)/i);
+  if (!match) return { parsedDiscount: 0, cleanDesc: desc.trim() };
+  const parsedDiscount = parseFloat(match[1].replace(",", ".")) || 0;
+  const cleanDesc = desc.replace(/\s*\((?:İ|i|I|ı)ndirim:\s*[\d.,]+\s*(?:₺|TL)?\)/gi, "").trim();
+  return { parsedDiscount, cleanDesc };
+};
+
+const formatDescWithDiscount = (rawDesc: string, discount: number): string => {
+  const clean = (rawDesc || "")
+    .replace(/\s*\((?:İ|i|I|ı)ndirim:\s*[\d.,]+\s*(?:₺|TL)?\)/gi, "")
+    .trim();
+  if (discount > 0) {
+    return clean ? `${clean} (İndirim: ${discount} ₺)` : `(İndirim: ${discount} ₺)`;
+  }
+  return clean;
+};
+
 function FirmsListView({
   firms,
   products,
@@ -2207,6 +2226,7 @@ function FirmsListView({
     { id: string; productId: string; quantity: number; price: number; sayfa_sayisi?: string }[]
   >([{ id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" }]);
   const [editTxId, setEditTxId] = useState<string | null>(null);
+  const [editBaseAmount, setEditBaseAmount] = useState<number | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
@@ -2389,6 +2409,7 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
+      setEditBaseAmount(null);
       setLineItems([
         { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
       ]);
@@ -2423,6 +2444,7 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
+      setEditBaseAmount(null);
       setLineItems([
         { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
       ]);
@@ -2478,17 +2500,16 @@ function FirmsListView({
     e.preventDefault();
     if (!selectedFirmId) return;
 
-    let finalAmount = parseFloat(newTxAmount) || 0;
+    let finalAmount = parseFloat(newTxAmount.replace(",", ".")) || 0;
     let finalDesc = newTxDesc.trim();
 
-    if (newTxType === "debt" && lineItems.length > 0) {
+    if (newTxType === "debt") {
+      const discountVal = parseFloat(newTxDiscount.replace(",", ".")) || 0;
       const validItems = lineItems.filter((item) => item.productId !== "");
+
       if (validItems.length > 0) {
-        const discountVal = parseFloat(newTxDiscount) || 0;
-        finalAmount = Math.max(
-          0,
-          validItems.reduce((sum, item) => sum + item.price * item.quantity, 0) - discountVal,
-        );
+        const productsBase = validItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        finalAmount = Math.max(0, productsBase - discountVal);
 
         const productsSummary = validItems
           .map((item) => {
@@ -2498,10 +2519,17 @@ function FirmsListView({
           })
           .join(", ");
 
-        finalDesc = finalDesc ? `${productsSummary} - ${finalDesc}` : productsSummary;
-        if (discountVal > 0) {
-          finalDesc += ` (İndirim: ${discountVal} ₺)`;
+        const combinedDesc = finalDesc ? `${productsSummary} - ${finalDesc}` : productsSummary;
+        finalDesc = formatDescWithDiscount(combinedDesc, discountVal);
+      } else {
+        if (!finalDesc) return toast.error("Açıklama veya ürün seçimi zorunludur.");
+
+        let base = editBaseAmount;
+        if (base == null) {
+          base = (parseFloat(newTxAmount.replace(",", ".")) || 0) + discountVal;
         }
+        finalAmount = Math.max(0, base - discountVal);
+        finalDesc = formatDescWithDiscount(finalDesc, discountVal);
       }
     }
 
@@ -2532,12 +2560,55 @@ function FirmsListView({
   const handleEditTransaction = (tx: any) => {
     setEditTxId(tx.id);
     setNewTxType(tx.type);
-    setNewTxAmount(tx.amount.toString());
-    setNewTxDesc(tx.desc);
     setNewTxCurrency(tx.currency || "TRY");
-    setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
-    setIsAddTxOpen(true);
+    setNewTxDate(tx.date?.split("T")[0] || new Date().toISOString().split("T")[0]);
     setLineItems([]);
+
+    if (tx.type === "debt") {
+      const { parsedDiscount, cleanDesc } = parseDiscountFromDesc(tx.desc);
+      const savedAmount = Number(tx.amount) || 0;
+      const base = savedAmount + parsedDiscount;
+      setEditBaseAmount(base);
+      setNewTxDiscount(parsedDiscount > 0 ? parsedDiscount.toString() : "");
+      setNewTxAmount(savedAmount.toString());
+      setNewTxDesc(cleanDesc);
+    } else {
+      setEditBaseAmount(null);
+      setNewTxDiscount("");
+      setNewTxAmount(tx.amount?.toString() || "");
+      setNewTxDesc(tx.desc || "");
+    }
+    setIsAddTxOpen(true);
+  };
+
+  const handleDiscountChange = (val: string) => {
+    setNewTxDiscount(val);
+    if (newTxType !== "debt") return;
+
+    const discount = parseFloat(val.replace(",", ".")) || 0;
+    const hasProducts = lineItems.some((item) => item.productId !== "");
+
+    if (hasProducts) {
+      const sum = lineItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      setEditBaseAmount(sum);
+      setNewTxAmount(Math.max(0, sum - discount).toString());
+    } else {
+      let base = editBaseAmount;
+      if (base == null) {
+        const currentAmount = parseFloat(newTxAmount.replace(",", ".")) || 0;
+        const prevDiscount = parseFloat(newTxDiscount.replace(",", ".")) || 0;
+        base = currentAmount + prevDiscount;
+        setEditBaseAmount(base);
+      }
+      setNewTxAmount(Math.max(0, base - discount).toString());
+    }
+  };
+
+  const handleAmountChange = (val: string) => {
+    setNewTxAmount(val);
+    const entered = parseFloat(val.replace(",", ".")) || 0;
+    const currentDiscount = parseFloat(newTxDiscount.replace(",", ".")) || 0;
+    setEditBaseAmount(entered + currentDiscount);
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -2591,8 +2662,9 @@ function FirmsListView({
   useEffect(() => {
     if (newTxType === "debt" && lineItems.some((item) => item.productId !== "")) {
       const sum = lineItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const discount = parseFloat(newTxDiscount) || 0;
+      const discount = parseFloat(newTxDiscount.replace(",", ".")) || 0;
       const total = Math.max(0, sum - discount);
+      setEditBaseAmount(sum);
       setNewTxAmount(total.toString());
     }
   }, [lineItems, newTxType, newTxDiscount]);
@@ -2710,6 +2782,19 @@ function FirmsListView({
                 onClick={() => {
                   setNewTxType("debt");
                   setEditTxId(null);
+                  setEditBaseAmount(null);
+                  setNewTxAmount("");
+                  setNewTxDiscount("");
+                  setNewTxDesc("");
+                  setLineItems([
+                    {
+                      id: Math.random().toString(),
+                      productId: "",
+                      quantity: 1,
+                      price: 0,
+                      sayfa_sayisi: "5",
+                    },
+                  ]);
                   setIsAddTxOpen(true);
                 }}
                 className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4"
@@ -2793,6 +2878,7 @@ function FirmsListView({
             setIsAddTxOpen(open);
             if (!open) {
               setEditTxId(null);
+              setEditBaseAmount(null);
               setNewTxAmount("");
               setNewTxDiscount("");
               setNewTxDesc("");
@@ -2827,6 +2913,9 @@ function FirmsListView({
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
                       onClick={() => {
                         setNewTxType("debt");
+                        setEditBaseAmount(null);
+                        setNewTxDiscount("");
+                        setNewTxAmount("");
                         setLineItems([
                           {
                             id: Math.random().toString(),
@@ -2846,6 +2935,7 @@ function FirmsListView({
                       className={`py-2 text-sm font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
                       onClick={() => {
                         setNewTxType("payment");
+                        setEditBaseAmount(null);
                         setNewTxAmount("");
                         setNewTxDesc("");
                         setNewTxDiscount("");
@@ -3060,7 +3150,7 @@ function FirmsListView({
                       step="0.01"
                       placeholder="0"
                       value={newTxDiscount}
-                      onChange={(e) => setNewTxDiscount(e.target.value)}
+                      onChange={(e) => handleDiscountChange(e.target.value)}
                       className="h-11 border-white/10 bg-white/5 text-white rounded-xl font-mono"
                     />
                   </div>
@@ -3076,7 +3166,7 @@ function FirmsListView({
                         min="0"
                         step="0.01"
                         value={newTxAmount}
-                        onChange={(e) => setNewTxAmount(e.target.value)}
+                        onChange={(e) => handleAmountChange(e.target.value)}
                         readOnly={
                           newTxType === "debt" && lineItems.some((item) => item.productId !== "")
                         }
