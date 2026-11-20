@@ -365,6 +365,15 @@ function SchoolPortal() {
   const [isCheckingExpiration, setIsCheckingExpiration] = useState(true);
   const [schoolName, setSchoolName] = useState("");
   const [displayedText, setDisplayedText] = useState("");
+  const [portalExpiresAt, setPortalExpiresAt] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (step === 3 && schoolName) {
@@ -415,9 +424,26 @@ function SchoolPortal() {
 
         setActualSchoolId(school.id);
         setSchoolName(school.name);
-        setSchoolStatus(school.status || "Aktif");
         if (school.package_statuses?.global_status) {
           setGlobalStatus(school.package_statuses.global_status);
+        }
+
+        const rawExpiresAt = school.package_statuses?.portal_expires_at || null;
+        setPortalExpiresAt(rawExpiresAt);
+
+        const expiresMs = rawExpiresAt ? new Date(rawExpiresAt).getTime() : null;
+        const isTimeUp = expiresMs !== null && !Number.isNaN(expiresMs) && expiresMs <= Date.now();
+
+        if (isTimeUp) {
+          setSchoolStatus("Pasif");
+          if (String(school.status).toLowerCase() === "aktif") {
+            await (supabase as any)
+              .from("schools")
+              .update({ status: "Pasif", is_active: false })
+              .eq("id", school.id);
+          }
+        } else {
+          setSchoolStatus(school.status || "Aktif");
         }
 
         setIsCheckingExpiration(false);
@@ -429,6 +455,24 @@ function SchoolPortal() {
     };
     checkExpiration();
   }, [schoolId]);
+
+  // Live check: if expiration timestamp passes while a teacher is browsing, auto-switch to Pasif in Supabase
+  useEffect(() => {
+    if (!portalExpiresAt || !actualSchoolId) return;
+    const expiresMs = new Date(portalExpiresAt).getTime();
+    if (Number.isNaN(expiresMs)) return;
+
+    if (expiresMs <= nowMs && String(schoolStatus).toLowerCase() !== "pasif") {
+      setSchoolStatus("Pasif");
+      (supabase as any)
+        .from("schools")
+        .update({ status: "Pasif", is_active: false })
+        .eq("id", actualSchoolId)
+        .then(() => {
+          console.info("[Portal] Seçim süresi doldu, okul otomatik Pasif duruma geçirildi.");
+        });
+    }
+  }, [portalExpiresAt, nowMs, actualSchoolId, schoolStatus]);
 
   // Load from Local Storage on Mount
   useEffect(() => {
@@ -899,7 +943,41 @@ function SchoolPortal() {
     );
   }
 
-  if (!isCheckingExpiration && String(schoolStatus).toLowerCase() === "pasif" && role !== "admin") {
+  const expiresAtMs = portalExpiresAt ? new Date(portalExpiresAt).getTime() : null;
+  const hasValidExpiration = expiresAtMs !== null && !Number.isNaN(expiresAtMs);
+  const remainingMs = hasValidExpiration ? expiresAtMs - nowMs : null;
+  const isPortalTimeExpired = remainingMs !== null && remainingMs <= 0;
+  const isUrgentExpiration =
+    remainingMs !== null && remainingMs > 0 && remainingMs <= 72 * 60 * 60 * 1000;
+  const remainingDaysCeil =
+    remainingMs !== null && remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+  const remainingWholeDays =
+    remainingMs !== null && remainingMs > 0 ? Math.floor(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+  const remainingHoursMod =
+    remainingMs !== null && remainingMs > 0
+      ? Math.ceil((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      : 0;
+  const totalRemainingHours =
+    remainingMs !== null && remainingMs > 0
+      ? Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60)))
+      : 0;
+
+  const urgentTimeLabel = (() => {
+    if (remainingMs === null || remainingMs <= 0) return "";
+    if (remainingMs < 24 * 60 * 60 * 1000) {
+      return `son ${totalRemainingHours} saat`;
+    }
+    if (remainingHoursMod > 0 && remainingHoursMod < 24) {
+      return `son ${remainingWholeDays} gün ${remainingHoursMod} saat`;
+    }
+    return `son ${remainingDaysCeil} gün`;
+  })();
+
+  if (
+    !isCheckingExpiration &&
+    (String(schoolStatus).toLowerCase() === "pasif" || isPortalTimeExpired) &&
+    role !== "admin"
+  ) {
     return (
       <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 font-sans text-white relative overflow-hidden">
         {/* Background blobs for premium feel */}
@@ -911,8 +989,8 @@ function SchoolPortal() {
             <Lock className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold mb-4">Portal Kapalı</h1>
-          <p className="text-white/60 mb-8 leading-relaxed">
-            Bu okulun fotoğraf seçim portalı şu anda kapalıdır. Lütfen yetkili ile iletişime geçin.
+          <p className="text-white/70 mb-4 leading-relaxed">
+            Sipariş seçim süreci sona ermiştir. Lütfen Albümevi ile iletişime geçiniz.
           </p>
         </div>
       </div>
@@ -933,10 +1011,53 @@ function SchoolPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1714] to-black text-white selection:bg-[#A67C52] selection:text-white font-sans overflow-x-hidden pb-32">
-      {String(schoolStatus).toLowerCase() === "pasif" && role === "admin" && (
-        <div className="bg-red-500/90 backdrop-blur text-white text-center py-2 px-4 text-sm font-medium z-[100] relative flex items-center justify-center gap-2">
-          <Info className="w-4 h-4" />
-          Admin Görünümü: Bu portal şu anda dış kullanıcılara PASİF durumdadır.
+      {(String(schoolStatus).toLowerCase() === "pasif" || isPortalTimeExpired) &&
+        role === "admin" && (
+          <div className="bg-red-500/90 backdrop-blur text-white text-center py-2 px-4 text-sm font-medium z-[100] relative flex items-center justify-center gap-2">
+            <Info className="w-4 h-4" />
+            Admin Görünümü: Bu portal şu anda dış kullanıcılara PASİF durumdadır.
+          </div>
+        )}
+
+      {/* Remaining Time / Urgent Teacher Countdown Banner */}
+      {step >= 2 && hasValidExpiration && remainingMs !== null && remainingMs > 0 && (
+        <div className="max-w-6xl mx-auto px-4 pt-4 relative z-40">
+          {isUrgentExpiration ? (
+            <div className="rounded-2xl bg-[#131316]/95 border border-red-500/50 px-5 py-4 shadow-[0_0_30px_rgba(239,68,68,0.28)] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3 text-left">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/25 to-amber-500/20 border border-red-500/40 text-amber-400">
+                  <AlertTriangle className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-sm sm:text-base font-bold text-amber-300 tracking-tight">
+                    Önemli Uyarı: Sipariş seçim süresinin kapanmasına {urgentTimeLabel} kaldı!
+                    Lütfen seçimlerinizi tamamlayıp kaydediniz.
+                  </div>
+                  <div className="text-xs text-white/60 mt-0.5">
+                    Süre dolduğunda portal otomatik olarak kapanacaktır.
+                  </div>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 shrink-0">
+                <Clock className="w-3.5 h-3.5" />
+                {urgentTimeLabel}
+              </span>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-[#131316]/90 border border-[#A67C52]/30 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-xs sm:text-sm text-white/80">
+                <Clock className="w-4 h-4 text-[#A67C52] shrink-0" />
+                <span>
+                  Sipariş seçim sürecinin kapanmasına{" "}
+                  <strong className="text-[#A67C52] font-semibold">{remainingDaysCeil} gün</strong>{" "}
+                  kaldı.
+                </span>
+              </div>
+              <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/15 px-2.5 py-1 rounded-lg shrink-0">
+                {remainingDaysCeil} gün kaldı
+              </span>
+            </div>
+          )}
         </div>
       )}
       {/* Guide Modal Overlay */}
@@ -1267,27 +1388,6 @@ function SchoolPortal() {
                       </div>
                       <div className="text-sm text-white/50">{c.studentCount} Öğrenci</div>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={downloadingClassId !== null}
-                      onClick={(e) => handleDownloadClassPhotos(c, e)}
-                      className="mt-4 w-full border border-[#A67C52]/40 text-[#A67C52] hover:bg-[#A67C52]/10 hover:text-[#A67C52] bg-transparent rounded-xl text-xs font-semibold h-9 transition-colors disabled:opacity-50"
-                    >
-                      {downloadingClassId === c.id ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                          Hazırlanıyor...
-                        </>
-                      ) : (
-                        <>
-                          <FolderDown className="w-3.5 h-3.5 mr-1.5" />
-                          e-Okul İçin İndir
-                        </>
-                      )}
-                    </Button>
                   </div>
                 ))}
               </div>

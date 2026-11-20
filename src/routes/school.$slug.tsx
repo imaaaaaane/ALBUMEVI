@@ -13,8 +13,10 @@ import {
   Truck,
   Settings,
   Clock,
+  Lock,
+  AlertTriangle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -68,12 +70,25 @@ function SchoolPortal() {
       // Hna rje3na l is_active li kayna f Supabase dyalk
       const { data: school, error: schoolError } = await (supabase as any)
         .from("schools")
-        .select("id, name, city, unique_link_slug")
+        .select("id, name, city, unique_link_slug, status, is_active, package_statuses")
         .eq(queryColumn, slug)
         .maybeSingle();
 
       if (schoolError) throw new Error(schoolError.message);
       if (!school) throw new Error("School not found");
+
+      const rawExpiresAt = school.package_statuses?.portal_expires_at || null;
+      const expiresMs = rawExpiresAt ? new Date(rawExpiresAt).getTime() : null;
+      if (expiresMs !== null && !Number.isNaN(expiresMs) && expiresMs <= Date.now()) {
+        if (String(school.status).toLowerCase() === "aktif") {
+          await (supabase as any)
+            .from("schools")
+            .update({ status: "Pasif", is_active: false })
+            .eq("id", school.id);
+        }
+        school.status = "Pasif";
+        school.is_active = false;
+      }
 
       const { data: orders } = await (supabase as any)
         .from("orders")
@@ -101,6 +116,35 @@ function SchoolPortal() {
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({});
   const [tray, setTray] = useState(false);
   const [confirm, setConfirm] = useState<null | { items: number; total: number; when: Date }>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const schoolRecord = data?.school;
+    if (!schoolRecord?.id) return;
+    const rawExpires = schoolRecord?.package_statuses?.portal_expires_at;
+    if (!rawExpires) return;
+    const expMs = new Date(rawExpires).getTime();
+    if (
+      !Number.isNaN(expMs) &&
+      expMs <= nowMs &&
+      String(schoolRecord.status).toLowerCase() !== "pasif"
+    ) {
+      (supabase as any)
+        .from("schools")
+        .update({ status: "Pasif", is_active: false })
+        .eq("id", schoolRecord.id)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["school", slug] });
+        });
+    }
+  }, [data?.school, nowMs, qc, slug]);
 
   const catalog: CatalogItem[] = useMemo(() => {
     if (dbStock.length) {
@@ -180,6 +224,57 @@ function SchoolPortal() {
   }
 
   const { school, orders } = data;
+
+  const rawExpiresAt = school?.package_statuses?.portal_expires_at || null;
+  const expiresAtMs = rawExpiresAt ? new Date(rawExpiresAt).getTime() : null;
+  const hasValidExpiration = expiresAtMs !== null && !Number.isNaN(expiresAtMs);
+  const remainingMs = hasValidExpiration ? expiresAtMs - nowMs : null;
+  const isExpired = remainingMs !== null && remainingMs <= 0;
+  const isUrgent = remainingMs !== null && remainingMs > 0 && remainingMs <= 72 * 60 * 60 * 1000;
+  const remainingDaysCeil =
+    remainingMs !== null && remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+  const remainingWholeDays =
+    remainingMs !== null && remainingMs > 0 ? Math.floor(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+  const remainingHoursMod =
+    remainingMs !== null && remainingMs > 0
+      ? Math.ceil((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      : 0;
+  const totalRemainingHours =
+    remainingMs !== null && remainingMs > 0
+      ? Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60)))
+      : 0;
+
+  const urgentTimeLabel = (() => {
+    if (remainingMs === null || remainingMs <= 0) return "";
+    if (remainingMs < 24 * 60 * 60 * 1000) {
+      return `son ${totalRemainingHours} saat`;
+    }
+    if (remainingHoursMod > 0 && remainingHoursMod < 24) {
+      return `son ${remainingWholeDays} gün ${remainingHoursMod} saat`;
+    }
+    return `son ${remainingDaysCeil} gün`;
+  })();
+
+  if (
+    String(school?.status || "Aktif").toLowerCase() === "pasif" ||
+    school?.is_active === false ||
+    isExpired
+  ) {
+    return (
+      <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 font-sans text-white relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#A67C52]/20 rounded-full blur-[100px] pointer-events-none" />
+        <div className="max-w-md w-full bg-[#131316] border border-white/10 rounded-3xl p-8 relative z-10 shadow-2xl flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+            <Lock className="w-10 h-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4">Portal Kapalı</h1>
+          <p className="text-white/70 mb-4 leading-relaxed">
+            Sipariş seçim süreci sona ermiştir. Lütfen Albümevi ile iletişime geçiniz.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const selectedItems = catalog.filter((c) => (selection[c.id] ?? 0) > 0);
   const totalQty = selectedItems.reduce((s, i) => s + selection[i.id], 0);
@@ -266,6 +361,49 @@ function SchoolPortal() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-8 px-6 py-8 pb-32">
+        {hasValidExpiration && remainingMs !== null && remainingMs > 0 && (
+          <div>
+            {isUrgent ? (
+              <div className="rounded-2xl bg-[#131316] border border-red-500/50 px-5 py-4 shadow-[0_0_30px_rgba(239,68,68,0.28)] flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/25 to-amber-500/20 border border-red-500/40 text-amber-400">
+                    <AlertTriangle className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-sm sm:text-base font-bold text-amber-300 tracking-tight">
+                      Önemli Uyarı: Sipariş seçim süresinin kapanmasına {urgentTimeLabel} kaldı!
+                      Lütfen seçimlerinizi tamamlayıp kaydediniz.
+                    </div>
+                    <div className="text-xs text-white/60 mt-0.5">
+                      Süre dolduğunda portal otomatik olarak kapanacaktır.
+                    </div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
+                  {urgentTimeLabel}
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-[#131316] border border-[#A67C52]/30 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-white">
+                <div className="flex items-center gap-2.5 text-xs sm:text-sm text-white/80">
+                  <Clock className="w-4 h-4 text-[#A67C52] shrink-0" />
+                  <span>
+                    Sipariş seçim sürecinin kapanmasına{" "}
+                    <strong className="text-[#A67C52] font-semibold">
+                      {remainingDaysCeil} gün
+                    </strong>{" "}
+                    kaldı.
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-[#A67C52] bg-[#A67C52]/15 px-2.5 py-1 rounded-lg shrink-0">
+                  {remainingDaysCeil} gün kaldı
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Hoş geldiniz, {school.name}</h1>
           <p className="text-sm text-muted-foreground">

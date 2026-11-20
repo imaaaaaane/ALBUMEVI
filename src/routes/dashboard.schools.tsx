@@ -24,6 +24,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { uploadFileToR2, getR2FileUrl, getR2PublicUrl } from "../lib/r2";
 import {
@@ -789,6 +791,233 @@ function ManageClassesModal({ schoolSlug }: { schoolSlug: string }) {
   );
 }
 
+type PortalDurationPreset = "keep" | "7" | "10" | "15" | "unlimited" | "custom";
+
+interface SchoolExpirationInfo {
+  hasExpiration: boolean;
+  expiresAtIso: string | null;
+  expiresAtMs: number | null;
+  remainingMs: number | null;
+  isExpired: boolean;
+  isUrgent: boolean;
+  remainingDays: number;
+  remainingHours: number;
+  badgeText: string;
+  formattedExpiryDate: string | null;
+}
+
+function getSchoolExpirationInfo(school: any, nowMs: number = Date.now()): SchoolExpirationInfo {
+  const rawExpires = school?.package_statuses?.portal_expires_at;
+  if (!rawExpires || typeof rawExpires !== "string") {
+    return {
+      hasExpiration: false,
+      expiresAtIso: null,
+      expiresAtMs: null,
+      remainingMs: null,
+      isExpired: false,
+      isUrgent: false,
+      remainingDays: 0,
+      remainingHours: 0,
+      badgeText: "Süresiz",
+      formattedExpiryDate: null,
+    };
+  }
+
+  const parsedMs = new Date(rawExpires).getTime();
+  if (Number.isNaN(parsedMs)) {
+    return {
+      hasExpiration: false,
+      expiresAtIso: null,
+      expiresAtMs: null,
+      remainingMs: null,
+      isExpired: false,
+      isUrgent: false,
+      remainingDays: 0,
+      remainingHours: 0,
+      badgeText: "Süresiz",
+      formattedExpiryDate: null,
+    };
+  }
+
+  const remainingMs = parsedMs - nowMs;
+  const isExpired = remainingMs <= 0;
+  const isUrgent = !isExpired && remainingMs <= 72 * 60 * 60 * 1000;
+  const remainingDays = isExpired ? 0 : Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+  const remainingHours = isExpired ? 0 : Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60)));
+
+  let badgeText = "Süresi doldu";
+  if (!isExpired) {
+    if (remainingMs < 24 * 60 * 60 * 1000) {
+      badgeText = `${remainingHours} saat kaldı`;
+    } else {
+      badgeText = `${remainingDays} gün kaldı`;
+    }
+  }
+
+  const dt = new Date(parsedMs);
+  const formattedExpiryDate = `${String(dt.getDate()).padStart(2, "0")}.${String(
+    dt.getMonth() + 1,
+  ).padStart(2, "0")}.${dt.getFullYear()} ${String(dt.getHours()).padStart(2, "0")}:${String(
+    dt.getMinutes(),
+  ).padStart(2, "0")}`;
+
+  return {
+    hasExpiration: true,
+    expiresAtIso: rawExpires,
+    expiresAtMs: parsedMs,
+    remainingMs,
+    isExpired,
+    isUrgent,
+    remainingDays,
+    remainingHours,
+    badgeText,
+    formattedExpiryDate,
+  };
+}
+
+function resolveDurationToPayload(
+  preset: PortalDurationPreset,
+  customDays: string,
+  existingPackageStatuses?: Record<string, any> | null,
+): {
+  portal_expires_at: string | null;
+  portal_duration_days: number | null;
+} {
+  if (preset === "keep" && existingPackageStatuses?.portal_expires_at) {
+    return {
+      portal_expires_at: existingPackageStatuses.portal_expires_at,
+      portal_duration_days: existingPackageStatuses.portal_duration_days ?? null,
+    };
+  }
+
+  if (preset === "unlimited") {
+    return {
+      portal_expires_at: null,
+      portal_duration_days: null,
+    };
+  }
+
+  const daysNum =
+    preset === "custom" ? Math.max(1, Math.round(Number(customDays) || 1)) : Number(preset) || 10;
+
+  const expiresAtIso = new Date(Date.now() + daysNum * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    portal_expires_at: expiresAtIso,
+    portal_duration_days: daysNum,
+  };
+}
+
+interface PortalDurationSelectorProps {
+  preset: PortalDurationPreset;
+  onPresetChange: (val: PortalDurationPreset) => void;
+  customDays: string;
+  onCustomDaysChange: (val: string) => void;
+  existingSchool?: any;
+  allowKeepExisting?: boolean;
+}
+
+function PortalDurationSelector({
+  preset,
+  onPresetChange,
+  customDays,
+  onCustomDaysChange,
+  existingSchool,
+  allowKeepExisting = false,
+}: PortalDurationSelectorProps) {
+  const existingInfo = existingSchool ? getSchoolExpirationInfo(existingSchool) : null;
+  const canKeep = Boolean(
+    allowKeepExisting && existingInfo?.hasExpiration && !existingInfo.isExpired,
+  );
+
+  const previewPayload = resolveDurationToPayload(
+    preset,
+    customDays,
+    existingSchool?.package_statuses,
+  );
+  const previewDate = previewPayload.portal_expires_at
+    ? new Date(previewPayload.portal_expires_at)
+    : null;
+  const formattedPreview = previewDate
+    ? `${String(previewDate.getDate()).padStart(2, "0")}.${String(
+        previewDate.getMonth() + 1,
+      ).padStart(2, "0")}.${previewDate.getFullYear()} ${String(previewDate.getHours()).padStart(
+        2,
+        "0",
+      )}:${String(previewDate.getMinutes()).padStart(2, "0")}`
+    : null;
+
+  const options: Array<{ id: PortalDurationPreset; label: string }> = [
+    ...(canKeep
+      ? [{ id: "keep" as PortalDurationPreset, label: `Mevcut (${existingInfo?.badgeText})` }]
+      : []),
+    { id: "7", label: "7 Gün" },
+    { id: "10", label: "10 Gün" },
+    { id: "15", label: "15 Gün" },
+    { id: "unlimited", label: "Süresiz" },
+    { id: "custom", label: "Özel Gün" },
+  ];
+
+  return (
+    <div className="space-y-2.5 rounded-xl border border-[#A67C52]/25 bg-[#A67C52]/[0.06] p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-white/90 text-xs font-semibold flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-[#A67C52]" />
+          Portal Seçim Süreci (Gün)
+        </Label>
+        {formattedPreview ? (
+          <span className="text-[11px] font-medium text-[#A67C52] bg-[#A67C52]/15 px-2 py-0.5 rounded-md">
+            Bitiş: {formattedPreview}
+          </span>
+        ) : (
+          <span className="text-[11px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-md">
+            Süresiz Açık
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const active = preset === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onPresetChange(opt.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                active
+                  ? "bg-[#A67C52] text-white border-[#A67C52] shadow-md shadow-[#A67C52]/25"
+                  : "bg-[#131316] text-white/70 border-white/10 hover:border-[#A67C52]/50 hover:text-white"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {preset === "custom" && (
+        <div className="flex items-center gap-2 pt-1">
+          <Input
+            type="number"
+            min="1"
+            max="365"
+            value={customDays}
+            onChange={(e) => onCustomDaysChange(e.target.value)}
+            placeholder="Gün sayısı girin (Örn: 5)"
+            className="h-9 bg-[#131316] border-white/15 text-white text-xs rounded-lg focus-visible:ring-1 focus-visible:ring-[#A67C52] w-44 font-mono"
+          />
+          <span className="text-xs text-white/60">gün sonra otomatik Pasif durumuna geçer</span>
+        </div>
+      )}
+
+      <p className="text-[11px] text-white/45 leading-relaxed">
+        Süre dolduğunda okul otomatik olarak <strong className="text-white/70">Pasif</strong> duruma
+        geçer ve son 3 gün kala öğretmen portalında acil uyarı gösterilir.
+      </p>
+    </div>
+  );
+}
+
 interface EditSchoolPackageLine {
   key: string;
   schoolProductId?: string | null;
@@ -816,6 +1045,8 @@ function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSc
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("Aktif");
+  const [durationPreset, setDurationPreset] = useState<PortalDurationPreset>("unlimited");
+  const [customDays, setCustomDays] = useState("10");
   const [packageLines, setPackageLines] = useState<EditSchoolPackageLine[]>([]);
 
   useEffect(() => {
@@ -825,8 +1056,25 @@ function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSc
     setCity(school.city || "");
     setUsername(school.login_username || "");
     setPassword(school.login_password || "");
-    setStatus(String(school.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif");
+    const isCurrentlyActive = String(school.status).toLowerCase() === "aktif";
+    setStatus(isCurrentlyActive ? "Aktif" : "Pasif");
     setShowPassword(false);
+
+    const expInfo = getSchoolExpirationInfo(school);
+    const savedDuration = school?.package_statuses?.portal_duration_days;
+    if (isCurrentlyActive && expInfo.hasExpiration && !expInfo.isExpired) {
+      setDurationPreset("keep");
+      setCustomDays(savedDuration ? String(savedDuration) : String(expInfo.remainingDays || 10));
+    } else if (savedDuration === 7 || savedDuration === 10 || savedDuration === 15) {
+      setDurationPreset(String(savedDuration) as PortalDurationPreset);
+      setCustomDays(String(savedDuration));
+    } else if (savedDuration && Number(savedDuration) > 0) {
+      setDurationPreset("custom");
+      setCustomDays(String(savedDuration));
+    } else {
+      setDurationPreset("unlimited");
+      setCustomDays("10");
+    }
 
     let isMounted = true;
     setIsLoadingPackages(true);
@@ -971,7 +1219,21 @@ function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSc
       // 1. Ensure active Supabase session
       await supabase.auth.getSession();
 
-      // 2. Update schools table
+      // 2. Update schools table (preserving existing package_statuses keys)
+      const currentPackageStatuses =
+        school.package_statuses && typeof school.package_statuses === "object"
+          ? school.package_statuses
+          : {};
+      const durationPayload =
+        status === "Aktif"
+          ? resolveDurationToPayload(durationPreset, customDays, currentPackageStatuses)
+          : { portal_expires_at: null, portal_duration_days: null };
+
+      const updatedPackageStatuses = {
+        ...currentPackageStatuses,
+        ...durationPayload,
+      };
+
       const { error: schoolError } = await (supabase as any)
         .from("schools")
         .update({
@@ -980,6 +1242,8 @@ function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSc
           login_username: username.trim(),
           login_password: password.trim(),
           status: status,
+          is_active: status === "Aktif",
+          package_statuses: updatedPackageStatuses,
         })
         .eq("id", school.id);
 
@@ -1198,22 +1462,46 @@ function EditSchoolDialog({ school, catalogProducts, uniqueCities = [] }: EditSc
             </div>
           </div>
 
-          {/* Durum */}
-          <div className="space-y-1.5">
-            <Label className="text-white/70 text-xs">Okul Durumu</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#131316] border-white/10 text-white">
-                <SelectItem value="Aktif" className="text-emerald-400">
-                  Aktif
-                </SelectItem>
-                <SelectItem value="Pasif" className="text-red-400">
-                  Pasif
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Durum & Süreç */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-white/70 text-xs">Okul Durumu</Label>
+              <Select
+                value={status}
+                onValueChange={(nextVal) => {
+                  setStatus(nextVal);
+                  if (nextVal === "Aktif" && durationPreset === "keep") {
+                    const exp = getSchoolExpirationInfo(school);
+                    if (!exp.hasExpiration || exp.isExpired) {
+                      setDurationPreset("10");
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 text-white rounded-xl h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#131316] border-white/10 text-white">
+                  <SelectItem value="Aktif" className="text-emerald-400">
+                    Aktif
+                  </SelectItem>
+                  <SelectItem value="Pasif" className="text-red-400">
+                    Pasif
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {status === "Aktif" && (
+              <PortalDurationSelector
+                preset={durationPreset}
+                onPresetChange={setDurationPreset}
+                customDays={customDays}
+                onCustomDaysChange={setCustomDays}
+                existingSchool={school}
+                allowKeepExisting
+              />
+            )}
           </div>
 
           {/* Paketler & Fiyatlar */}
@@ -1726,7 +2014,19 @@ function ManageSchools() {
   }, [products]);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    city: string;
+    login_username: string;
+    password: string;
+    package1_id: string;
+    package1_price: string;
+    package2_id: string;
+    package2_price: string;
+    status: string;
+    duration_preset: PortalDurationPreset;
+    custom_days: string;
+  }>({
     name: "",
     city: "",
     login_username: "",
@@ -1736,13 +2036,87 @@ function ManageSchools() {
     package2_id: "",
     package2_price: "",
     status: "Aktif",
+    duration_preset: "10",
+    custom_days: "10",
   });
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [durationModalSchool, setDurationModalSchool] = useState<any | null>(null);
+  const [modalDurationPreset, setModalDurationPreset] = useState<PortalDurationPreset>("10");
+  const [modalCustomDays, setModalCustomDays] = useState("10");
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const openDurationModalForSchool = (schoolItem: any) => {
+    const savedDays = schoolItem?.package_statuses?.portal_duration_days;
+    if (savedDays === 7 || savedDays === 10 || savedDays === 15) {
+      setModalDurationPreset(String(savedDays) as PortalDurationPreset);
+      setModalCustomDays(String(savedDays));
+    } else if (savedDays && Number(savedDays) > 0) {
+      setModalDurationPreset("custom");
+      setModalCustomDays(String(savedDays));
+    } else if (
+      String(schoolItem?.status).toLowerCase() === "aktif" &&
+      !schoolItem?.package_statuses?.portal_expires_at
+    ) {
+      setModalDurationPreset("10");
+      setModalCustomDays("10");
+    } else {
+      setModalDurationPreset("10");
+      setModalCustomDays("10");
+    }
+    setDurationModalSchool(schoolItem);
+  };
 
   useEffect(() => {
     const handler = () => setOpen(true);
     window.addEventListener("albumevi:add-school", handler);
     return () => window.removeEventListener("albumevi:add-school", handler);
   }, []);
+
+  // Auto-switch expired active schools to Pasif in Supabase
+  useEffect(() => {
+    if (!schools || schools.length === 0) return;
+    const expiredActiveSchools = schools.filter((s: any) => {
+      if (String(s?.status).toLowerCase() !== "aktif") return false;
+      const exp = getSchoolExpirationInfo(s, nowMs);
+      return exp.hasExpiration && exp.isExpired;
+    });
+
+    if (expiredActiveSchools.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        for (const s of expiredActiveSchools) {
+          await (supabase as any)
+            .from("schools")
+            .update({
+              status: "Pasif",
+              is_active: false,
+            })
+            .eq("id", s.id);
+        }
+        if (!cancelled) {
+          qc.invalidateQueries({ queryKey: ["schools"] });
+          toast.info(
+            `${expiredActiveSchools.length} okulun seçim süreci dolduğu için otomatik olarak Pasif duruma geçirildi.`,
+          );
+        }
+      } catch (err) {
+        console.error("Failed to auto-expire schools:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [schools, nowMs, qc]);
 
   const m = useMutation({
     mutationFn: async ({ data }: { data: any }) => {
@@ -1751,6 +2125,15 @@ function ManageSchools() {
       if (sessionError || !sessionData?.session) {
         throw new Error("Oturum bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yapın.");
       }
+
+      const isSchoolActive = (data.status || "Aktif") === "Aktif";
+      const durationPayload = isSchoolActive
+        ? resolveDurationToPayload(
+            data.duration_preset || "unlimited",
+            data.custom_days || "10",
+            null,
+          )
+        : { portal_expires_at: null, portal_duration_days: null };
 
       const { data: row, error } = await supabase
         .from("schools")
@@ -1761,7 +2144,8 @@ function ManageSchools() {
           login_password: data.password,
           team_id: teamId,
           status: data.status || "Aktif",
-          is_active: true,
+          is_active: isSchoolActive,
+          package_statuses: durationPayload,
         } as any)
         .select("id, name, city, login_username, created_at")
         .single();
@@ -1829,6 +2213,8 @@ function ManageSchools() {
         package2_id: "",
         package2_price: "",
         status: "Aktif",
+        duration_preset: "10",
+        custom_days: "10",
       });
       toast.success(lang === "TR" ? "Okul başarıyla eklendi" : "School added successfully");
     },
@@ -1836,13 +2222,46 @@ function ManageSchools() {
   });
 
   const toggleActiveStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await (supabase as any).from("schools").update({ status }).eq("id", id);
+    mutationFn: async ({
+      id,
+      status,
+      durationPayload,
+      currentPackageStatuses,
+    }: {
+      id: string;
+      status: string;
+      durationPayload?: {
+        portal_expires_at: string | null;
+        portal_duration_days: number | null;
+      };
+      currentPackageStatuses?: Record<string, any> | null;
+    }) => {
+      const isSchoolActive = String(status).toLowerCase() === "aktif";
+      const basePkgStatuses =
+        currentPackageStatuses && typeof currentPackageStatuses === "object"
+          ? currentPackageStatuses
+          : {};
+      const nextPackageStatuses = durationPayload
+        ? {
+            ...basePkgStatuses,
+            ...durationPayload,
+          }
+        : basePkgStatuses;
+
+      const { error } = await (supabase as any)
+        .from("schools")
+        .update({
+          status,
+          is_active: isSchoolActive,
+          package_statuses: nextPackageStatuses,
+        })
+        .eq("id", id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
-      toast.success("Okul durumu güncellendi");
+      setDurationModalSchool(null);
+      toast.success("Okul durumu ve süreç bilgisi güncellendi");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -2313,6 +2732,14 @@ function ManageSchools() {
                   </SelectContent>
                 </Select>
               </div>
+              {form.status === "Aktif" && (
+                <PortalDurationSelector
+                  preset={form.duration_preset}
+                  onPresetChange={(p) => setForm({ ...form, duration_preset: p })}
+                  customDays={form.custom_days}
+                  onCustomDaysChange={(val) => setForm({ ...form, custom_days: val })}
+                />
+              )}
             </div>
             <DialogFooter>
               <Button
@@ -2911,30 +3338,72 @@ function ManageSchools() {
                         </button>
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={String(s.status).toLowerCase() === "aktif" ? "Aktif" : "Pasif"}
-                          onValueChange={(val) => {
-                            toggleActiveStatus.mutate({ id: s.id, status: val });
-                          }}
-                        >
-                          <SelectTrigger
-                            className={`w-[100px] h-8 text-xs border-transparent focus:ring-0 ${
-                              String(s.status).toLowerCase() === "aktif"
-                                ? "bg-emerald-500/15 text-emerald-400"
-                                : "bg-red-500/15 text-red-400"
-                            }`}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Aktif" className="text-emerald-500">
-                              Aktif
-                            </SelectItem>
-                            <SelectItem value="Pasif" className="text-red-500">
-                              Pasif
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          const isRowActive = String(s.status).toLowerCase() === "aktif";
+                          const expInfo = getSchoolExpirationInfo(s, nowMs);
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Select
+                                value={isRowActive ? "Aktif" : "Pasif"}
+                                onValueChange={(val) => {
+                                  if (val === "Aktif") {
+                                    openDurationModalForSchool(s);
+                                  } else {
+                                    toggleActiveStatus.mutate({
+                                      id: s.id,
+                                      status: "Pasif",
+                                      durationPayload: {
+                                        portal_expires_at: null,
+                                        portal_duration_days: null,
+                                      },
+                                      currentPackageStatuses: s.package_statuses,
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger
+                                  className={`w-[100px] h-8 text-xs border-transparent focus:ring-0 ${
+                                    isRowActive
+                                      ? "bg-emerald-500/15 text-emerald-400"
+                                      : "bg-red-500/15 text-red-400"
+                                  }`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Aktif" className="text-emerald-500">
+                                    Aktif
+                                  </SelectItem>
+                                  <SelectItem value="Pasif" className="text-red-500">
+                                    Pasif
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {isRowActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => openDurationModalForSchool(s)}
+                                  title={
+                                    expInfo.formattedExpiryDate
+                                      ? `Bitiş: ${expInfo.formattedExpiryDate} (Süreyi düzenlemek için tıklayın)`
+                                      : "Süreyi düzenlemek için tıklayın"
+                                  }
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+                                    expInfo.hasExpiration
+                                      ? expInfo.isUrgent
+                                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
+                                        : "bg-[#A67C52]/15 text-[#A67C52] border-[#A67C52]/30 hover:bg-[#A67C52]/25"
+                                      : "bg-white/5 text-white/50 border-white/10 hover:border-[#A67C52]/40 hover:text-white/80"
+                                  }`}
+                                >
+                                  <Clock className="w-3 h-3 shrink-0" />
+                                  <span>{expInfo.badgeText}</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right flex items-center justify-end gap-2">
                         <EditSchoolDialog
@@ -2952,6 +3421,72 @@ function ManageSchools() {
           </Table>
         )}
       </motion.div>
+
+      {/* Portal Duration (Süreç) Setup Modal */}
+      <Dialog
+        open={!!durationModalSchool}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDurationModalSchool(null);
+        }}
+      >
+        <DialogContent className="bg-[#131316] border border-white/10 text-white max-w-md rounded-2xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#A67C52]" />
+              Portal Seçim Süreci Belirle
+            </DialogTitle>
+            <DialogDescription className="text-xs text-white/50">
+              {durationModalSchool?.name} okulu için öğretmen portalının açık kalacağı süreyi (gün)
+              seçin.
+            </DialogDescription>
+          </DialogHeader>
+
+          {durationModalSchool && (
+            <div className="py-2 space-y-4">
+              <PortalDurationSelector
+                preset={modalDurationPreset}
+                onPresetChange={setModalDurationPreset}
+                customDays={modalCustomDays}
+                onCustomDaysChange={setModalCustomDays}
+                existingSchool={durationModalSchool}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDurationModalSchool(null)}
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white rounded-xl cursor-pointer"
+            >
+              İptal
+            </Button>
+            <Button
+              type="button"
+              disabled={toggleActiveStatus.isPending}
+              onClick={() => {
+                if (!durationModalSchool) return;
+                const payload = resolveDurationToPayload(
+                  modalDurationPreset,
+                  modalCustomDays,
+                  durationModalSchool.package_statuses,
+                );
+                toggleActiveStatus.mutate({
+                  id: durationModalSchool.id,
+                  status: "Aktif",
+                  durationPayload: payload,
+                  currentPackageStatuses: durationModalSchool.package_statuses,
+                });
+              }}
+              className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-semibold rounded-xl cursor-pointer shadow-lg shadow-[#A67C52]/20"
+            >
+              {toggleActiveStatus.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Aktif Et & Süreci Başlat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Class Orders Codes & Notes Modal */}
       <Dialog
