@@ -204,13 +204,137 @@ const getSchoolRemaining = (f: School, rates?: Record<string, number>) => {
   return debt - contribution - paid;
 };
 
-const safeDateStr = (val?: string | null) => {
-  if (!val) return new Date().toISOString().split("T")[0];
-  const d = new Date(val);
-  return isNaN(d.getTime())
-    ? new Date().toISOString().split("T")[0]
-    : d.toISOString().split("T")[0];
+const getTodayDateStr = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
+
+const parseDateToTimestamp = (val?: string | number | Date | null): number => {
+  if (val == null || val === "") return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  if (val instanceof Date) return isNaN(val.getTime()) ? 0 : val.getTime();
+  const str = String(val).trim();
+  if (!str || str === "-") return 0;
+
+  // Match DD.MM.YYYY or DD/MM/YYYY (with optional time HH:mm or HH:mm:ss)
+  const trMatch = str.match(
+    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/,
+  );
+  if (trMatch) {
+    const day = parseInt(trMatch[1], 10);
+    const month = parseInt(trMatch[2], 10) - 1;
+    const year = parseInt(trMatch[3], 10);
+    const hour = trMatch[4] ? parseInt(trMatch[4], 10) : 0;
+    const min = trMatch[5] ? parseInt(trMatch[5], 10) : 0;
+    const sec = trMatch[6] ? parseInt(trMatch[6], 10) : 0;
+    const d = new Date(year, month, day, hour, min, sec);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  // Match YYYY-MM-DD (date only without time)
+  const isoDateOnly = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoDateOnly) {
+    const year = parseInt(isoDateOnly[1], 10);
+    const month = parseInt(isoDateOnly[2], 10) - 1;
+    const day = parseInt(isoDateOnly[3], 10);
+    const d = new Date(year, month, day);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  const parsed = new Date(str).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+const toDateInputStr = (val?: string | number | Date | null): string => {
+  if (!val) return getTodayDateStr();
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    // Exact date-only or UTC-midnight ISO string preserves calendar day
+    const midnightIsoMatch = trimmed.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.0+)?(?:Z|[+-]00:?00))?$/i,
+    );
+    if (midnightIsoMatch) {
+      return `${midnightIsoMatch[1]}-${midnightIsoMatch[2]}-${midnightIsoMatch[3]}`;
+    }
+    const trMatch = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+    if (trMatch) {
+      return `${trMatch[3]}-${trMatch[2].padStart(2, "0")}-${trMatch[1].padStart(2, "0")}`;
+    }
+  }
+  const ts = parseDateToTimestamp(val);
+  if (!ts) return getTodayDateStr();
+  const d = new Date(ts);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDisplayDate = (val?: string | number | Date | null): string => {
+  if (!val || val === "-") return "-";
+  const ymd = toDateInputStr(val);
+  const match = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    return `${match[3]}.${match[2]}.${match[1]}`;
+  }
+  return String(val);
+};
+
+const dateInputToIso = (dateStr?: string | null, existingIso?: string | null): string => {
+  const targetYmd = toDateInputStr(dateStr);
+  if (existingIso && toDateInputStr(existingIso) === targetYmd) {
+    const existingTs = parseDateToTimestamp(existingIso);
+    if (existingTs > 0) return new Date(existingTs).toISOString();
+  }
+  const match = targetYmd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    // Monotonically increasing offset within 12:00:00Z..20:59:59Z so same-day entries sort newest-created first
+    // while keeping the exact same calendar date in both UTC and UTC+3 (Turkey).
+    const epochBase = Date.UTC(2026, 9, 1, 0, 0, 0, 0);
+    const offsetMs = Math.min(32399999, Math.max(1, Math.floor((Date.now() - epochBase) / 250)));
+    const ts = Date.UTC(year, month, day, 12, 0, 0, 0) + offsetMs;
+    return new Date(ts).toISOString();
+  }
+  return new Date().toISOString();
+};
+
+const compareTransactionsNewestFirst = (a: any, b: any): number => {
+  const dayA = parseDateToTimestamp(
+    toDateInputStr(a?.date || a?.createdAt || a?.created_at || a?.olusturma_tarihi),
+  );
+  const dayB = parseDateToTimestamp(
+    toDateInputStr(b?.date || b?.createdAt || b?.created_at || b?.olusturma_tarihi),
+  );
+  if (dayB !== dayA) return dayB - dayA;
+
+  const fullA = parseDateToTimestamp(
+    a?.createdAt || a?.created_at || a?.olusturma_tarihi || a?.date,
+  );
+  const fullB = parseDateToTimestamp(
+    b?.createdAt || b?.created_at || b?.olusturma_tarihi || b?.date,
+  );
+  if (fullB !== fullA) return fullB - fullA;
+
+  if (typeof a?._seq === "number" && typeof b?._seq === "number" && b._seq !== a._seq) {
+    return b._seq - a._seq;
+  }
+
+  const numIdA = Number(a?.id);
+  const numIdB = Number(b?.id);
+  if (!isNaN(numIdA) && !isNaN(numIdB) && numIdB !== numIdA) {
+    return numIdB - numIdA;
+  }
+
+  return String(b?.id || "").localeCompare(String(a?.id || ""));
+};
+
+const safeDateStr = (val?: string | null) => toDateInputStr(val);
 
 function AccountingDashboard() {
   const navigate = useNavigate();
@@ -290,7 +414,7 @@ function AccountingDashboard() {
       const { data: transactions, error: tErr } = await supabaseClient
         .from("supplier_transactions")
         .select("id, supplier_id, transaction_type, amount, description, created_at, currency")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (tErr)
         return suppliers.map((s: any) => ({
@@ -314,7 +438,8 @@ function AccountingDashboard() {
             desc: t.description ?? "",
             createdAt: t.created_at,
             currency: t.currency,
-          })),
+          }))
+          .sort(compareTransactionsNewestFirst),
       }));
     },
   });
@@ -355,7 +480,7 @@ function AccountingDashboard() {
       const { data: transactions, error: tErr } = await supabaseClient
         .from("firm_transactions")
         .select("id, firm_id, transaction_type, amount, description, created_at, currency")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (tErr)
         return firms.map((s: any) => ({
@@ -383,7 +508,8 @@ function AccountingDashboard() {
             exchangeRate: undefined,
             createdAt: t.created_at,
             currency: t.currency,
-          })),
+          }))
+          .sort(compareTransactionsNewestFirst),
       }));
     },
   });
@@ -408,7 +534,7 @@ function AccountingDashboard() {
       const { data: transactions, error: tErr } = await supabaseClient
         .from("salary_transactions")
         .select("*")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
       if (tErr) {
         console.error("Salary transactions error:", tErr);
       }
@@ -433,7 +559,8 @@ function AccountingDashboard() {
             amount: Number(t.amount),
             desc: t.description ?? "",
             createdAt: t.created_at,
-          })),
+          }))
+          .sort(compareTransactionsNewestFirst),
       }));
     },
   });
@@ -482,7 +609,7 @@ function AccountingDashboard() {
           "school_transactions",
           "id, school_id, transaction_type, amount, description, created_at, currency",
           "created_at",
-          true,
+          false,
         ),
         fetchAllRowsSafe<any>(supabaseClient, "orders", "*"),
         fetchAllRowsSafe<any>(supabaseClient, "classes", "id, school_id"),
@@ -539,7 +666,8 @@ function AccountingDashboard() {
               desc: t.description ?? "",
               createdAt: t.created_at,
               currency: t.currency,
-            })),
+            }))
+            .sort(compareTransactionsNewestFirst),
         };
       });
     },
@@ -615,6 +743,19 @@ function AccountingDashboard() {
     });
   });
 
+  suppliersData.forEach((sup) => {
+    sup.transactions.forEach((tx) => {
+      combinedTx.push({
+        id: tx.id,
+        desc: `${sup.name} - ${tx.desc}`,
+        date: tx.date,
+        amount: -convertToTry(tx.amount, tx.currency || sup.currency),
+        category: "sarf-malzemeler",
+        createdAt: tx.createdAt,
+      });
+    });
+  });
+
   employeesData.forEach((emp) => {
     emp.transactions.forEach((tx) => {
       combinedTx.push({
@@ -643,10 +784,8 @@ function AccountingDashboard() {
     });
   });
 
-  // Sort by database createdAt (newest first)
-  const sortedCombinedTx = [...combinedTx].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  // Sort strictly newest-first by transaction date and creation timestamp
+  const sortedCombinedTx = [...combinedTx].sort(compareTransactionsNewestFirst);
 
   // Filter transactions for recent transactions section
   const filteredTransactions = activeCategory
@@ -924,9 +1063,13 @@ function TransactionList({
   onClearFilter,
 }: TransactionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const filteredTransactions = transactions
-    .filter((tx) => tx.desc.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.desc.localeCompare(b.desc, "tr"));
+  const filteredTransactions = [...transactions]
+    .filter(
+      (tx) =>
+        tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatDisplayDate(tx.date).includes(searchQuery.trim()),
+    )
+    .sort(compareTransactionsNewestFirst);
 
   return (
     <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
@@ -976,7 +1119,7 @@ function TransactionList({
               >
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-white">{tx.desc}</p>
-                  <p className="text-xs text-[#9E9696] font-medium">{tx.date}</p>
+                  <p className="text-xs text-[#9E9696] font-medium">{formatDisplayDate(tx.date)}</p>
                 </div>
                 <span
                   className={`text-sm font-bold ${isIncome ? "text-[#12B76A]" : "text-[#A67C52]"}`}
@@ -1054,7 +1197,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
 
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
   const [newTxAmount, setNewTxAmount] = useState("");
-  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTxDate, setNewTxDate] = useState(getTodayDateStr());
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
 
@@ -1265,7 +1408,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
         amount: input.amount,
         description: input.desc,
         currency: input.currency,
-        created_at: new Date(input.date).toISOString(),
+        created_at: dateInputToIso(input.date),
       });
     },
     onSuccess: () => {
@@ -1274,7 +1417,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       setIsAddTxOpen(false);
       setNewTxAmount("");
       setNewTxDesc("");
-
+      setNewTxDate(getTodayDateStr());
       setEditTxId(null);
     },
   });
@@ -1287,6 +1430,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       desc: string;
       date: string;
       currency?: string;
+      existingCreatedAt?: string;
     }) => {
       await supabaseClient
         .from("supplier_transactions")
@@ -1295,7 +1439,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.amount,
           description: input.desc,
           currency: input.currency,
-          created_at: new Date(input.date).toISOString(),
+          created_at: dateInputToIso(input.date, input.existingCreatedAt),
         })
         .eq("id", input.id);
     },
@@ -1305,7 +1449,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       setIsAddTxOpen(false);
       setNewTxAmount("");
       setNewTxDesc("");
-
+      setNewTxDate(getTodayDateStr());
       setEditTxId(null);
     },
   });
@@ -1365,6 +1509,9 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     if (!finalDesc) return toast.error("Açıklama zorunludur.");
 
     if (editTxId) {
+      const existingTx = selectedSupplier?.transactions.find(
+        (t) => String(t.id) === String(editTxId),
+      );
       editTxMutation.mutate({
         id: editTxId,
         type: newTxType,
@@ -1372,6 +1519,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
         desc: finalDesc,
         date: newTxDate,
         currency: newTxCurrency,
+        existingCreatedAt: existingTx?.createdAt,
       });
     } else {
       addTxMutation.mutate({
@@ -1391,7 +1539,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     setNewTxAmount(tx.amount.toString());
     setNewTxDesc(tx.desc);
     setNewTxCurrency(tx.currency || "TRY");
-    setNewTxDate(tx.date.split("T")[0] || new Date().toISOString().split("T")[0]);
+    setNewTxDate(toDateInputStr(tx.date || tx.createdAt));
     setIsAddTxOpen(true);
   };
 
@@ -1404,10 +1552,11 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const handleExportSupplierPDF = () => {
     if (!selectedSupplier) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const data = selectedSupplier.transactions.map((tx: any) => {
+    const sortedTxs = [...selectedSupplier.transactions].sort(compareTransactionsNewestFirst);
+    const data = sortedTxs.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedSupplier.currency)}`;
-      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
+      return [formatDisplayDate(tx.date), typeStr, tx.desc || "", amountStr];
     });
 
     const paid = getFirmPaid(selectedSupplier, exchangeRates);
@@ -1520,6 +1669,9 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                 onClick={() => {
                   setNewTxType("debt");
                   setEditTxId(null);
+                  setNewTxAmount("");
+                  setNewTxDesc("");
+                  setNewTxDate(getTodayDateStr());
                   setIsAddTxOpen(true);
                 }}
                 className="bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold h-10 rounded-xl px-4"
@@ -1535,7 +1687,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                 Bu tedarikçiye ait henüz işlem bulunmuyor.
               </div>
             )}
-            {selectedSupplier.transactions.map((tx) => {
+            {[...selectedSupplier.transactions].sort(compareTransactionsNewestFirst).map((tx) => {
               const isTaken = tx.type === "debt";
               return (
                 <div
@@ -1555,7 +1707,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                     <div>
                       <span className="text-sm font-bold text-white block">{tx.desc}</span>
                       <span className="text-xs text-[#9E9696] font-medium mt-1 block">
-                        {tx.date}
+                        {formatDisplayDate(tx.date)}
                       </span>
                     </div>
                   </div>
@@ -1605,6 +1757,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
               setEditTxId(null);
               setNewTxAmount("");
               setNewTxDesc("");
+              setNewTxDate(getTodayDateStr());
             }
           }}
         >
@@ -2219,7 +2372,7 @@ function FirmsListView({
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
   const [newTxAmount, setNewTxAmount] = useState("");
   const [newTxDiscount, setNewTxDiscount] = useState("");
-  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTxDate, setNewTxDate] = useState(getTodayDateStr());
   const [newTxDesc, setNewTxDesc] = useState("");
   const [newTxCurrency, setNewTxCurrency] = useState<"TRY" | "EUR" | "USD">("TRY");
   const [lineItems, setLineItems] = useState<
@@ -2399,7 +2552,7 @@ function FirmsListView({
         amount: input.amount,
         description: input.desc,
         currency: input.currency,
-        created_at: new Date(input.date).toISOString(),
+        created_at: dateInputToIso(input.date),
       });
     },
     onSuccess: () => {
@@ -2409,6 +2562,7 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
+      setNewTxDate(getTodayDateStr());
       setEditBaseAmount(null);
       setLineItems([
         { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
@@ -2425,6 +2579,7 @@ function FirmsListView({
       desc: string;
       date: string;
       currency?: string;
+      existingCreatedAt?: string;
     }) => {
       await supabaseClient
         .from("firm_transactions")
@@ -2433,7 +2588,7 @@ function FirmsListView({
           amount: input.amount,
           description: input.desc,
           currency: input.currency,
-          created_at: new Date(input.date).toISOString(),
+          created_at: dateInputToIso(input.date, input.existingCreatedAt),
         })
         .eq("id", input.id);
     },
@@ -2444,6 +2599,7 @@ function FirmsListView({
       setNewTxAmount("");
       setNewTxDesc("");
       setNewTxDiscount("");
+      setNewTxDate(getTodayDateStr());
       setEditBaseAmount(null);
       setLineItems([
         { id: Math.random().toString(), productId: "", quantity: 1, price: 0, sayfa_sayisi: "5" },
@@ -2537,6 +2693,7 @@ function FirmsListView({
     if (!finalDesc) return toast.error("Açıklama veya ürün seçimi zorunludur.");
 
     if (editTxId) {
+      const existingTx = selectedFirm?.transactions.find((t) => String(t.id) === String(editTxId));
       editTxMutation.mutate({
         id: editTxId,
         type: newTxType,
@@ -2544,6 +2701,7 @@ function FirmsListView({
         desc: finalDesc,
         date: newTxDate,
         currency: newTxCurrency,
+        existingCreatedAt: existingTx?.createdAt,
       });
     } else {
       addTxMutation.mutate({
@@ -2561,7 +2719,7 @@ function FirmsListView({
     setEditTxId(tx.id);
     setNewTxType(tx.type);
     setNewTxCurrency(tx.currency || "TRY");
-    setNewTxDate(tx.date?.split("T")[0] || new Date().toISOString().split("T")[0]);
+    setNewTxDate(toDateInputStr(tx.date || tx.createdAt));
     setLineItems([]);
 
     if (tx.type === "debt") {
@@ -2674,10 +2832,11 @@ function FirmsListView({
   const handleExportFirmPDF = () => {
     if (!selectedFirm) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const data = selectedFirm.transactions.map((tx) => {
+    const sortedTxs = [...selectedFirm.transactions].sort(compareTransactionsNewestFirst);
+    const data = sortedTxs.map((tx) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedFirm.currency)}`;
-      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
+      return [formatDisplayDate(tx.date), typeStr, tx.desc || "", amountStr];
     });
 
     const paid = getFirmPaid(selectedFirm, exchangeRates);
@@ -2786,6 +2945,7 @@ function FirmsListView({
                   setNewTxAmount("");
                   setNewTxDiscount("");
                   setNewTxDesc("");
+                  setNewTxDate(getTodayDateStr());
                   setLineItems([
                     {
                       id: Math.random().toString(),
@@ -2810,7 +2970,7 @@ function FirmsListView({
                 Bu firmaya ait henüz işlem bulunmuyor.
               </div>
             )}
-            {selectedFirm.transactions.map((tx) => {
+            {[...selectedFirm.transactions].sort(compareTransactionsNewestFirst).map((tx) => {
               const isTaken = tx.type === "debt";
               return (
                 <div
@@ -2830,7 +2990,7 @@ function FirmsListView({
                     <div>
                       <span className="text-sm font-bold text-white block">{tx.desc}</span>
                       <span className="text-xs text-[#9E9696] font-medium mt-1 block">
-                        {tx.date}
+                        {formatDisplayDate(tx.date)}
                       </span>
                     </div>
                   </div>
@@ -2882,6 +3042,7 @@ function FirmsListView({
               setNewTxAmount("");
               setNewTxDiscount("");
               setNewTxDesc("");
+              setNewTxDate(getTodayDateStr());
               setLineItems([
                 {
                   id: Math.random().toString(),
@@ -3685,11 +3846,12 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const [paymentEmployeeId, setPaymentEmployeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDesc, setPaymentDesc] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getTodayDateStr());
   const [newTxType, setNewTxType] = useState<"debt_addition" | "salary_payment" | "advance">(
     "salary_payment",
   );
   const [newTxAmount, setNewTxAmount] = useState("");
-  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTxDate, setNewTxDate] = useState(getTodayDateStr());
   const [newTxDesc, setNewTxDesc] = useState("");
   const [editTxId, setEditTxId] = useState<string | null>(null);
 
@@ -3829,7 +3991,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         transaction_type: input.type,
         amount: input.amount,
         description: input.desc,
-        created_at: new Date(input.date).toISOString(),
+        created_at: dateInputToIso(input.date),
       };
       await supabaseClient
         .from("salary_transactions")
@@ -3860,6 +4022,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       setIsAddTxOpen(false);
       setNewTxAmount("");
       setNewTxDesc("");
+      setNewTxDate(getTodayDateStr());
     },
   });
 
@@ -3875,6 +4038,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       currentPaid: number;
       oldAmount: number;
       oldType: string;
+      existingCreatedAt?: string;
     }) => {
       await supabaseClient
         .from("salary_transactions")
@@ -3882,7 +4046,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           transaction_type: input.type,
           amount: input.amount,
           description: input.desc,
-          created_at: new Date(input.date).toISOString(),
+          created_at: dateInputToIso(input.date, input.existingCreatedAt),
         })
         .eq("id", input.id)
         .throwOnError();
@@ -3909,6 +4073,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       setEditTxId(null);
       setNewTxAmount("");
       setNewTxDesc("");
+      setNewTxDate(getTodayDateStr());
     },
   });
 
@@ -3947,13 +4112,14 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       amount: number;
       currentPaid: number;
       description?: string;
+      date?: string;
     }) => {
       await supabaseClient.from("salary_transactions").insert({
         employee_id: input.employee_id,
         transaction_type: "salary_payment",
         amount: input.amount,
         description: input.description || "Hızlı Ödeme",
-        created_at: new Date().toISOString(),
+        created_at: dateInputToIso(input.date || getTodayDateStr()),
       });
       await supabaseClient
         .from("employees")
@@ -3968,6 +4134,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       setPaymentEmployeeId(null);
       setPaymentAmount("");
       setPaymentDesc("");
+      setPaymentDate(getTodayDateStr());
     },
   });
 
@@ -4021,6 +4188,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         currentPaid: employee.total_paid || 0,
         oldAmount: tx.amount,
         oldType: tx.type,
+        existingCreatedAt: tx.createdAt,
       });
     } else {
       addTxMutation.mutate({
@@ -4040,19 +4208,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     setNewTxType(tx.type);
     setNewTxAmount(tx.amount.toString());
     setNewTxDesc(tx.desc);
-    if (tx.date) {
-      if (tx.date.includes("-")) {
-        setNewTxDate(tx.date.split("T")[0]);
-      } else {
-        const parts = tx.date.split(".");
-        if (parts.length === 3) {
-          const [day, month, year] = parts;
-          setNewTxDate(`${year}-${month}-${day}`);
-        } else {
-          setNewTxDate(new Date().toISOString().split("T")[0]);
-        }
-      }
-    }
+    setNewTxDate(toDateInputStr(tx.date || tx.createdAt));
     setIsAddTxOpen(true);
   };
 
@@ -4072,7 +4228,8 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const handleExportEmployeePDF = () => {
     if (!selectedEmployee) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const data = selectedEmployee.transactions.map((tx: any) => {
+    const sortedTxs = [...selectedEmployee.transactions].sort(compareTransactionsNewestFirst);
+    const data = sortedTxs.map((tx: any) => {
       const typeStr =
         tx.type === "debt_addition"
           ? "Maaş Tahakkuku (Yeni Borç)"
@@ -4080,7 +4237,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             ? "Avans"
             : "Maaş Ödemesi";
       const amountStr = `${tx.amount.toLocaleString()} ₺`;
-      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
+      return [formatDisplayDate(tx.date), typeStr, tx.desc || "", amountStr];
     });
 
     const paid = getEmployeePaid(selectedEmployee);
@@ -4235,6 +4392,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          setPaymentAmount("");
+                          setPaymentDesc("");
+                          setPaymentDate(getTodayDateStr());
                           setPaymentEmployeeId(f.id);
                         }}
                         className="p-2 rounded-lg hover:bg-white/5 text-[#9E9696] hover:text-[#12B76A] transition-colors cursor-pointer ml-1"
@@ -4538,6 +4698,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       onClick={() => {
                         setNewTxType("debt_addition");
                         setEditTxId(null);
+                        setNewTxAmount("");
+                        setNewTxDesc("");
+                        setNewTxDate(getTodayDateStr());
                         setIsAddTxOpen(true);
                       }}
                       className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
@@ -4552,51 +4715,53 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       Bu personele ait henüz işlem bulunmuyor.
                     </div>
                   )}
-                  {selectedEmployee.transactions.map((tx) => {
-                    const isTaken = tx.type === "debt_addition";
-                    const isAdvance = tx.type === "advance";
-                    return (
-                      <div
-                        key={tx.id}
-                        className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
-                            <ArrowDownRight className="w-5 h-5" />
+                  {[...selectedEmployee.transactions]
+                    .sort(compareTransactionsNewestFirst)
+                    .map((tx) => {
+                      const isTaken = tx.type === "debt_addition";
+                      const isAdvance = tx.type === "advance";
+                      return (
+                        <div
+                          key={tx.id}
+                          className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
+                              <ArrowDownRight className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-white block">{tx.desc}</span>
+                              <span className="text-xs text-[#9E9696] font-medium mt-1 block">
+                                {formatDisplayDate(tx.date)}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-sm font-bold text-white block">{tx.desc}</span>
-                            <span className="text-xs text-[#9E9696] font-medium mt-1 block">
-                              {tx.date}
+                          <div className="flex items-center gap-4">
+                            <span className="font-mono text-lg font-bold text-white">
+                              {tx.amount.toLocaleString()} ₺
                             </span>
+                            <div className="flex gap-1 ml-4">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditTransaction(tx)}
+                                className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteTransaction(tx)}
+                                className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono text-lg font-bold text-white">
-                            {tx.amount.toLocaleString()} ₺
-                          </span>
-                          <div className="flex gap-1 ml-4">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditTransaction(tx)}
-                              className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteTransaction(tx)}
-                              className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -4604,7 +4769,18 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
+      <Dialog
+        open={isAddTxOpen}
+        onOpenChange={(open) => {
+          setIsAddTxOpen(open);
+          if (!open) {
+            setEditTxId(null);
+            setNewTxAmount("");
+            setNewTxDesc("");
+            setNewTxDate(getTodayDateStr());
+          }
+        }}
+      >
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
@@ -4670,23 +4846,42 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       {/* Hızlı Ödeme Modal */}
       <Dialog
         open={!!paymentEmployeeId}
-        onOpenChange={(open) => !open && setPaymentEmployeeId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPaymentEmployeeId(null);
+            setPaymentAmount("");
+            setPaymentDesc("");
+            setPaymentDate(getTodayDateStr());
+          }
+        }}
       >
         <DialogContent className="bg-[#0A0A0A] border-white/10 text-white sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Yeni Ödeme Ekle</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
-              <Input
-                type="number"
-                min="1"
-                placeholder="Örn: 5000"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                className="h-11 bg-white/5 border-white/10 text-white rounded-xl"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Ödenecek Tutar (₺)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Örn: 5000"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="h-11 bg-white/5 border-white/10 text-white rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-300">Tarih</Label>
+                <Input
+                  type="date"
+                  required
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="h-11 bg-white/5 border-white/10 text-white rounded-xl"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-300">Açıklama</Label>
@@ -4718,6 +4913,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                     amount: parseFloat(paymentAmount),
                     currentPaid: Number(emp.total_paid || 0),
                     description: paymentDesc,
+                    date: paymentDate,
                   });
                 }
               }}
@@ -5362,8 +5558,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
 
   const [newTxType, setNewTxType] = useState<"debt" | "payment">("debt");
   const [newTxAmount, setNewTxAmount] = useState("");
-  const [newTxDate, setNewTxDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTxDate, setNewTxDate] = useState(getTodayDateStr());
   const [newTxDesc, setNewTxDesc] = useState("");
+  const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const getCurrencySymbol = (currency?: string) => {
     switch (currency) {
@@ -5574,15 +5771,59 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         amount: input.amount,
         description: input.desc,
         currency: input.currency,
-        created_at: new Date(input.date).toISOString(),
+        created_at: dateInputToIso(input.date),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false);
+      setEditTxId(null);
       setNewTxAmount("");
       setNewTxDesc("");
+      setNewTxDate(getTodayDateStr());
+    },
+  });
+
+  const editTxMutation = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      type: "debt" | "payment";
+      amount: number;
+      desc: string;
+      date: string;
+      currency?: string;
+      existingCreatedAt?: string;
+    }) => {
+      await supabaseClient
+        .from("school_transactions")
+        .update({
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: dateInputToIso(input.date, input.existingCreatedAt),
+        })
+        .eq("id", input.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools_ledger"] });
+      toast.success("İşlem güncellendi");
+      setIsAddTxOpen(false);
+      setEditTxId(null);
+      setNewTxAmount("");
+      setNewTxDesc("");
+      setNewTxDate(getTodayDateStr());
+    },
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabaseClient.from("school_transactions").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools_ledger"] });
+      toast.success("İşlem silindi");
     },
   });
 
@@ -5621,23 +5862,52 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     e.preventDefault();
     if (!selectedSchoolId || !newTxAmount || !newTxDesc.trim()) return;
     const school = schools.find((f) => f.id === selectedSchoolId);
-    addTxMutation.mutate({
-      school_id: selectedSchoolId,
-      type: newTxType,
-      amount: parseFloat(newTxAmount),
-      desc: newTxDesc.trim(),
-      date: newTxDate,
-      currency: school?.currency,
-    });
+    if (editTxId) {
+      const existingTx = school?.transactions.find((t) => String(t.id) === String(editTxId));
+      editTxMutation.mutate({
+        id: editTxId,
+        type: newTxType,
+        amount: parseFloat(newTxAmount),
+        desc: newTxDesc.trim(),
+        date: newTxDate,
+        currency: school?.currency,
+        existingCreatedAt: existingTx?.createdAt,
+      });
+    } else {
+      addTxMutation.mutate({
+        school_id: selectedSchoolId,
+        type: newTxType,
+        amount: parseFloat(newTxAmount),
+        desc: newTxDesc.trim(),
+        date: newTxDate,
+        currency: school?.currency,
+      });
+    }
+  };
+
+  const handleEditTransaction = (tx: any) => {
+    setEditTxId(tx.id);
+    setNewTxType(tx.type);
+    setNewTxAmount(tx.amount.toString());
+    setNewTxDesc(tx.desc);
+    setNewTxDate(toDateInputStr(tx.date || tx.createdAt));
+    setIsAddTxOpen(true);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm("Bu işlemi silmek istediğinize emin misiniz?")) {
+      deleteTxMutation.mutate(id);
+    }
   };
 
   const handleExportSchoolPDF = () => {
     if (!selectedSchool) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const data = selectedSchool.transactions.map((tx: any) => {
+    const sortedTxs = [...selectedSchool.transactions].sort(compareTransactionsNewestFirst);
+    const data = sortedTxs.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borç" : "Ödeme / Tahsilat";
       const amountStr = `${getConvertedAmount(tx.amount, tx.currency || selectedSchool.currency, exchangeRates).toLocaleString()} ₺`;
-      return [new Date(tx.date).toLocaleDateString("tr-TR"), typeStr, tx.desc || "", amountStr];
+      return [formatDisplayDate(tx.date), typeStr, tx.desc || "", amountStr];
     });
 
     const paid = getSchoolPaid(selectedSchool, exchangeRates);
@@ -6175,6 +6445,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                       size="sm"
                       onClick={() => {
                         setNewTxType("debt");
+                        setEditTxId(null);
+                        setNewTxAmount("");
+                        setNewTxDesc("");
+                        setNewTxDate(getTodayDateStr());
                         setIsAddTxOpen(true);
                       }}
                       className="bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs h-8 rounded-lg px-3"
@@ -6184,44 +6458,66 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   </div>
                 </div>
                 <div className="space-y-2.5">
-                  {selectedSchool.transactions.map((tx) => {
-                    const isTaken = tx.type === "debt";
-                    return (
-                      <div
-                        key={tx.id}
-                        className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
-                          >
-                            {isTaken ? (
-                              <ArrowUpRight className="w-4 h-4" />
-                            ) : (
-                              <ArrowDownRight className="w-4 h-4" />
-                            )}
+                  {[...selectedSchool.transactions]
+                    .sort(compareTransactionsNewestFirst)
+                    .map((tx) => {
+                      const isTaken = tx.type === "debt";
+                      return (
+                        <div
+                          key={tx.id}
+                          className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
+                            >
+                              {isTaken ? (
+                                <ArrowUpRight className="w-4 h-4" />
+                              ) : (
+                                <ArrowDownRight className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold text-white block">{tx.desc}</span>
+                              <span className="text-[10px] text-[#9E9696] font-medium mt-0.5 block">
+                                {formatDisplayDate(tx.date)}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-xs font-bold text-white block">{tx.desc}</span>
-                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5">
-                              {tx.date}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
+                            >
+                              {isTaken ? "+" : "-"}
+                              {getConvertedAmount(
+                                tx.amount,
+                                tx.currency || selectedSchool.currency,
+                                exchangeRates,
+                              ).toLocaleString()}{" "}
+                              ₺
                             </span>
+                            <div className="flex gap-1 ml-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditTransaction(tx)}
+                                className="h-7 w-7 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteTransaction(tx.id)}
+                                className="h-7 w-7 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                        <span
-                          className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
-                        >
-                          {isTaken ? "+" : "-"}
-                          {getConvertedAmount(
-                            tx.amount,
-                            tx.currency || selectedSchool.currency,
-                            exchangeRates,
-                          ).toLocaleString()}{" "}
-                          ₺
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -6229,10 +6525,23 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
+      <Dialog
+        open={isAddTxOpen}
+        onOpenChange={(open) => {
+          setIsAddTxOpen(open);
+          if (!open) {
+            setEditTxId(null);
+            setNewTxAmount("");
+            setNewTxDesc("");
+            setNewTxDate(getTodayDateStr());
+          }
+        }}
+      >
         <DialogContent className="border-border bg-[#131316] text-white rounded-2xl max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Yeni İşlem Ekle</DialogTitle>
+            <DialogTitle className="text-lg font-bold">
+              {editTxId ? "İşlemi Düzenle" : "Yeni İşlem Ekle"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-3">
@@ -6279,10 +6588,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
               </Button>
               <Button
                 type="submit"
-                disabled={addTxMutation.isPending}
+                disabled={addTxMutation.isPending || editTxMutation.isPending}
                 className="h-11 bg-[#A67C52] hover:bg-[#A67C52]/90 text-white font-bold rounded-xl px-6"
               >
-                Ekle
+                {editTxId ? "Güncelle" : "Ekle"}
               </Button>
             </DialogFooter>
           </form>
@@ -6412,6 +6721,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
   const [baskiModalMode, setBaskiModalMode] = useState<"add" | "edit">("add");
   const [editingRecordIds, setEditingRecordIds] = useState<string[]>([]);
   const [editingCreatedAt, setEditingCreatedAt] = useState("");
+  const [baskiDate, setBaskiDate] = useState(getTodayDateStr());
   const [baskiSchoolName, setBaskiSchoolName] = useState("");
   const [baskiLineItems, setBaskiLineItems] = useState<BaskiModalLineItem[]>([
     { id: Math.random().toString(), productId: "", quantity: 1 },
@@ -6464,6 +6774,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     setBaskiModalMode("add");
     setEditingRecordIds([]);
     setEditingCreatedAt("");
+    setBaskiDate(getTodayDateStr());
     setBaskiSchoolName("");
     setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
     setBaskiAciklama("");
@@ -6584,6 +6895,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     setBaskiModalMode("add");
     setEditingRecordIds([]);
     setEditingCreatedAt("");
+    setBaskiDate(getTodayDateStr());
     setBaskiSchoolName("");
     setBaskiLineItems([{ id: Math.random().toString(), productId: "", quantity: 1 }]);
     setBaskiAciklama("");
@@ -6596,6 +6908,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
     setBaskiModalMode("edit");
     setEditingRecordIds(group.recordIds);
     setEditingCreatedAt(group.latestIsoDate);
+    setBaskiDate(toDateInputStr(group.latestIsoDate || group.date));
     setBaskiSchoolName(group.schoolName === "Belirtilmedi" ? "" : group.schoolName);
 
     const initialLines: BaskiModalLineItem[] =
@@ -6625,11 +6938,10 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         const rawDesc = String(t.aciklama ?? t.description ?? "").trim();
         const dbDate =
           t.olusturma_tarihi || t.created_at || t.tarih || t.date || new Date().toISOString();
-        const parsedTime = new Date(dbDate).getTime();
-        const rawDate = !isNaN(parsedTime) ? parsedTime : 0;
-        const isoDate = !isNaN(parsedTime)
-          ? new Date(parsedTime).toISOString()
-          : new Date().toISOString();
+        const parsedTime = parseDateToTimestamp(dbDate);
+        const rawDate = parsedTime > 0 ? parsedTime : 0;
+        const isoDate =
+          parsedTime > 0 ? new Date(parsedTime).toISOString() : new Date().toISOString();
         const amount = Number(t.toplam_tutar ?? t.amount) || 0;
         const paidAmount = Number(t.odenen_tutar ?? t.paid_amount) || 0;
 
@@ -6707,7 +7019,12 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
           isoDate,
         };
       })
-      .sort((a, b) => b.rawDate - a.rawDate);
+      .sort((a, b) =>
+        compareTransactionsNewestFirst(
+          { id: a.id, date: a.isoDate, createdAt: a.isoDate },
+          { id: b.id, date: b.isoDate, createdAt: b.isoDate },
+        ),
+      );
 
     const groupsMap = new Map<
       string,
@@ -6787,16 +7104,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         schoolKey: g.schoolKey,
         schoolName: g.schoolName,
         note: g.notesSet.size > 0 ? Array.from(g.notesSet).join(", ") : "",
-        date:
-          g.rawDate > 0
-            ? new Date(g.rawDate).toLocaleString("tr-TR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-",
+        date: g.rawDate > 0 ? formatDisplayDate(g.rawDate) : "-",
         rawDate: g.rawDate,
         latestIsoDate: g.latestIsoDate,
         items: Array.from(g.sizeMap.values()).sort((a, b) =>
@@ -6810,7 +7118,21 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         paidAmount: g.paidAmount,
         recordIds: g.recordIds,
       }))
-      .sort((a, b) => b.rawDate - a.rawDate || a.schoolName.localeCompare(b.schoolName, "tr"));
+      .sort(
+        (a, b) =>
+          compareTransactionsNewestFirst(
+            {
+              id: a.recordIds[0] || a.schoolKey,
+              date: a.latestIsoDate,
+              createdAt: a.latestIsoDate,
+            },
+            {
+              id: b.recordIds[0] || b.schoolKey,
+              date: b.latestIsoDate,
+              createdAt: b.latestIsoDate,
+            },
+          ) || a.schoolName.localeCompare(b.schoolName, "tr"),
+      );
   })();
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase("tr-TR");
@@ -6926,10 +7248,15 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       adet: entry.adet,
     }));
 
+    const targetIsoDate = dateInputToIso(
+      baskiDate,
+      baskiModalMode === "edit" ? editingCreatedAt : undefined,
+    );
+
     saveBaskiModalMutation.mutate({
       mode: baskiModalMode,
       existingIds: editingRecordIds,
-      olusturmaTarihi: editingCreatedAt || undefined,
+      olusturmaTarihi: targetIsoDate,
       items: itemsToSave,
       paid: parseFloat(baskiPaidAmount) || 0,
     });
@@ -7162,15 +7489,27 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Okul / Firma</Label>
-              <Input
-                type="text"
-                placeholder="Örn: Millet İlkokulu"
-                value={baskiSchoolName}
-                onChange={(e) => setBaskiSchoolName(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Okul / Firma</Label>
+                <Input
+                  type="text"
+                  placeholder="Örn: Millet İlkokulu"
+                  value={baskiSchoolName}
+                  onChange={(e) => setBaskiSchoolName(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Tarih</Label>
+                <Input
+                  type="date"
+                  required
+                  value={baskiDate}
+                  onChange={(e) => setBaskiDate(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
             </div>
 
             <div className="space-y-2.5">
