@@ -60,7 +60,7 @@ export const Route = createFileRoute("/dashboard/inventory")({
   component: Inventory,
 });
 
-type InventoryCategory = "Panoramik" | "Baskı" | "Canvas" | "Diğer";
+type InventoryCategory = "Panoramik" | "Baskı" | "Canvas" | "Okul İşleri" | "Diğer";
 
 function getProductMainCategory(p: any): InventoryCategory {
   const rawCat = String(p?.category ?? "")
@@ -70,19 +70,46 @@ function getProductMainCategory(p: any): InventoryCategory {
     .trim()
     .toLocaleLowerCase("tr-TR");
 
-  // 1. Direct category match
-  if (rawCat === "panoramik") return "Panoramik";
+  // 1. Check explicit manual category override FIRST (strictly separating Okul İşleri from Panoramik)
+  if (
+    rawCat === "okul işleri" ||
+    rawCat === "okul isleri" ||
+    rawCat === "okullar" ||
+    rawCat === "okul"
+  ) {
+    return "Okul İşleri";
+  }
+  if (rawCat === "panoramik") {
+    // Guard against any school 1-page / 2-page package ever being miscategorized as regular Panoramik
+    if (/\b[12]\s*sayfa\b/i.test(rawName)) {
+      return "Okul İşleri";
+    }
+    return "Panoramik";
+  }
   if (rawCat === "baskı" || rawCat === "baski") return "Baskı";
   if (rawCat === "canvas" || rawCat === "kanvas") return "Canvas";
   if (rawCat === "diğer" || rawCat === "diger") return "Diğer";
 
-  // 2. Keyword check in name (e.g. Panoramik (25x40), 10x15 (baskı), 50x50 (kanvas), Kargo)
+  // 2. Fallback automatic keyword routing when category is empty/unrecognized
+  if (
+    /\b[12]\s*sayfa\b/i.test(rawName) ||
+    rawName.includes("paspartolu") ||
+    rawName.includes("şovale") ||
+    rawName.includes("sovale") ||
+    rawName.includes("kumbara") ||
+    rawName.includes("ahşap") ||
+    rawName.includes("ahsap") ||
+    rawName.includes("okul")
+  ) {
+    return "Okul İşleri";
+  }
   if (rawName.includes("panoramik")) return "Panoramik";
   if (rawName.includes("baskı") || rawName.includes("baski")) return "Baskı";
   if (rawName.includes("canvas") || rawName.includes("kanvas")) return "Canvas";
+  if (rawName.includes("kargo")) return "Diğer";
 
-  // 3. Fallback for all other items (Okul İşleri albums, frames, kumbaras, Kargo, misc) -> Diğer
-  return "Diğer";
+  // 3. Default fallback to Okul İşleri (matching original inventory categorization)
+  return "Okul İşleri";
 }
 
 function StatCard({
@@ -211,51 +238,33 @@ function SortableProductCard({
 
       <div className="flex flex-col p-3 bg-white/5 flex-1">
         <div className="flex flex-col text-[10px] text-gray-400 mb-2 gap-1 mt-1">
-          {(() => {
-            const isPanoramik = getProductMainCategory(p) === "Panoramik";
-            const hasSayfaFiyatlari = Boolean(
-              (p.sayfa_fiyatlari?.["5"] && Number(p.sayfa_fiyatlari["5"]) > 0) ||
-              (p.sayfa_fiyatlari?.["10"] && Number(p.sayfa_fiyatlari["10"]) > 0),
-            );
-            if (isPanoramik && hasSayfaFiyatlari) {
-              return (
-                <>
-                  <div className="flex justify-between">
-                    <span>5 Sayfa:</span>
-                    <span className="text-[#A67C52] font-semibold">
-                      {p.sayfa_fiyatlari?.["5"]
-                        ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺`
-                        : "-"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>10 Sayfa:</span>
-                    <span className="text-[#A67C52] font-semibold">
-                      {p.sayfa_fiyatlari?.["10"]
-                        ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺`
-                        : "-"}
-                    </span>
-                  </div>
-                  {Number(p.base_price) > 0 && (
-                    <div className="flex justify-between border-t border-white/5 pt-1 mt-0.5">
-                      <span>Baz Fiyat:</span>
-                      <span className="text-[#A67C52] font-semibold">
-                        {`${Number(p.base_price).toLocaleString()} ₺`}
-                      </span>
-                    </div>
-                  )}
-                </>
-              );
-            }
-            return (
-              <div className="flex justify-between mt-auto">
-                <span>Varsayılan Fiyat:</span>
+          {getProductMainCategory(p) === "Panoramik" ? (
+            <>
+              <div className="flex justify-between">
+                <span>5 Sayfa:</span>
                 <span className="text-[#A67C52] font-semibold">
-                  {p.base_price ? `${Number(p.base_price).toLocaleString()} ₺` : "0 ₺"}
+                  {p.sayfa_fiyatlari?.["5"]
+                    ? `${Number(p.sayfa_fiyatlari["5"]).toLocaleString()} ₺`
+                    : "-"}
                 </span>
               </div>
-            );
-          })()}
+              <div className="flex justify-between">
+                <span>10 Sayfa:</span>
+                <span className="text-[#A67C52] font-semibold">
+                  {p.sayfa_fiyatlari?.["10"]
+                    ? `${Number(p.sayfa_fiyatlari["10"]).toLocaleString()} ₺`
+                    : "-"}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between mt-auto">
+              <span>Satış Fiyatı:</span>
+              <span className="text-[#A67C52] font-semibold">
+                {p.base_price ? `${Number(p.base_price).toLocaleString()} ₺` : "-"}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-white/5 pointer-events-none">
@@ -703,12 +712,19 @@ function Inventory() {
     });
   };
 
-  const MAIN_CATEGORIES: InventoryCategory[] = ["Panoramik", "Baskı", "Canvas", "Diğer"];
+  const MAIN_CATEGORIES: InventoryCategory[] = [
+    "Panoramik",
+    "Baskı",
+    "Canvas",
+    "Okul İşleri",
+    "Diğer",
+  ];
 
   const groupedProducts: Record<InventoryCategory, any[]> = {
     Panoramik: [],
     Baskı: [],
     Canvas: [],
+    "Okul İşleri": [],
     Diğer: [],
   };
 
@@ -791,18 +807,24 @@ function Inventory() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {MAIN_CATEGORIES.map((category) => {
             const items = groupedProducts[category] || [];
+            if (category === "Okul İşleri" && items.length === 0) return null;
             const coverImage = items.find((p) => p.image_url)?.image_url;
 
-            // Compute price summary for this category
-            const prices = items
-              .map((p) => {
+            // Compute price range (min - max ₺) strictly for this category's items
+            const prices: number[] = [];
+            items.forEach((p) => {
+              if (category === "Panoramik") {
                 const sp5 = Number(p.sayfa_fiyatlari?.["5"]);
                 const sp10 = Number(p.sayfa_fiyatlari?.["10"]);
                 const base = Number(p.base_price);
-                const candidates = [base, sp5, sp10].filter((val) => !isNaN(val) && val > 0);
-                return candidates.length > 0 ? Math.min(...candidates) : 0;
-              })
-              .filter((price) => price > 0);
+                [base, sp5, sp10].forEach((val) => {
+                  if (!isNaN(val) && val > 0) prices.push(val);
+                });
+              } else {
+                const base = Number(p.base_price);
+                if (!isNaN(base) && base > 0) prices.push(base);
+              }
+            });
 
             const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
             const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
@@ -814,6 +836,7 @@ function Inventory() {
               Panoramik: BookOpen,
               Baskı: Printer,
               Canvas: Frame,
+              "Okul İşleri": Package,
               Diğer: Layers,
             };
             const IconComponent = categoryIcons[category] || Package;
@@ -834,18 +857,18 @@ function Inventory() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/80 to-transparent pointer-events-none" />
                   </>
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-black/60 flex items-center justify-center group-hover:from-white/[0.08] transition-colors">
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-colors">
                     <IconComponent className="w-16 h-16 text-[#A67C52]/20 group-hover:text-[#A67C52]/40 transition-colors" />
                   </div>
                 )}
                 <div className="absolute bottom-6 left-6 right-6 z-10">
                   <h3 className="text-3xl font-black text-white drop-shadow-md">{category}</h3>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className="text-[#A67C52] font-semibold bg-black/60 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <p className="text-[#A67C52] font-semibold bg-black/40 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
                       {items.length} Ürün
-                    </span>
+                    </p>
                     {minPrice > 0 && (
-                      <span className="text-white/80 font-medium bg-black/60 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
+                      <span className="text-white/80 font-medium bg-black/40 inline-block px-3 py-1 rounded-full text-xs backdrop-blur-sm border border-white/5">
                         {minPrice === maxPrice
                           ? `${minPrice.toLocaleString("tr-TR")} ₺`
                           : `${minPrice.toLocaleString("tr-TR")} - ${maxPrice.toLocaleString("tr-TR")} ₺`}
@@ -876,7 +899,7 @@ function Inventory() {
                     setEditForm({
                       id: p.id,
                       name: p.name,
-                      category: p.category || "Diğer",
+                      category: getProductMainCategory(p),
                       base_price: p.base_price || 0,
                       image_url: p.image_url || null,
                       file: null,
