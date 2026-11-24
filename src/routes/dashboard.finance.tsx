@@ -96,11 +96,15 @@ interface FirmTransaction {
   exchangeRate?: number;
   createdAt: string;
   currency?: string;
+  _seq?: number;
 }
 interface Firm {
   id: string;
   name: string;
   currency?: "TRY" | "EUR" | "USD";
+  createdAt?: string;
+  latestIsoDate?: string;
+  _seq?: number;
   transactions: FirmTransaction[];
 }
 
@@ -111,6 +115,7 @@ interface EmployeeTransaction {
   amount: number;
   desc: string;
   createdAt: string;
+  _seq?: number;
 }
 interface Employee {
   id: string;
@@ -118,6 +123,9 @@ interface Employee {
   currency?: "TRY";
   total_debt?: number;
   total_paid?: number;
+  createdAt?: string;
+  latestIsoDate?: string;
+  _seq?: number;
   transactions: EmployeeTransaction[];
 }
 
@@ -128,6 +136,7 @@ interface ExpenseTransaction {
   amount: number;
   desc: string;
   createdAt: string;
+  _seq?: number;
 }
 interface Expense {
   id: string;
@@ -137,6 +146,8 @@ interface Expense {
   total_paid: number;
   sira?: number;
   description?: string;
+  createdAt?: string;
+  _seq?: number;
 }
 
 interface SchoolTransaction {
@@ -147,6 +158,7 @@ interface SchoolTransaction {
   desc: string;
   createdAt: string;
   currency?: string;
+  _seq?: number;
 }
 interface School {
   id: string;
@@ -157,6 +169,9 @@ interface School {
   contribution_per_student?: number;
   total_contribution?: number;
   total_orders?: number;
+  createdAt?: string;
+  latestIsoDate?: string;
+  _seq?: number;
   transactions: SchoolTransaction[];
 }
 // --- Helper Functions for Calculations ---
@@ -212,65 +227,135 @@ const getTodayDateStr = (): string => {
   return `${year}-${month}-${day}`;
 };
 
-const parseDateToTimestamp = (val?: string | number | Date | null): number => {
-  if (val == null || val === "") return 0;
-  if (typeof val === "number") return isNaN(val) ? 0 : val;
-  if (val instanceof Date) return isNaN(val.getTime()) ? 0 : val.getTime();
-  const str = String(val).trim();
-  if (!str || str === "-") return 0;
+// Track the highest timestamp seen per calendar day (YYYY-MM-DD) and a monotonic client sequence
+// so newly added or edited items for today (or any date) always receive a strictly greater timestamp
+// and sort to row #1 immediately.
+const maxSeenTimestampByDay = new Map<string, number>();
+let clientSequenceCounter = 1_000_000;
+const nextClientSequence = (): number => {
+  clientSequenceCounter += 1;
+  return clientSequenceCounter;
+};
 
-  // Match DD.MM.YYYY or DD/MM/YYYY (with optional time HH:mm or HH:mm:ss)
-  const trMatch = str.match(
-    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/,
-  );
-  if (trMatch) {
-    const day = parseInt(trMatch[1], 10);
-    const month = parseInt(trMatch[2], 10) - 1;
-    const year = parseInt(trMatch[3], 10);
-    const hour = trMatch[4] ? parseInt(trMatch[4], 10) : 0;
-    const min = trMatch[5] ? parseInt(trMatch[5], 10) : 0;
-    const sec = trMatch[6] ? parseInt(trMatch[6], 10) : 0;
-    const d = new Date(year, month, day, hour, min, sec);
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+const parseAnyDateToTimestamp = (rawDate?: string | number | Date | null): number => {
+  if (rawDate == null || rawDate === "") return 0;
+  if (typeof rawDate === "number") {
+    if (isNaN(rawDate) || rawDate <= 0) return 0;
+    return rawDate < 1e11 ? rawDate * 1000 : rawDate;
+  }
+  if (rawDate instanceof Date) {
+    const t = rawDate.getTime();
+    return isNaN(t) ? 0 : t;
   }
 
-  // Match YYYY-MM-DD (date only without time)
-  const isoDateOnly = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const str = String(rawDate).trim();
+  if (!str || str === "-") return 0;
+
+  // 1. ISO / SQL date-only: YYYY-MM-DD or YYYY/MM/DD
+  const isoDateOnly = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   if (isoDateOnly) {
     const year = parseInt(isoDateOnly[1], 10);
     const month = parseInt(isoDateOnly[2], 10) - 1;
     const day = parseInt(isoDateOnly[3], 10);
-    const d = new Date(year, month, day);
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+    const ts = Date.UTC(year, month, day, 0, 0, 0, 0);
+    return isNaN(ts) ? 0 : ts;
   }
 
-  const parsed = new Date(str).getTime();
-  return isNaN(parsed) ? 0 : parsed;
+  // 2. ISO / SQL datetime: YYYY-MM-DD[T ]HH:mm(:ss)?(.SSS)?(Z|[+-]HH:?mm)?
+  const isoDateTime = str.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.(\d+))?)?(?:\s*(Z|[+-]\d{2}:?\d{2}))?$/i,
+  );
+  if (isoDateTime) {
+    const normalizedIso = str.includes("T") ? str : str.replace(/\s+/, "T");
+    const parsedIso = new Date(isoDateTime[8] ? normalizedIso : `${normalizedIso}Z`).getTime();
+    if (!isNaN(parsedIso)) {
+      const ymd = `${isoDateTime[1]}-${String(isoDateTime[2]).padStart(2, "0")}-${String(
+        isoDateTime[3],
+      ).padStart(2, "0")}`;
+      const prevMax = maxSeenTimestampByDay.get(ymd) || 0;
+      if (parsedIso > prevMax) maxSeenTimestampByDay.set(ymd, parsedIso);
+      return parsedIso;
+    }
+  }
+
+  // 3. Turkish dot-separated date: DD.MM.YYYY (with optional HH:mm or HH:mm:ss)
+  const dotMatch = str.match(
+    /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/,
+  );
+  if (dotMatch) {
+    const day = parseInt(dotMatch[1], 10);
+    const month = parseInt(dotMatch[2], 10) - 1;
+    const year = parseInt(dotMatch[3], 10);
+    const hour = dotMatch[4] ? parseInt(dotMatch[4], 10) : 0;
+    const min = dotMatch[5] ? parseInt(dotMatch[5], 10) : 0;
+    const sec = dotMatch[6] ? parseInt(dotMatch[6], 10) : 0;
+    const ts = Date.UTC(year, month, day, hour, min, sec, 0);
+    return isNaN(ts) ? 0 : ts;
+  }
+
+  // 4. Slash-separated date: DD/MM/YYYY or MM/DD/YYYY (with optional HH:mm or HH:mm:ss)
+  const slashMatch = str.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/,
+  );
+  if (slashMatch) {
+    const part1 = parseInt(slashMatch[1], 10);
+    const part2 = parseInt(slashMatch[2], 10);
+    const year = parseInt(slashMatch[3], 10);
+    const hour = slashMatch[4] ? parseInt(slashMatch[4], 10) : 0;
+    const min = slashMatch[5] ? parseInt(slashMatch[5], 10) : 0;
+    const sec = slashMatch[6] ? parseInt(slashMatch[6], 10) : 0;
+    let day = part1;
+    let month = part2 - 1;
+    if (part1 <= 12 && part2 > 12) {
+      // MM/DD/YYYY
+      month = part1 - 1;
+      day = part2;
+    }
+    const ts = Date.UTC(year, month, day, hour, min, sec, 0);
+    return isNaN(ts) ? 0 : ts;
+  }
+
+  const fallback = new Date(str).getTime();
+  return isNaN(fallback) ? 0 : fallback;
 };
+
+const parseDateToTimestamp = parseAnyDateToTimestamp;
 
 const toDateInputStr = (val?: string | number | Date | null): string => {
   if (!val) return getTodayDateStr();
   if (typeof val === "string") {
     const trimmed = val.trim();
-    // Exact date-only or UTC-midnight ISO string preserves calendar day
-    const midnightIsoMatch = trimmed.match(
-      /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.0+)?(?:Z|[+-]00:?00))?$/i,
-    );
-    if (midnightIsoMatch) {
-      return `${midnightIsoMatch[1]}-${midnightIsoMatch[2]}-${midnightIsoMatch[3]}`;
+    // Always preserve the explicit YYYY-MM-DD prefix from any ISO/SQL date or timestamp
+    const isoPrefixMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (isoPrefixMatch) {
+      return `${isoPrefixMatch[1]}-${isoPrefixMatch[2].padStart(2, "0")}-${isoPrefixMatch[3].padStart(2, "0")}`;
     }
-    const trMatch = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
-    if (trMatch) {
-      return `${trMatch[3]}-${trMatch[2].padStart(2, "0")}-${trMatch[1].padStart(2, "0")}`;
+    const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (dotMatch) {
+      return `${dotMatch[3]}-${dotMatch[2].padStart(2, "0")}-${dotMatch[1].padStart(2, "0")}`;
+    }
+    const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (slashMatch) {
+      const p1 = parseInt(slashMatch[1], 10);
+      const p2 = parseInt(slashMatch[2], 10);
+      const day = p1 <= 12 && p2 > 12 ? p2 : p1;
+      const month = p1 <= 12 && p2 > 12 ? p1 : p2;
+      return `${slashMatch[3]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
   }
-  const ts = parseDateToTimestamp(val);
+  const ts = parseAnyDateToTimestamp(val);
   if (!ts) return getTodayDateStr();
   const d = new Date(ts);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const parseCalendarDayTimestamp = (val?: string | number | Date | null): number => {
+  if (!val || val === "-") return 0;
+  const ymd = toDateInputStr(val);
+  return parseAnyDateToTimestamp(ymd);
 };
 
 const formatDisplayDate = (val?: string | number | Date | null): string => {
@@ -286,7 +371,7 @@ const formatDisplayDate = (val?: string | number | Date | null): string => {
 const dateInputToIso = (dateStr?: string | null, existingIso?: string | null): string => {
   const targetYmd = toDateInputStr(dateStr);
   if (existingIso && toDateInputStr(existingIso) === targetYmd) {
-    const existingTs = parseDateToTimestamp(existingIso);
+    const existingTs = parseAnyDateToTimestamp(existingIso);
     if (existingTs > 0) return new Date(existingTs).toISOString();
   }
   const match = targetYmd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -294,35 +379,97 @@ const dateInputToIso = (dateStr?: string | null, existingIso?: string | null): s
     const year = parseInt(match[1], 10);
     const month = parseInt(match[2], 10) - 1;
     const day = parseInt(match[3], 10);
-    // Monotonically increasing offset within 12:00:00Z..20:59:59Z so same-day entries sort newest-created first
-    // while keeping the exact same calendar date in both UTC and UTC+3 (Turkey).
-    const epochBase = Date.UTC(2026, 9, 1, 0, 0, 0, 0);
-    const offsetMs = Math.min(32399999, Math.max(1, Math.floor((Date.now() - epochBase) / 250)));
-    const ts = Date.UTC(year, month, day, 12, 0, 0, 0) + offsetMs;
-    return new Date(ts).toISOString();
+    const dayStartUtc = Date.UTC(year, month, day, 0, 0, 0, 0);
+    const dayEndUtc = Date.UTC(year, month, day, 23, 59, 59, 999);
+    const now = new Date();
+    const localTimeOfDayMs =
+      ((now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds()) * 1000 +
+      now.getMilliseconds();
+    // Map local time of day into 12:00:00Z..23:59:59Z and ensure it is strictly greater than any seen timestamp on that day
+    const baseCandidate = dayStartUtc + 43_200_000 + Math.floor(localTimeOfDayMs / 2);
+    const prevMax = maxSeenTimestampByDay.get(targetYmd) || 0;
+    const finalTs = Math.min(dayEndUtc, Math.max(baseCandidate, prevMax + 1000));
+    maxSeenTimestampByDay.set(targetYmd, finalTs);
+    return new Date(finalTs).toISOString();
   }
   return new Date().toISOString();
 };
 
+const extractItemPrimaryDateRaw = (item: any): any => {
+  if (!item || typeof item !== "object") return null;
+  if (Array.isArray(item.transactions) && item.transactions.length > 0) {
+    // For Firm / Supplier / Employee / School rows, use the newest timestamp across the entity and its transactions
+    let bestRaw: any = item.latestIsoDate || item.createdAt || item.created_at || item.date || null;
+    let bestDayTs = bestRaw ? parseCalendarDayTimestamp(bestRaw) : 0;
+    let bestFullTs = bestRaw ? parseAnyDateToTimestamp(bestRaw) : 0;
+    for (const tx of item.transactions) {
+      const txRaw = tx?.createdAt || tx?.created_at || tx?.olusturma_tarihi || tx?.date;
+      const txDayTs = txRaw ? parseCalendarDayTimestamp(txRaw) : 0;
+      const txFullTs = txRaw ? parseAnyDateToTimestamp(txRaw) : 0;
+      if (txDayTs > bestDayTs || (txDayTs === bestDayTs && txFullTs > bestFullTs)) {
+        bestDayTs = txDayTs;
+        bestFullTs = txFullTs;
+        bestRaw = txRaw;
+      }
+    }
+    return bestRaw;
+  }
+  return (
+    item.date ||
+    item.tarih ||
+    item.latestIsoDate ||
+    item.olusturma_tarihi ||
+    item.createdAt ||
+    item.created_at ||
+    item.isoDate ||
+    item.rawDate ||
+    null
+  );
+};
+
+const extractItemCreatedRaw = (item: any): any => {
+  if (!item || typeof item !== "object") return null;
+  if (Array.isArray(item.transactions) && item.transactions.length > 0) {
+    let bestFullTs = parseAnyDateToTimestamp(
+      item.latestIsoDate || item.createdAt || item.created_at || item.date,
+    );
+    for (const tx of item.transactions) {
+      const txFullTs = parseAnyDateToTimestamp(
+        tx?.createdAt || tx?.created_at || tx?.olusturma_tarihi || tx?.date,
+      );
+      if (txFullTs > bestFullTs) bestFullTs = txFullTs;
+    }
+    return bestFullTs;
+  }
+  return (
+    item.createdAt ||
+    item.created_at ||
+    item.olusturma_tarihi ||
+    item.latestIsoDate ||
+    item.isoDate ||
+    item.rawDate ||
+    item.date ||
+    item.tarih ||
+    null
+  );
+};
+
 const compareTransactionsNewestFirst = (a: any, b: any): number => {
-  const dayA = parseDateToTimestamp(
-    toDateInputStr(a?.date || a?.createdAt || a?.created_at || a?.olusturma_tarihi),
-  );
-  const dayB = parseDateToTimestamp(
-    toDateInputStr(b?.date || b?.createdAt || b?.created_at || b?.olusturma_tarihi),
-  );
+  const rawDateA = extractItemPrimaryDateRaw(a);
+  const rawDateB = extractItemPrimaryDateRaw(b);
+
+  const dayA = rawDateA ? parseCalendarDayTimestamp(rawDateA) : 0;
+  const dayB = rawDateB ? parseCalendarDayTimestamp(rawDateB) : 0;
   if (dayB !== dayA) return dayB - dayA;
 
-  const fullA = parseDateToTimestamp(
-    a?.createdAt || a?.created_at || a?.olusturma_tarihi || a?.date,
-  );
-  const fullB = parseDateToTimestamp(
-    b?.createdAt || b?.created_at || b?.olusturma_tarihi || b?.date,
-  );
+  const fullA = parseAnyDateToTimestamp(extractItemCreatedRaw(a));
+  const fullB = parseAnyDateToTimestamp(extractItemCreatedRaw(b));
   if (fullB !== fullA) return fullB - fullA;
 
-  if (typeof a?._seq === "number" && typeof b?._seq === "number" && b._seq !== a._seq) {
-    return b._seq - a._seq;
+  const seqA = typeof a?._seq === "number" ? a._seq : -1;
+  const seqB = typeof b?._seq === "number" ? b._seq : -1;
+  if (seqA !== seqB && (seqA >= 0 || seqB >= 0)) {
+    return seqB - seqA;
   }
 
   const numIdA = Number(a?.id);
@@ -331,7 +478,20 @@ const compareTransactionsNewestFirst = (a: any, b: any): number => {
     return numIdB - numIdA;
   }
 
-  return String(b?.id || "").localeCompare(String(a?.id || ""));
+  return String(b?.id || b?.schoolKey || "").localeCompare(String(a?.id || a?.schoolKey || ""));
+};
+
+const sortNewestFirst = <T,>(items: T[] | null | undefined): T[] => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items
+    .map((item, idx) => ({ item, idx }))
+    .sort((x, y) => {
+      const cmp = compareTransactionsNewestFirst(x.item, y.item);
+      if (cmp !== 0) return cmp;
+      // If both items came from the same natural array without _seq, preserve deterministic tie order
+      return x.idx - y.idx;
+    })
+    .map((entry) => entry.item);
 };
 
 const safeDateStr = (val?: string | null) => toDateInputStr(val);
@@ -416,31 +576,55 @@ function AccountingDashboard() {
         .select("id, supplier_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: false });
 
-      if (tErr)
-        return suppliers.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          currency: s.currency as any,
-          transactions: [],
-        }));
+      const txList = transactions || [];
+      const txTotal = txList.length;
 
-      return suppliers.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        currency: s.currency as any,
-        transactions: (transactions || [])
-          .filter((t: any) => String(t.supplier_id) === String(s.id))
-          .map((t: any) => ({
-            id: t.id,
-            date: safeDateStr(t.created_at),
-            type: t.transaction_type as "debt" | "payment",
-            amount: Number(t.amount),
-            desc: t.description ?? "",
-            createdAt: t.created_at,
-            currency: t.currency,
-          }))
-          .sort(compareTransactionsNewestFirst),
-      }));
+      if (tErr)
+        return sortNewestFirst(
+          (suppliers || []).map((s: any, sIdx: number) => ({
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            createdAt: s.created_at,
+            latestIsoDate: s.created_at,
+            _seq: (suppliers?.length || 0) - sIdx,
+            transactions: [],
+          })),
+        );
+
+      return sortNewestFirst(
+        (suppliers || []).map((s: any, sIdx: number) => {
+          const sortedTxs = sortNewestFirst(
+            txList
+              .map((t: any, idx: number) => ({ t, seq: txTotal - idx }))
+              .filter(({ t }) => String(t.supplier_id) === String(s.id))
+              .map(({ t, seq }) => ({
+                id: t.id,
+                date: safeDateStr(t.created_at),
+                type: t.transaction_type as "debt" | "payment",
+                amount: Number(t.amount),
+                desc: t.description ?? "",
+                createdAt: t.created_at,
+                currency: t.currency,
+                _seq: seq,
+              })),
+          );
+          const newestTxIso = sortedTxs[0]?.createdAt || s.created_at;
+          const latestIso =
+            parseAnyDateToTimestamp(newestTxIso) >= parseAnyDateToTimestamp(s.created_at)
+              ? newestTxIso
+              : s.created_at;
+          return {
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            createdAt: s.created_at,
+            latestIsoDate: latestIso,
+            _seq: (suppliers?.length || 0) - sIdx,
+            transactions: sortedTxs,
+          };
+        }),
+      );
     },
   });
 
@@ -450,7 +634,7 @@ function AccountingDashboard() {
     mutationFn: async (name: string) => {
       const { data, error } = await supabaseClient
         .from("common_expenses")
-        .insert([{ name, currency: "TRY" }])
+        .insert([{ name, currency: "TRY", sira: 0 }])
         .select();
       if (error) throw error;
       return data;
@@ -482,35 +666,56 @@ function AccountingDashboard() {
         .select("id, firm_id, transaction_type, amount, description, created_at, currency")
         .order("created_at", { ascending: false });
 
+      const txList = transactions || [];
+      const txTotal = txList.length;
+
       if (tErr)
-        return firms.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          currency: s.currency as any,
-          transactions: [],
-        }));
+        return sortNewestFirst(
+          (firms || []).map((s: any, sIdx: number) => ({
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            createdAt: s.created_at,
+            latestIsoDate: s.created_at,
+            _seq: (firms?.length || 0) - sIdx,
+            transactions: [],
+          })),
+        );
 
-      console.log("Firms Raw:", firms);
-      console.log("Firm Transactions Raw:", transactions);
-
-      return firms.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        currency: s.currency as any,
-        transactions: (transactions || [])
-          .filter((t: any) => String(t.firm_id) === String(s.id))
-          .map((t: any) => ({
-            id: t.id,
-            date: safeDateStr(t.created_at),
-            type: t.transaction_type as "debt" | "payment",
-            amount: Number(t.amount),
-            desc: t.description ?? "",
-            exchangeRate: undefined,
-            createdAt: t.created_at,
-            currency: t.currency,
-          }))
-          .sort(compareTransactionsNewestFirst),
-      }));
+      return sortNewestFirst(
+        (firms || []).map((s: any, sIdx: number) => {
+          const sortedTxs = sortNewestFirst(
+            txList
+              .map((t: any, idx: number) => ({ t, seq: txTotal - idx }))
+              .filter(({ t }) => String(t.firm_id) === String(s.id))
+              .map(({ t, seq }) => ({
+                id: t.id,
+                date: safeDateStr(t.created_at),
+                type: t.transaction_type as "debt" | "payment",
+                amount: Number(t.amount),
+                desc: t.description ?? "",
+                exchangeRate: undefined,
+                createdAt: t.created_at,
+                currency: t.currency,
+                _seq: seq,
+              })),
+          );
+          const newestTxIso = sortedTxs[0]?.createdAt || s.created_at;
+          const latestIso =
+            parseAnyDateToTimestamp(newestTxIso) >= parseAnyDateToTimestamp(s.created_at)
+              ? newestTxIso
+              : s.created_at;
+          return {
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            createdAt: s.created_at,
+            latestIsoDate: latestIso,
+            _seq: (firms?.length || 0) - sIdx,
+            transactions: sortedTxs,
+          };
+        }),
+      );
     },
   });
 
@@ -539,29 +744,45 @@ function AccountingDashboard() {
         console.error("Salary transactions error:", tErr);
       }
 
-      console.log("Employees Raw:", employees);
-      console.log("Employee Transactions Raw:", transactions);
+      const txList = transactions || [];
+      const txTotal = txList.length;
 
-      return employees.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        currency: s.currency as any,
-        total_debt: Number(s.total_debt || 0),
-        total_paid: Number(s.total_paid || 0),
-        transactions: (transactions || [])
-          .filter(
-            (t: any) => String(t.employee_id || t.personel_id || t.profile_id) === String(s.id),
-          )
-          .map((t: any) => ({
-            id: t.id,
-            date: safeDateStr(t.created_at),
-            type: t.transaction_type as EmployeeTransaction["type"],
-            amount: Number(t.amount),
-            desc: t.description ?? "",
-            createdAt: t.created_at,
-          }))
-          .sort(compareTransactionsNewestFirst),
-      }));
+      return sortNewestFirst(
+        (employees || []).map((s: any, sIdx: number) => {
+          const sortedTxs = sortNewestFirst(
+            txList
+              .map((t: any, idx: number) => ({ t, seq: txTotal - idx }))
+              .filter(
+                ({ t }) => String(t.employee_id || t.personel_id || t.profile_id) === String(s.id),
+              )
+              .map(({ t, seq }) => ({
+                id: t.id,
+                date: safeDateStr(t.created_at),
+                type: t.transaction_type as EmployeeTransaction["type"],
+                amount: Number(t.amount),
+                desc: t.description ?? "",
+                createdAt: t.created_at,
+                _seq: seq,
+              })),
+          );
+          const newestTxIso = sortedTxs[0]?.createdAt || s.created_at;
+          const latestIso =
+            parseAnyDateToTimestamp(newestTxIso) >= parseAnyDateToTimestamp(s.created_at)
+              ? newestTxIso
+              : s.created_at;
+          return {
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            total_debt: Number(s.total_debt || 0),
+            total_paid: Number(s.total_paid || 0),
+            createdAt: s.created_at,
+            latestIsoDate: latestIso,
+            _seq: (employees?.length || 0) - sIdx,
+            transactions: sortedTxs,
+          };
+        }),
+      );
     },
   });
 
@@ -578,18 +799,22 @@ function AccountingDashboard() {
       const { data: expenses, error: sErr } = await supabaseClient
         .from("common_expenses")
         .select("id, name, currency, total_debt, total_paid, created_at, sira, description")
-        .order("sira", { ascending: true });
+        .order("created_at", { ascending: false });
       if (sErr) return [];
 
-      return expenses.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        currency: s.currency as any,
-        total_debt: Number(s.total_debt) || 0,
-        total_paid: Number(s.total_paid) || 0,
-        sira: s.sira,
-        description: s.description,
-      }));
+      return sortNewestFirst(
+        (expenses || []).map((s: any, idx: number) => ({
+          id: s.id,
+          name: s.name,
+          currency: s.currency as any,
+          total_debt: Number(s.total_debt) || 0,
+          total_paid: Number(s.total_paid) || 0,
+          sira: s.sira,
+          description: s.description,
+          createdAt: s.created_at,
+          _seq: (expenses?.length || 0) - idx,
+        })),
+      );
     },
   });
 
@@ -638,48 +863,74 @@ function AccountingDashboard() {
         }
       });
 
-      return (schools || []).map((s: any) => {
-        const sid = String(s.id);
-        const directSchoolOrdersCount = (ordersData || [])
-          .filter((o: any) => String(o.school_id) === sid)
-          .reduce((sum: number, o: any) => sum + (Number(o.quantity) || 1), 0);
-        const studentOrdersCount = studentSelectionsPerSchool.get(sid) || 0;
-        const totalOrdersCount = studentOrdersCount + directSchoolOrdersCount;
-        const contribution = (Number(s.contribution_per_student) || 0) * totalOrdersCount;
+      const txList = transactions || [];
+      const txTotal = txList.length;
 
-        return {
-          id: s.id,
-          name: s.name,
-          currency: s.currency as any,
-          paid_amount: Number(s.paid_amount) || 0,
-          remaining_amount: Number(s.remaining_amount) || 0,
-          contribution_per_student: Number(s.contribution_per_student) || 0,
-          total_contribution: contribution,
-          total_orders: totalOrdersCount,
-          transactions: (transactions || [])
-            .filter((t: any) => String(t.school_id) === sid)
-            .map((t: any) => ({
-              id: t.id,
-              date: safeDateStr(t.created_at),
-              type: t.transaction_type as "debt" | "payment",
-              amount: Number(t.amount),
-              desc: t.description ?? "",
-              createdAt: t.created_at,
-              currency: t.currency,
-            }))
-            .sort(compareTransactionsNewestFirst),
-        };
-      });
+      return sortNewestFirst(
+        (schools || []).map((s: any, sIdx: number) => {
+          const sid = String(s.id);
+          const directSchoolOrdersCount = (ordersData || [])
+            .filter((o: any) => String(o.school_id) === sid)
+            .reduce((sum: number, o: any) => sum + (Number(o.quantity) || 1), 0);
+          const studentOrdersCount = studentSelectionsPerSchool.get(sid) || 0;
+          const totalOrdersCount = studentOrdersCount + directSchoolOrdersCount;
+          const contribution = (Number(s.contribution_per_student) || 0) * totalOrdersCount;
+
+          const sortedTxs = sortNewestFirst(
+            txList
+              .map((t: any, idx: number) => ({ t, seq: txTotal - idx }))
+              .filter(({ t }) => String(t.school_id) === sid)
+              .map(({ t, seq }) => ({
+                id: t.id,
+                date: safeDateStr(t.created_at),
+                type: t.transaction_type as "debt" | "payment",
+                amount: Number(t.amount),
+                desc: t.description ?? "",
+                createdAt: t.created_at,
+                currency: t.currency,
+                _seq: seq,
+              })),
+          );
+          const newestTxIso = sortedTxs[0]?.createdAt || s.created_at;
+          const latestIso =
+            parseAnyDateToTimestamp(newestTxIso) >= parseAnyDateToTimestamp(s.created_at)
+              ? newestTxIso
+              : s.created_at;
+
+          return {
+            id: s.id,
+            name: s.name,
+            currency: s.currency as any,
+            paid_amount: Number(s.paid_amount) || 0,
+            remaining_amount: Number(s.remaining_amount) || 0,
+            contribution_per_student: Number(s.contribution_per_student) || 0,
+            total_contribution: contribution,
+            total_orders: totalOrdersCount,
+            createdAt: s.created_at,
+            latestIsoDate: latestIso,
+            _seq: (schools?.length || 0) - sIdx,
+            transactions: sortedTxs,
+          };
+        }),
+      );
     },
   });
 
   const { data: printExpensesData = [] } = useQuery<any[]>({
     queryKey: ["baski_kayitlari_overview", teamId],
     queryFn: async () => {
-      const q = supabaseClient.from("baski_kayitlari").select("*");
-      const { data, error } = await q;
+      const { data, error } = await supabaseClient
+        .from("baski_kayitlari")
+        .select("*")
+        .order("olusturma_tarihi", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const rows = data || [];
+      return sortNewestFirst(
+        rows.map((r: any, idx: number) => ({
+          ...r,
+          _seq: rows.length - idx,
+        })),
+      );
     },
   });
 
@@ -728,7 +979,7 @@ function AccountingDashboard() {
     { id: "cat-5", title: "OKULLAR", amount: totalPaidSchools, change: "+15%", isPositive: true },
   ];
 
-  const combinedTx: TransactionItem[] = [];
+  const combinedTx: (TransactionItem & { _seq?: number })[] = [];
 
   firmsData.forEach((f) => {
     f.transactions.forEach((tx) => {
@@ -739,6 +990,7 @@ function AccountingDashboard() {
         amount: -convertToTry(tx.amount, tx.currency || f.currency), // Negative representing outflow
         category: "cat-1",
         createdAt: tx.createdAt,
+        _seq: tx._seq,
       });
     });
   });
@@ -752,6 +1004,7 @@ function AccountingDashboard() {
         amount: -convertToTry(tx.amount, tx.currency || sup.currency),
         category: "sarf-malzemeler",
         createdAt: tx.createdAt,
+        _seq: tx._seq,
       });
     });
   });
@@ -765,11 +1018,23 @@ function AccountingDashboard() {
         amount: -tx.amount, // Always TRY
         category: "cat-3",
         createdAt: tx.createdAt,
+        _seq: tx._seq,
       });
     });
   });
 
-  // Expenses no longer use transactions, so they are omitted from the Recent Transactions timeline.
+  printExpensesData.forEach((item: any) => {
+    const rawDt = item.olusturma_tarihi || item.created_at || item.tarih || item.date;
+    combinedTx.push({
+      id: String(item.id),
+      desc: item.aciklama || "Baskı Gideri",
+      date: safeDateStr(rawDt),
+      amount: -(Number(item.toplam_tutar ?? item.amount) || 0),
+      category: "cat-4",
+      createdAt: rawDt || getTodayDateStr(),
+      _seq: item._seq,
+    });
+  });
 
   schoolsData.forEach((sch) => {
     sch.transactions.forEach((tx) => {
@@ -780,12 +1045,13 @@ function AccountingDashboard() {
         amount: -convertToTry(tx.amount, tx.currency || sch.currency),
         category: "cat-5",
         createdAt: tx.createdAt,
+        _seq: tx._seq,
       });
     });
   });
 
   // Sort strictly newest-first by transaction date and creation timestamp
-  const sortedCombinedTx = [...combinedTx].sort(compareTransactionsNewestFirst);
+  const sortedCombinedTx = sortNewestFirst(combinedTx);
 
   // Filter transactions for recent transactions section
   const filteredTransactions = activeCategory
@@ -1063,13 +1329,13 @@ function TransactionList({
   onClearFilter,
 }: TransactionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const filteredTransactions = [...transactions]
-    .filter(
+  const filteredTransactions = sortNewestFirst(
+    transactions.filter(
       (tx) =>
         tx.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
         formatDisplayDate(tx.date).includes(searchQuery.trim()),
-    )
-    .sort(compareTransactionsNewestFirst);
+    ),
+  );
 
   return (
     <div className="bg-[#131316] border border-white/5 rounded-3xl p-6 shadow-xl space-y-6">
@@ -1266,7 +1532,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
     let sumPaid = 0;
     let sumRemaining = 0;
 
-    const data = suppliers.map((s) => {
+    const data = sortNewestFirst(suppliers).map((s) => {
       const paid = getFirmPaid(s, exchangeRates);
       const rem = getFirmRemaining(s, exchangeRates);
       sumPaid += paid;
@@ -1312,6 +1578,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
         .single();
       if (sErr) throw sErr;
 
+      const nowIso = dateInputToIso(getTodayDateStr());
       if (input.taken > 0) {
         await supabaseClient.from("supplier_transactions").insert({
           supplier_id: supplier.id,
@@ -1319,6 +1586,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.taken,
           description: "İlk Borç Kaydı",
           currency: input.currency,
+          created_at: nowIso,
         });
       }
       if (input.rest > 0) {
@@ -1328,6 +1596,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.rest,
           description: "İlk Ödeme Kaydı",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       return supplier;
@@ -1363,6 +1632,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.takenDiff,
           description: "Bakiye Düzenlemesi (Borç)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       if (input.restDiff !== 0) {
@@ -1372,6 +1642,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.restDiff,
           description: "Bakiye Düzenlemesi (Ödenen)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
     },
@@ -1402,16 +1673,48 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       date: string;
       currency?: string;
     }) => {
-      await supabaseClient.from("supplier_transactions").insert({
+      const targetIso = dateInputToIso(input.date);
+      const { data: inserted } = await supabaseClient
+        .from("supplier_transactions")
+        .insert({
+          supplier_id: input.supplier_id,
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: targetIso,
+        })
+        .select("*")
+        .single();
+      return {
         supplier_id: input.supplier_id,
-        transaction_type: input.type,
-        amount: input.amount,
-        description: input.desc,
-        currency: input.currency,
-        created_at: dateInputToIso(input.date),
-      });
+        tx: {
+          id: inserted?.id || `temp-${Date.now()}`,
+          type: input.type,
+          amount: input.amount,
+          date: toDateInputStr(inserted?.created_at || targetIso),
+          createdAt: inserted?.created_at || targetIso,
+          _seq: nextClientSequence(),
+          desc: input.desc,
+          currency: input.currency || "TRY",
+        } as FirmTransaction,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["suppliers_ledger"], (old: Firm[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((s) => {
+          if (s.id !== res.supplier_id) return s;
+          const nextTxs = sortNewestFirst([res.tx, ...s.transactions]);
+          return {
+            ...s,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || s.latestIsoDate,
+            _seq: nextTxs[0]?._seq ?? s._seq,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false);
@@ -1432,6 +1735,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
       currency?: string;
       existingCreatedAt?: string;
     }) => {
+      const targetIso = dateInputToIso(input.date, input.existingCreatedAt);
       await supabaseClient
         .from("supplier_transactions")
         .update({
@@ -1439,11 +1743,39 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
           amount: input.amount,
           description: input.desc,
           currency: input.currency,
-          created_at: dateInputToIso(input.date, input.existingCreatedAt),
+          created_at: targetIso,
         })
         .eq("id", input.id);
+      return { ...input, targetIso };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["suppliers_ledger"], (old: Firm[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((s) => {
+          if (!s.transactions.some((t) => String(t.id) === String(res.id))) return s;
+          const nextTxs = sortNewestFirst(
+            s.transactions.map((t) =>
+              String(t.id) === String(res.id)
+                ? {
+                    ...t,
+                    type: res.type,
+                    amount: res.amount,
+                    desc: res.desc,
+                    currency: res.currency || t.currency,
+                    date: toDateInputStr(res.targetIso),
+                    createdAt: res.targetIso,
+                  }
+                : t,
+            ),
+          );
+          return {
+            ...s,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || s.latestIsoDate,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["suppliers_ledger"] });
       toast.success("İşlem güncellendi");
       setIsAddTxOpen(false);
@@ -1552,7 +1884,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   const handleExportSupplierPDF = () => {
     if (!selectedSupplier) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const sortedTxs = [...selectedSupplier.transactions].sort(compareTransactionsNewestFirst);
+    const sortedTxs = sortNewestFirst(selectedSupplier.transactions);
     const data = sortedTxs.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedSupplier.currency)}`;
@@ -1578,9 +1910,9 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
   };
 
   const selectedSupplier = suppliers.find((f) => f.id === selectedSupplierId);
-  const filteredSuppliers = suppliers
-    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  const filteredSuppliers = sortNewestFirst(
+    suppliers.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   if (selectedSupplier) {
     return (
@@ -1687,7 +2019,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
                 Bu tedarikçiye ait henüz işlem bulunmuyor.
               </div>
             )}
-            {[...selectedSupplier.transactions].sort(compareTransactionsNewestFirst).map((tx) => {
+            {sortNewestFirst(selectedSupplier.transactions).map((tx) => {
               const isTaken = tx.type === "debt";
               return (
                 <div
@@ -2116,7 +2448,7 @@ function SarfListView({ suppliers, exchangeRates, isRatesError, onBack }: SarfLi
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-4">
-            {suppliers.map((f) => {
+            {sortNewestFirst(suppliers).map((f) => {
               const amount =
                 breakdownType === "paid"
                   ? getFirmPaid(f, exchangeRates)
@@ -2410,7 +2742,7 @@ function FirmsListView({
     let sumPaid = 0;
     let sumRemaining = 0;
 
-    const data = firms.map((s) => {
+    const data = sortNewestFirst(firms).map((s) => {
       const paid = getFirmPaid(s, exchangeRates);
       const rem = getFirmRemaining(s, exchangeRates);
       sumPaid += paid;
@@ -2463,6 +2795,7 @@ function FirmsListView({
           amount: input.taken,
           description: "İlk Borç Kaydı",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       if (input.rest > 0) {
@@ -2472,6 +2805,7 @@ function FirmsListView({
           amount: input.rest,
           description: "İlk Ödeme Kaydı",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       return supplier;
@@ -2507,6 +2841,7 @@ function FirmsListView({
           amount: input.takenDiff,
           description: "Bakiye Düzenlemesi (Borç)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       if (input.restDiff !== 0) {
@@ -2516,6 +2851,7 @@ function FirmsListView({
           amount: input.restDiff,
           description: "Bakiye Düzenlemesi (Ödenen)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
     },
@@ -2546,16 +2882,48 @@ function FirmsListView({
       date: string;
       currency?: string;
     }) => {
-      await supabaseClient.from("firm_transactions").insert({
+      const targetIso = dateInputToIso(input.date);
+      const { data: inserted } = await supabaseClient
+        .from("firm_transactions")
+        .insert({
+          firm_id: input.firm_id,
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: targetIso,
+        })
+        .select("*")
+        .single();
+      return {
         firm_id: input.firm_id,
-        transaction_type: input.type,
-        amount: input.amount,
-        description: input.desc,
-        currency: input.currency,
-        created_at: dateInputToIso(input.date),
-      });
+        tx: {
+          id: inserted?.id || `temp-${Date.now()}`,
+          type: input.type,
+          amount: input.amount,
+          date: toDateInputStr(inserted?.created_at || targetIso),
+          createdAt: inserted?.created_at || targetIso,
+          _seq: nextClientSequence(),
+          desc: input.desc,
+          currency: input.currency || "TRY",
+        } as FirmTransaction,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["firms_ledger"], (old: Firm[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((f) => {
+          if (f.id !== res.firm_id) return f;
+          const nextTxs = sortNewestFirst([res.tx, ...f.transactions]);
+          return {
+            ...f,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || f.latestIsoDate,
+            _seq: nextTxs[0]?._seq ?? f._seq,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false);
@@ -2581,6 +2949,7 @@ function FirmsListView({
       currency?: string;
       existingCreatedAt?: string;
     }) => {
+      const targetIso = dateInputToIso(input.date, input.existingCreatedAt);
       await supabaseClient
         .from("firm_transactions")
         .update({
@@ -2588,11 +2957,39 @@ function FirmsListView({
           amount: input.amount,
           description: input.desc,
           currency: input.currency,
-          created_at: dateInputToIso(input.date, input.existingCreatedAt),
+          created_at: targetIso,
         })
         .eq("id", input.id);
+      return { ...input, targetIso };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["firms_ledger"], (old: Firm[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((f) => {
+          if (!f.transactions.some((t) => String(t.id) === String(res.id))) return f;
+          const nextTxs = sortNewestFirst(
+            f.transactions.map((t) =>
+              String(t.id) === String(res.id)
+                ? {
+                    ...t,
+                    type: res.type,
+                    amount: res.amount,
+                    desc: res.desc,
+                    currency: res.currency || t.currency,
+                    date: toDateInputStr(res.targetIso),
+                    createdAt: res.targetIso,
+                  }
+                : t,
+            ),
+          );
+          return {
+            ...f,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || f.latestIsoDate,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["firms_ledger"] });
       toast.success("İşlem güncellendi");
       setIsAddTxOpen(false);
@@ -2832,7 +3229,7 @@ function FirmsListView({
   const handleExportFirmPDF = () => {
     if (!selectedFirm) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const sortedTxs = [...selectedFirm.transactions].sort(compareTransactionsNewestFirst);
+    const sortedTxs = sortNewestFirst(selectedFirm.transactions);
     const data = sortedTxs.map((tx) => {
       const typeStr = tx.type === "debt" ? "Satış / Borçlandırma" : "Ödeme / Tahsilat";
       const amountStr = `${tx.amount.toLocaleString()} ${getCurrencySymbol(tx.currency || selectedFirm.currency)}`;
@@ -2857,9 +3254,9 @@ function FirmsListView({
     });
   };
 
-  const filteredFirms = firms
-    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  const filteredFirms = sortNewestFirst(
+    firms.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   if (selectedFirm) {
     return (
@@ -2970,7 +3367,7 @@ function FirmsListView({
                 Bu firmaya ait henüz işlem bulunmuyor.
               </div>
             )}
-            {[...selectedFirm.transactions].sort(compareTransactionsNewestFirst).map((tx) => {
+            {sortNewestFirst(selectedFirm.transactions).map((tx) => {
               const isTaken = tx.type === "debt";
               return (
                 <div
@@ -3626,7 +4023,7 @@ function FirmsListView({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-4">
-            {firms.map((f) => {
+            {sortNewestFirst(firms).map((f) => {
               const amount =
                 breakdownType === "paid"
                   ? getFirmPaid(f, exchangeRates)
@@ -3861,7 +4258,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
     let sumPaid = 0;
     let sumRemaining = 0;
 
-    const data = employees.map((s) => {
+    const data = sortNewestFirst(employees).map((s) => {
       const paid = getEmployeePaid(s);
       const rem = getEmployeeRemaining(s);
       sumPaid += paid;
@@ -3893,7 +4290,6 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
 
   const addEmployeeMutation = useMutation({
     mutationFn: async (input: { name: string; taken: number; rest: number; desc: string }) => {
-      const remaining = input.taken - input.rest;
       const { data: employee, error: sErr } = await supabaseClient
         .from("employees")
         .insert({
@@ -3928,7 +4324,6 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       newTaken: number;
       newRest: number;
     }) => {
-      const remaining = input.newTaken - input.newRest;
       await supabaseClient
         .from("employees")
         .update({
@@ -3944,6 +4339,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           transaction_type: "debt_addition",
           amount: input.takenDiff,
           description: "Bakiye Düzenlemesi (Maaş)",
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
       if (input.restDiff !== 0) {
@@ -3952,6 +4348,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
           transaction_type: "salary_payment",
           amount: input.restDiff,
           description: "Bakiye Düzenlemesi (Ödenen)",
+          created_at: dateInputToIso(getTodayDateStr()),
         });
       }
     },
@@ -3987,15 +4384,18 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       currentSalary: number;
       currentPaid: number;
     }) => {
+      const targetIso = dateInputToIso(input.date);
       const txData = {
         transaction_type: input.type,
         amount: input.amount,
         description: input.desc,
-        created_at: dateInputToIso(input.date),
+        created_at: targetIso,
       };
-      await supabaseClient
+      const { data: inserted } = await supabaseClient
         .from("salary_transactions")
         .insert({ ...txData, employee_id: input.employee_id })
+        .select("*")
+        .single()
         .throwOnError();
 
       let newSalary = input.currentSalary;
@@ -4015,8 +4415,38 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         })
         .eq("id", input.employee_id)
         .throwOnError();
+      return {
+        employee_id: input.employee_id,
+        newSalary,
+        newPaid,
+        tx: {
+          id: inserted?.id || `temp-${Date.now()}`,
+          type: input.type as any,
+          amount: input.amount,
+          date: toDateInputStr(inserted?.created_at || targetIso),
+          createdAt: inserted?.created_at || targetIso,
+          _seq: nextClientSequence(),
+          desc: input.desc,
+        } as EmployeeTransaction,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["employees_ledger"], (old: Employee[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((e) => {
+          if (e.id !== res.employee_id) return e;
+          const nextTxs = sortNewestFirst([res.tx, ...e.transactions]);
+          return {
+            ...e,
+            total_debt: res.newSalary,
+            total_paid: res.newPaid,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || e.latestIsoDate,
+            _seq: nextTxs[0]?._seq ?? e._seq,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false);
@@ -4040,13 +4470,14 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       oldType: string;
       existingCreatedAt?: string;
     }) => {
+      const targetIso = dateInputToIso(input.date, input.existingCreatedAt);
       await supabaseClient
         .from("salary_transactions")
         .update({
           transaction_type: input.type,
           amount: input.amount,
           description: input.desc,
-          created_at: dateInputToIso(input.date, input.existingCreatedAt),
+          created_at: targetIso,
         })
         .eq("id", input.id)
         .throwOnError();
@@ -4065,8 +4496,37 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
         .update({ total_debt: newSalary, total_paid: newPaid })
         .eq("id", input.employee_id)
         .throwOnError();
+      return { ...input, targetIso, newSalary, newPaid };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["employees_ledger"], (old: Employee[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((e) => {
+          if (e.id !== res.employee_id) return e;
+          const nextTxs = sortNewestFirst(
+            e.transactions.map((t) =>
+              String(t.id) === String(res.id)
+                ? {
+                    ...t,
+                    type: res.type as any,
+                    amount: res.amount,
+                    desc: res.desc,
+                    date: toDateInputStr(res.targetIso),
+                    createdAt: res.targetIso,
+                  }
+                : t,
+            ),
+          );
+          return {
+            ...e,
+            total_debt: res.newSalary,
+            total_paid: res.newPaid,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || e.latestIsoDate,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("İşlem güncellendi");
       setIsAddTxOpen(false);
@@ -4114,21 +4574,56 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
       description?: string;
       date?: string;
     }) => {
-      await supabaseClient.from("salary_transactions").insert({
-        employee_id: input.employee_id,
-        transaction_type: "salary_payment",
-        amount: input.amount,
-        description: input.description || "Hızlı Ödeme",
-        created_at: dateInputToIso(input.date || getTodayDateStr()),
-      });
+      const targetIso = dateInputToIso(input.date || getTodayDateStr());
+      const desc = input.description || "Hızlı Ödeme";
+      const { data: inserted } = await supabaseClient
+        .from("salary_transactions")
+        .insert({
+          employee_id: input.employee_id,
+          transaction_type: "salary_payment",
+          amount: input.amount,
+          description: desc,
+          created_at: targetIso,
+        })
+        .select("*")
+        .single();
+      const newPaid = input.currentPaid + input.amount;
       await supabaseClient
         .from("employees")
         .update({
-          total_paid: input.currentPaid + input.amount,
+          total_paid: newPaid,
         })
         .eq("id", input.employee_id);
+      return {
+        employee_id: input.employee_id,
+        newPaid,
+        tx: {
+          id: inserted?.id || `temp-${Date.now()}`,
+          type: "salary_payment" as const,
+          amount: input.amount,
+          date: toDateInputStr(inserted?.created_at || targetIso),
+          createdAt: inserted?.created_at || targetIso,
+          _seq: nextClientSequence(),
+          desc,
+        } as EmployeeTransaction,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["employees_ledger"], (old: Employee[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((e) => {
+          if (e.id !== res.employee_id) return e;
+          const nextTxs = sortNewestFirst([res.tx, ...e.transactions]);
+          return {
+            ...e,
+            total_paid: res.newPaid,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || e.latestIsoDate,
+            _seq: nextTxs[0]?._seq ?? e._seq,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["employees_ledger"] });
       toast.success("Ödeme başarıyla eklendi");
       setPaymentEmployeeId(null);
@@ -4228,7 +4723,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   const handleExportEmployeePDF = () => {
     if (!selectedEmployee) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const sortedTxs = [...selectedEmployee.transactions].sort(compareTransactionsNewestFirst);
+    const sortedTxs = sortNewestFirst(selectedEmployee.transactions);
     const data = sortedTxs.map((tx: any) => {
       const typeStr =
         tx.type === "debt_addition"
@@ -4259,9 +4754,9 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
   };
 
   const selectedEmployee = employees.find((f) => f.id === selectedEmployeeId);
-  const filteredEmployees = employees
-    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  const filteredEmployees = sortNewestFirst(
+    employees.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   return (
     <div className="space-y-8">
@@ -4470,7 +4965,7 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-4">
-            {employees.map((f) => {
+            {sortNewestFirst(employees).map((f) => {
               const amount =
                 breakdownType === "paid" ? getEmployeePaid(f) : getEmployeeRemaining(f);
               if (amount === 0) return null;
@@ -4715,53 +5210,51 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
                       Bu personele ait henüz işlem bulunmuyor.
                     </div>
                   )}
-                  {[...selectedEmployee.transactions]
-                    .sort(compareTransactionsNewestFirst)
-                    .map((tx) => {
-                      const isTaken = tx.type === "debt_addition";
-                      const isAdvance = tx.type === "advance";
-                      return (
-                        <div
-                          key={tx.id}
-                          className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
-                              <ArrowDownRight className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-bold text-white block">{tx.desc}</span>
-                              <span className="text-xs text-[#9E9696] font-medium mt-1 block">
-                                {formatDisplayDate(tx.date)}
-                              </span>
-                            </div>
+                  {sortNewestFirst(selectedEmployee.transactions).map((tx) => {
+                    const isTaken = tx.type === "debt_addition";
+                    const isAdvance = tx.type === "advance";
+                    return (
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white">
+                            <ArrowDownRight className="w-5 h-5" />
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className="font-mono text-lg font-bold text-white">
-                              {tx.amount.toLocaleString()} ₺
+                          <div>
+                            <span className="text-sm font-bold text-white block">{tx.desc}</span>
+                            <span className="text-xs text-[#9E9696] font-medium mt-1 block">
+                              {formatDisplayDate(tx.date)}
                             </span>
-                            <div className="flex gap-1 ml-4">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditTransaction(tx)}
-                                className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteTransaction(tx)}
-                                className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-lg font-bold text-white">
+                            {tx.amount.toLocaleString()} ₺
+                          </span>
+                          <div className="flex gap-1 ml-4">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditTransaction(tx)}
+                              className="h-8 w-8 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTransaction(tx)}
+                              className="h-8 w-8 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -4788,7 +5281,32 @@ function EmployeesListView({ employees, onBack }: EmployeesListViewProps) {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
-            {/* İşlem Tipi seçimi kaldırıldı, basit form yapıldı */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
+              <div className="grid grid-cols-3 gap-1.5 bg-white/5 p-1 rounded-xl">
+                <button
+                  type="button"
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${newTxType === "debt_addition" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                  onClick={() => setNewTxType("debt_addition")}
+                >
+                  Maaş / Borç
+                </button>
+                <button
+                  type="button"
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${newTxType === "salary_payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                  onClick={() => setNewTxType("salary_payment")}
+                >
+                  Maaş Ödemesi
+                </button>
+                <button
+                  type="button"
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${newTxType === "advance" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                  onClick={() => setNewTxType("advance")}
+                >
+                  Avans
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label>
@@ -4968,7 +5486,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
     let sumPaid = 0;
     let sumRemaining = 0;
 
-    const data = expenses.map((s) => {
+    const data = sortNewestFirst(expenses).map((s) => {
       const paid = getExpensePaid(s, exchangeRates);
       const rem = getExpenseRemaining(s, exchangeRates);
       sumPaid += paid;
@@ -5011,8 +5529,9 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
           total_debt: input.taken,
           total_paid: input.rest,
           description: input.desc,
+          sira: 0,
         })
-        .select("id, name, currency")
+        .select("id, name, currency, created_at, sira")
         .single();
       if (sErr) throw sErr;
       return expense;
@@ -5120,11 +5639,11 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
   const filteredExpenses = expenses
     .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
+      const cmp = compareTransactionsNewestFirst(a, b);
+      if (cmp !== 0) return cmp;
       if (a.sira != null && b.sira != null && a.sira !== b.sira) {
         return a.sira - b.sira;
       }
-      if (a.sira != null && b.sira == null) return -1;
-      if (a.sira == null && b.sira != null) return 1;
       return a.name.localeCompare(b.name, "tr");
     });
 
@@ -5366,7 +5885,7 @@ function ExpensesListView({ expenses, exchangeRates, onBack }: ExpensesListViewP
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-4">
-            {expenses.map((f) => {
+            {sortNewestFirst(expenses).map((f) => {
               const amount =
                 breakdownType === "paid"
                   ? getExpensePaid(f, exchangeRates)
@@ -5591,7 +6110,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     let sumPaid = 0;
     let sumRemaining = 0;
 
-    const data = schools.map((s) => {
+    const data = sortNewestFirst(schools).map((s) => {
       const paid = getSchoolPaid(s, exchangeRates);
       const rem = getSchoolRemaining(s, exchangeRates);
       sumPaid += paid;
@@ -5656,6 +6175,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           amount: input.taken,
           description: "İlk Satış Kaydı",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
         if (tErr) throw tErr;
       }
@@ -5666,6 +6186,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           amount: input.rest,
           description: "İlk Ödeme Kaydı",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
         if (pErr) throw pErr;
       }
@@ -5693,7 +6214,8 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       id: string;
       name: string;
       currency: string;
-      taken_amount: number;
+      takenDiff: number;
+      paidDiff: number;
       paid_amount: number;
       contribution: number;
     }) => {
@@ -5707,30 +6229,26 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         })
         .eq("id", input.id);
 
-      const { error: delErr } = await supabaseClient
-        .from("school_transactions")
-        .delete()
-        .eq("school_id", input.id);
-      if (delErr) throw delErr;
-
-      if (input.taken_amount > 0) {
+      if (input.takenDiff !== 0) {
         const { error: tErr } = await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "debt",
-          amount: input.taken_amount,
+          amount: input.takenDiff,
           description: "Bakiye Düzenlemesi (Satış)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
         if (tErr) throw tErr;
       }
 
-      if (input.paid_amount > 0) {
+      if (input.paidDiff !== 0) {
         const { error: pErr } = await supabaseClient.from("school_transactions").insert({
           school_id: input.id,
           transaction_type: "payment",
-          amount: input.paid_amount,
+          amount: input.paidDiff,
           description: "Bakiye Düzenlemesi (Ödenen)",
           currency: input.currency,
+          created_at: dateInputToIso(getTodayDateStr()),
         });
         if (pErr) throw pErr;
       }
@@ -5764,17 +6282,62 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       desc: string;
       date: string;
       currency?: string;
+      currentPaidAmount?: number;
     }) => {
-      await supabaseClient.from("school_transactions").insert({
+      const targetIso = dateInputToIso(input.date);
+      const { data: inserted } = await supabaseClient
+        .from("school_transactions")
+        .insert({
+          school_id: input.school_id,
+          transaction_type: input.type,
+          amount: input.amount,
+          description: input.desc,
+          currency: input.currency,
+          created_at: targetIso,
+        })
+        .select("*")
+        .single();
+
+      let nextPaidAmount = input.currentPaidAmount;
+      if (input.type === "payment") {
+        nextPaidAmount = Number(input.currentPaidAmount || 0) + Number(input.amount || 0);
+        await supabaseClient
+          .from("schools")
+          .update({ paid_amount: nextPaidAmount })
+          .eq("id", input.school_id);
+      }
+
+      return {
         school_id: input.school_id,
-        transaction_type: input.type,
-        amount: input.amount,
-        description: input.desc,
-        currency: input.currency,
-        created_at: dateInputToIso(input.date),
-      });
+        nextPaidAmount,
+        tx: {
+          id: inserted?.id || `temp-${Date.now()}`,
+          type: input.type,
+          amount: input.amount,
+          date: toDateInputStr(inserted?.created_at || targetIso),
+          createdAt: inserted?.created_at || targetIso,
+          _seq: nextClientSequence(),
+          desc: input.desc,
+          currency: input.currency || "TRY",
+        } as SchoolTransaction,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["schools_ledger"], (old: School[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((s) => {
+          if (s.id !== res.school_id) return s;
+          const nextTxs = sortNewestFirst([res.tx, ...s.transactions]);
+          return {
+            ...s,
+            paid_amount: res.nextPaidAmount ?? s.paid_amount,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || s.latestIsoDate,
+            _seq: nextTxs[0]?._seq ?? s._seq,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("İşlem kaydedildi");
       setIsAddTxOpen(false);
@@ -5788,13 +6351,18 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   const editTxMutation = useMutation({
     mutationFn: async (input: {
       id: string;
+      school_id: string;
       type: "debt" | "payment";
       amount: number;
       desc: string;
       date: string;
       currency?: string;
       existingCreatedAt?: string;
+      oldType?: "debt" | "payment";
+      oldAmount?: number;
+      currentPaidAmount?: number;
     }) => {
+      const targetIso = dateInputToIso(input.date, input.existingCreatedAt);
       await supabaseClient
         .from("school_transactions")
         .update({
@@ -5802,11 +6370,58 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
           amount: input.amount,
           description: input.desc,
           currency: input.currency,
-          created_at: dateInputToIso(input.date, input.existingCreatedAt),
+          created_at: targetIso,
         })
         .eq("id", input.id);
+
+      let nextPaidAmount = Number(input.currentPaidAmount || 0);
+      if (input.oldType === "payment") {
+        nextPaidAmount = Math.max(0, nextPaidAmount - Number(input.oldAmount || 0));
+      }
+      if (input.type === "payment") {
+        nextPaidAmount += Number(input.amount || 0);
+      }
+      if (input.oldType === "payment" || input.type === "payment") {
+        await supabaseClient
+          .from("schools")
+          .update({ paid_amount: nextPaidAmount })
+          .eq("id", input.school_id);
+      }
+
+      return { ...input, targetIso, nextPaidAmount };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.setQueryData(["schools_ledger"], (old: School[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        const nextList = old.map((s) => {
+          if (s.id !== res.school_id) return s;
+          const nextTxs = sortNewestFirst(
+            s.transactions.map((t) =>
+              String(t.id) === String(res.id)
+                ? {
+                    ...t,
+                    type: res.type,
+                    amount: res.amount,
+                    desc: res.desc,
+                    currency: res.currency || t.currency,
+                    date: toDateInputStr(res.targetIso),
+                    createdAt: res.targetIso,
+                  }
+                : t,
+            ),
+          );
+          return {
+            ...s,
+            paid_amount:
+              res.oldType === "payment" || res.type === "payment"
+                ? res.nextPaidAmount
+                : s.paid_amount,
+            latestIsoDate: nextTxs[0]?.createdAt || nextTxs[0]?.date || s.latestIsoDate,
+            transactions: nextTxs,
+          };
+        });
+        return sortNewestFirst(nextList);
+      });
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
       toast.success("İşlem güncellendi");
       setIsAddTxOpen(false);
@@ -5818,8 +6433,24 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   });
 
   const deleteTxMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await supabaseClient.from("school_transactions").delete().eq("id", id);
+    mutationFn: async (input: {
+      id: string;
+      school_id?: string;
+      type?: "debt" | "payment";
+      amount?: number;
+      currentPaidAmount?: number;
+    }) => {
+      await supabaseClient.from("school_transactions").delete().eq("id", input.id);
+      if (input.school_id && input.type === "payment") {
+        const nextPaid = Math.max(
+          0,
+          Number(input.currentPaidAmount || 0) - Number(input.amount || 0),
+        );
+        await supabaseClient
+          .from("schools")
+          .update({ paid_amount: nextPaid })
+          .eq("id", input.school_id);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools_ledger"] });
@@ -5845,6 +6476,10 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     if (!editSchoolId) return;
     const school = schools.find((f) => f.id === editSchoolId);
     if (!school) return;
+    const currentTaken = school.transactions
+      .filter((tx) => tx.type === "debt")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const currentPaid = Number(school.paid_amount || 0);
     const newPaid = parseFloat(editSchoolRest) || 0;
     const newTaken = parseFloat(editSchoolTaken) || 0;
 
@@ -5852,7 +6487,8 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       id: editSchoolId,
       name: editSchoolName.trim(),
       currency: editSchoolCurrency,
-      taken_amount: newTaken,
+      takenDiff: newTaken - currentTaken,
+      paidDiff: newPaid - currentPaid,
       paid_amount: newPaid,
       contribution: parseFloat(editSchoolContribution) || 0,
     });
@@ -5866,12 +6502,16 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
       const existingTx = school?.transactions.find((t) => String(t.id) === String(editTxId));
       editTxMutation.mutate({
         id: editTxId,
+        school_id: selectedSchoolId,
         type: newTxType,
         amount: parseFloat(newTxAmount),
         desc: newTxDesc.trim(),
         date: newTxDate,
         currency: school?.currency,
         existingCreatedAt: existingTx?.createdAt,
+        oldType: existingTx?.type,
+        oldAmount: existingTx?.amount,
+        currentPaidAmount: school?.paid_amount,
       });
     } else {
       addTxMutation.mutate({
@@ -5881,6 +6521,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
         desc: newTxDesc.trim(),
         date: newTxDate,
         currency: school?.currency,
+        currentPaidAmount: school?.paid_amount,
       });
     }
   };
@@ -5894,16 +6535,23 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
     setIsAddTxOpen(true);
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = (tx: any) => {
     if (window.confirm("Bu işlemi silmek istediğinize emin misiniz?")) {
-      deleteTxMutation.mutate(id);
+      const school = schools.find((f) => f.id === selectedSchoolId);
+      deleteTxMutation.mutate({
+        id: typeof tx === "string" ? tx : tx.id,
+        school_id: selectedSchoolId || undefined,
+        type: typeof tx === "object" ? tx.type : undefined,
+        amount: typeof tx === "object" ? tx.amount : undefined,
+        currentPaidAmount: school?.paid_amount,
+      });
     }
   };
 
   const handleExportSchoolPDF = () => {
     if (!selectedSchool) return;
     const columns = ["Tarih", "İşlem Türü", "Açıklama", "Tutar"];
-    const sortedTxs = [...selectedSchool.transactions].sort(compareTransactionsNewestFirst);
+    const sortedTxs = sortNewestFirst(selectedSchool.transactions);
     const data = sortedTxs.map((tx: any) => {
       const typeStr = tx.type === "debt" ? "Satış / Borç" : "Ödeme / Tahsilat";
       const amountStr = `${getConvertedAmount(tx.amount, tx.currency || selectedSchool.currency, exchangeRates).toLocaleString()} ₺`;
@@ -5937,9 +6585,9 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
   };
 
   const selectedSchool = schools.find((f) => f.id === selectedSchoolId);
-  const filteredSchools = schools
-    .filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  const filteredSchools = sortNewestFirst(
+    schools.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   return (
     <div className="space-y-8">
@@ -6145,7 +6793,7 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-4">
-            {schools.map((f) => {
+            {sortNewestFirst(schools).map((f) => {
               const amount =
                 breakdownType === "paid"
                   ? getSchoolPaid(f, exchangeRates)
@@ -6458,66 +7106,64 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
                   </div>
                 </div>
                 <div className="space-y-2.5">
-                  {[...selectedSchool.transactions]
-                    .sort(compareTransactionsNewestFirst)
-                    .map((tx) => {
-                      const isTaken = tx.type === "debt";
-                      return (
-                        <div
-                          key={tx.id}
-                          className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
-                            >
-                              {isTaken ? (
-                                <ArrowUpRight className="w-4 h-4" />
-                              ) : (
-                                <ArrowDownRight className="w-4 h-4" />
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-xs font-bold text-white block">{tx.desc}</span>
-                              <span className="text-[10px] text-[#9E9696] font-medium mt-0.5 block">
-                                {formatDisplayDate(tx.date)}
-                              </span>
-                            </div>
+                  {sortNewestFirst(selectedSchool.transactions).map((tx) => {
+                    const isTaken = tx.type === "debt";
+                    return (
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between p-3.5 bg-white/5 border border-white/5 rounded-xl"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${isTaken ? "bg-[#A67C52]/10 text-[#A67C52]" : "bg-[#12B76A]/10 text-[#12B76A]"}`}
+                          >
+                            {isTaken ? (
+                              <ArrowUpRight className="w-4 h-4" />
+                            ) : (
+                              <ArrowDownRight className="w-4 h-4" />
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
-                            >
-                              {isTaken ? "+" : "-"}
-                              {getConvertedAmount(
-                                tx.amount,
-                                tx.currency || selectedSchool.currency,
-                                exchangeRates,
-                              ).toLocaleString()}{" "}
-                              ₺
+                          <div>
+                            <span className="text-xs font-bold text-white block">{tx.desc}</span>
+                            <span className="text-[10px] text-[#9E9696] font-medium mt-0.5 block">
+                              {formatDisplayDate(tx.date)}
                             </span>
-                            <div className="flex gap-1 ml-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditTransaction(tx)}
-                                className="h-7 w-7 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteTransaction(tx.id)}
-                                className="h-7 w-7 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-mono text-sm font-bold ${isTaken ? "text-[#A67C52]" : "text-[#12B76A]"}`}
+                          >
+                            {isTaken ? "+" : "-"}
+                            {getConvertedAmount(
+                              tx.amount,
+                              tx.currency || selectedSchool.currency,
+                              exchangeRates,
+                            ).toLocaleString()}{" "}
+                            ₺
+                          </span>
+                          <div className="flex gap-1 ml-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditTransaction(tx)}
+                              className="h-7 w-7 text-[#9E9696] hover:text-white hover:bg-white/10 rounded-lg"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTransaction(tx)}
+                              className="h-7 w-7 text-[#9E9696] hover:text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -6544,6 +7190,25 @@ function OkullarListView({ schools, exchangeRates, isRatesError, onBack }: Okull
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddTx} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-[#9E9696]">İşlem Tipi</Label>
+              <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl">
+                <button
+                  type="button"
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${newTxType === "debt" ? "bg-[#A67C52] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                  onClick={() => setNewTxType("debt")}
+                >
+                  Satış / Borç
+                </button>
+                <button
+                  type="button"
+                  className={`py-2 text-xs font-bold rounded-lg transition-all ${newTxType === "payment" ? "bg-[#12B76A] text-white shadow-sm" : "text-[#9E9696] hover:text-white hover:bg-white/5"}`}
+                  onClick={() => setNewTxType("payment")}
+                >
+                  Ödeme / Tahsilat
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-300">Tutar (₺)</Label>
@@ -6624,12 +7289,15 @@ interface BaskiSizeSummaryItem {
 }
 
 interface GroupedBaskiSchoolRow {
+  id?: string;
   schoolKey: string;
   schoolName: string;
   note: string;
   date: string;
   rawDate: number;
   latestIsoDate: string;
+  createdAt?: string;
+  _seq?: number;
   items: BaskiSizeSummaryItem[];
   totalQuantity: number;
   amount: number;
@@ -6748,7 +7416,10 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
   const { data: rawBaskiRecords = [] } = useQuery<any[]>({
     queryKey: ["baski_kayitlari", teamId],
     queryFn: async () => {
-      const { data, error } = await supabaseClient.from("baski_kayitlari").select("*");
+      const { data, error } = await supabaseClient
+        .from("baski_kayitlari")
+        .select("*")
+        .order("olusturma_tarihi", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -6843,35 +7514,66 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       });
 
       if (mode === "add" || existingIds.length === 0) {
-        const { error: txErr } = await supabaseClient.from("baski_kayitlari").insert(preparedRows);
+        const { data: insertedRows, error: txErr } = await supabaseClient
+          .from("baski_kayitlari")
+          .insert(preparedRows)
+          .select("*");
         if (txErr) throw txErr;
-        return;
+        return { mode, insertedRows: insertedRows || [], updatedRows: [], deletedIds: [] };
       }
 
+      const updatedRows: any[] = [];
       const overlapCount = Math.min(existingIds.length, preparedRows.length);
       for (let i = 0; i < overlapCount; i++) {
         const updatePayload: Record<string, any> = { ...preparedRows[i] };
-        const { error: updErr } = await supabaseClient
+        const { data: updRow, error: updErr } = await supabaseClient
           .from("baski_kayitlari")
           .update(updatePayload)
-          .eq("id", existingIds[i]);
+          .eq("id", existingIds[i])
+          .select("*")
+          .single();
         if (updErr) throw updErr;
+        if (updRow) updatedRows.push(updRow);
       }
 
+      let insertedRows: any[] = [];
+      let deletedIds: string[] = [];
       if (preparedRows.length > existingIds.length) {
         const extraRows = preparedRows.slice(existingIds.length);
-        const { error: insErr } = await supabaseClient.from("baski_kayitlari").insert(extraRows);
+        const { data: insData, error: insErr } = await supabaseClient
+          .from("baski_kayitlari")
+          .insert(extraRows)
+          .select("*");
         if (insErr) throw insErr;
+        insertedRows = insData || [];
       } else if (existingIds.length > preparedRows.length) {
-        const idsToDelete = existingIds.slice(preparedRows.length);
+        deletedIds = existingIds.slice(preparedRows.length);
         const { error: delErr } = await supabaseClient
           .from("baski_kayitlari")
           .delete()
-          .in("id", idsToDelete);
+          .in("id", deletedIds);
         if (delErr) throw delErr;
       }
+      return { mode, insertedRows, updatedRows, deletedIds };
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (res, variables) => {
+      if (res) {
+        const updateCache = (old: any[] | undefined) => {
+          if (!Array.isArray(old)) return old;
+          const deletedSet = new Set((res.deletedIds || []).map(String));
+          const updatedMap = new Map((res.updatedRows || []).map((r: any) => [String(r.id), r]));
+          const base = old
+            .filter((r: any) => !deletedSet.has(String(r.id)))
+            .map((r: any) => updatedMap.get(String(r.id)) || r);
+          const added = (res.insertedRows || []).map((r: any) => ({
+            ...r,
+            _seq: nextClientSequence(),
+          }));
+          return sortNewestFirst([...added, ...base]);
+        };
+        queryClient.setQueryData(["baski_kayitlari", teamId], updateCache);
+        queryClient.setQueryData(["baski_kayitlari_overview", teamId], updateCache);
+      }
       toast.success(
         variables.mode === "edit"
           ? "Baskı gideri başarıyla güncellendi."
@@ -6933,12 +7635,13 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
   };
 
   const groupedBaskiSchools: GroupedBaskiSchoolRow[] = (() => {
-    const parsedRecords = (rawBaskiRecords || [])
-      .map((t: any) => {
+    const rawCount = (rawBaskiRecords || []).length;
+    const parsedRecords = sortNewestFirst(
+      (rawBaskiRecords || []).map((t: any, idx: number) => {
         const rawDesc = String(t.aciklama ?? t.description ?? "").trim();
         const dbDate =
           t.olusturma_tarihi || t.created_at || t.tarih || t.date || new Date().toISOString();
-        const parsedTime = parseDateToTimestamp(dbDate);
+        const parsedTime = parseAnyDateToTimestamp(dbDate);
         const rawDate = parsedTime > 0 ? parsedTime : 0;
         const isoDate =
           parsedTime > 0 ? new Date(parsedTime).toISOString() : new Date().toISOString();
@@ -7017,14 +7720,12 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
           paidAmount,
           rawDate,
           isoDate,
+          date: isoDate,
+          createdAt: isoDate,
+          _seq: rawCount - idx,
         };
-      })
-      .sort((a, b) =>
-        compareTransactionsNewestFirst(
-          { id: a.id, date: a.isoDate, createdAt: a.isoDate },
-          { id: b.id, date: b.isoDate, createdAt: b.isoDate },
-        ),
-      );
+      }),
+    );
 
     const groupsMap = new Map<
       string,
@@ -7034,6 +7735,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         notesSet: Set<string>;
         rawDate: number;
         latestIsoDate: string;
+        maxSeq: number;
         sizeMap: Map<string, BaskiSizeSummaryItem>;
         totalQuantity: number;
         amount: number;
@@ -7054,6 +7756,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
           notesSet: new Set<string>(),
           rawDate: rec.rawDate,
           latestIsoDate: rec.isoDate,
+          maxSeq: rec._seq,
           sizeMap: new Map<string, BaskiSizeSummaryItem>(),
           totalQuantity: 0,
           amount: 0,
@@ -7067,9 +7770,13 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       if (rec.note) {
         group.notesSet.add(rec.note);
       }
-      if (rec.rawDate > group.rawDate) {
+      if (
+        rec.rawDate > group.rawDate ||
+        (rec.rawDate === group.rawDate && rec._seq > group.maxSeq)
+      ) {
         group.rawDate = rec.rawDate;
         group.latestIsoDate = rec.isoDate;
+        group.maxSeq = Math.max(group.maxSeq, rec._seq);
         group.schoolName = formattedSchool;
       }
 
@@ -7099,14 +7806,17 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       }
     });
 
-    return Array.from(groupsMap.values())
-      .map((g) => ({
+    return sortNewestFirst(
+      Array.from(groupsMap.values()).map((g) => ({
+        id: g.recordIds[0] || g.schoolKey,
         schoolKey: g.schoolKey,
         schoolName: g.schoolName,
         note: g.notesSet.size > 0 ? Array.from(g.notesSet).join(", ") : "",
         date: g.rawDate > 0 ? formatDisplayDate(g.rawDate) : "-",
         rawDate: g.rawDate,
         latestIsoDate: g.latestIsoDate,
+        createdAt: g.latestIsoDate,
+        _seq: g.maxSeq,
         items: Array.from(g.sizeMap.values()).sort((a, b) =>
           a.sizeLabel.localeCompare(b.sizeLabel, "tr", {
             numeric: true,
@@ -7117,22 +7827,8 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
         amount: g.amount,
         paidAmount: g.paidAmount,
         recordIds: g.recordIds,
-      }))
-      .sort(
-        (a, b) =>
-          compareTransactionsNewestFirst(
-            {
-              id: a.recordIds[0] || a.schoolKey,
-              date: a.latestIsoDate,
-              createdAt: a.latestIsoDate,
-            },
-            {
-              id: b.recordIds[0] || b.schoolKey,
-              date: b.latestIsoDate,
-              createdAt: b.latestIsoDate,
-            },
-          ) || a.schoolName.localeCompare(b.schoolName, "tr"),
-      );
+      })),
+    );
   })();
 
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase("tr-TR");
@@ -7166,7 +7862,7 @@ function BaskiListView({ exchangeRates: _exchangeRates, onBack }: BaskiListViewP
       "Ödenen",
       "Kalan",
     ];
-    const data = filteredBaskiGroups.map((group) => {
+    const data = sortNewestFirst(filteredBaskiGroups).map((group) => {
       const remaining = group.amount - group.paidAmount;
       const sizesText = group.items.map((sz) => `${sz.sizeLabel} — ${sz.quantity} Adet`).join("\n");
       return [
